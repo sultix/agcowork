@@ -56,3 +56,20 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      # Build only (no push) so the Dockerfiles do not rot. Compose needs the variables to interpolate.
+      - run: cp .env.example .env
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/bake-action@v6
+        with:
+          source: .
+          files: docker-compose.yml
+          targets: api,web
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max

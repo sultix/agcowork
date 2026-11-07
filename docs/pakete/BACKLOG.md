@@ -21,7 +21,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-015](AP-015-frontend-tabelle.md) | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, View-Wechsel, Board | 1 | implementer-opus | AP-009, AP-014 | abgeschlossen | dafa127 |
 | [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | 45c5e25 |
 | [AP-017](AP-017-frontend-raw-historie.md) | Frontend: Raw-View (bearbeitbar), Historie mit Diff, Aktivitätsfeed | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-014 | abgeschlossen | 7492762 |
-| [AP-018](AP-018-docker-compose.md) | Docker Compose für den lokalen Start ohne Aspire (Postgres, API, Nginx + Angular) | Betrieb | implementer-sonnet | AP-011 | in Arbeit | |
+| [AP-018](AP-018-docker-compose.md) | Docker Compose für den lokalen Start ohne Aspire (Postgres, API, Nginx + Angular) | Betrieb | implementer-sonnet | AP-011 | abgeschlossen | (folgt) |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -46,7 +46,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-016 Bericht | Nicht-Admins können Mitglieder nur per Actor-ID einladen; keine Actor-Suche | Backend-Kleinpaket: `GET /w/{slug}/members/candidates?q=` oder `GET /actors?q=` mit eingeschränkten Feldern für Workspace-Admins |
 | AP-013 Review | `openapi-typescript` 7.13 verlangt TypeScript ^5, Projekt nutzt TS 6; npm-`overrides` erzwingt TS 6 | Bei jedem Update von openapi-typescript oder TypeScript prüfen, Override entfernen sobald Peer-Range passt |
 | AP-004 Review | Kein Weg, ein Passwort nachträglich zu setzen (Reset, Änderung); Bootstrap-Passwort bleibt dauerhaft gültig | Phase 2: `PATCH /me/password`, Admin-Reset; Bootstrap-Admin nach erstem Login zum Ändern auffordern |
-| AP-004 Review | Cookies zustandslos (Logout entwertet abgegriffenes Cookie nicht); DataProtection-Keys nicht persistiert (Sessions weg nach Neustart) | Betrieb/Deploy: DataProtection-Keys in DB oder Volume persistieren; Session-Revocation bei Bedarf |
+| AP-004 Review | Cookies zustandslos (Logout entwertet abgegriffenes Cookie nicht) | Phase 2: Session-Revocation bei Bedarf. DataProtection-Keys: Compose-Volume in AP-018; für andere Deployments `PersistKeysToDbContext` prüfen |
+| AP-018 Review | Web-Image läuft als root (nginx:alpine) | Später `nginxinc/nginx-unprivileged` mit `listen 8080` |
 | AP-004 Review | Bootstrap mit mehreren Instanzen gleichzeitig → zweite stürzt ab | niedrig, Single-Instance-Annahme |
 | AP-012 Bericht | Änderungen im Debounce-Fenster gehen bei Destroy des Editors verloren | AP-014: vor Navigation `getMarkdown()` abholen oder bei Blur speichern |
 | AP-012 Bericht | Aufgaben-Checkboxen im WYSIWYG nicht klickbar; Milkdown vergibt Überschriften-IDs aus dem Text | Phase 2 Komfort; ID-Präfix prüfen |

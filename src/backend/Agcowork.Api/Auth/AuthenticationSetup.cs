@@ -4,6 +4,7 @@ using Agcowork.Domain.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 
 namespace Agcowork.Api.Auth;
 
@@ -20,6 +21,7 @@ namespace Agcowork.Api.Auth;
 internal static class AuthenticationSetup
 {
     public const string CookieName = "agcowork_session";
+    public const string CookieSecurePolicyKey = "Agcowork:Cookies:SecurePolicy";
     public static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(7);
 
     public static IServiceCollection AddAgcoworkAuthentication(this IServiceCollection services, IHostEnvironment environment)
@@ -41,9 +43,7 @@ internal static class AuthenticationSetup
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.Cookie.IsEssential = true;
-                // Secure everywhere except Development (local http and the test server). Deliberately not
-                // derived from the Host header, which the client controls.
-                options.Cookie.SecurePolicy = environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+                // SecurePolicy is set below (environment default plus configuration override).
                 options.ExpireTimeSpan = SessionLifetime;
                 options.SlidingExpiration = true;
                 options.Events = new CookieAuthenticationEvents
@@ -54,6 +54,20 @@ internal static class AuthenticationSetup
                     OnValidatePrincipal = ValidateSessionAsync,
                 };
             });
+
+        // Secure everywhere except Development (local http and the test server), unless Agcowork:Cookies:SecurePolicy
+        // says otherwise (docker compose runs without TLS). Deliberately not derived from the Host header,
+        // which the client controls.
+        services.AddOptions<CookieSecuritySettings>()
+            .BindConfiguration("Agcowork:Cookies")
+            .Validate(
+                settings => settings.SecurePolicy is null or CookieSecurePolicy.Always or CookieSecurePolicy.SameAsRequest,
+                $"{CookieSecurePolicyKey} must be Always or SameAsRequest.")
+            .ValidateOnStart();
+        services.AddOptions<CookieAuthenticationOptions>(AuthSchemes.Cookie)
+            .Configure<IOptions<CookieSecuritySettings>>((options, settings) =>
+                options.Cookie.SecurePolicy = settings.Value.SecurePolicy
+                    ?? (environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always));
 
         // InstanceScopeRequirement handles itself (ASP.NET's pass-through handler invokes it).
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, ProblemDetailsAuthorizationResultHandler>();
@@ -109,4 +123,10 @@ internal static class AuthenticationSetup
         response.StatusCode = statusCode;
         return Task.CompletedTask;
     }
+}
+
+/// <summary>Bound from <c>Agcowork:Cookies</c>; an invalid value fails the host start.</summary>
+internal sealed class CookieSecuritySettings
+{
+    public CookieSecurePolicy? SecurePolicy { get; set; }
 }

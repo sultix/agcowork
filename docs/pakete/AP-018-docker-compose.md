@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | Betrieb (zwischen Phase 1 und 2) |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | `src/backend/Agcowork.AppHost/AppHost.cs` (welche Ressourcen und Umgebungsvariablen die App braucht), `src/frontend/proxy.conf.js` (welche Pfade zur API gehen), `src/backend/Agcowork.Api/Auth/AuthenticationSetup.cs` (Cookie-Policy), `README.md`, `.github/workflows/ci.yml` |
@@ -80,3 +80,8 @@ und der Bootstrap-Admin kann sich anmelden. Kein Aspire, kein lokales SDK nötig
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-sonnet übergeben |
+| 2026-11-07 | Bericht: drei Services, Volume `agcowork_agcowork-compose-pgdata`, nur `web` veröffentlicht Port; API-Image mit `OpenApiGenerateDocumentsOnBuild=false`, Non-Root, bash-Healthcheck; Web-Image kopiert `v1.json` für `api:generate`; Nginx mit MCP-Pfaden ohne Buffering; Cookie-Option `Agcowork:Cookies:SecurePolicy` via Options-Pattern, 3 Tests; 971 Tests grün; Nachweise per curl (Login, /me, MCP initialize/tools-list, SPA-Fallback, Neustart behält Daten). Offen: DataProtection-Keys nicht persistiert → Sessions nach Container-Neustart ungültig |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; Start, Login, MCP über Nginx, SPA-Fallback, Persistenz, Sicherheit selbst nachgestellt. Wichtig: Nginx cacht die API-IP (502 nach Recreate); DataProtection-Keys ephemer (Volume + chown nötig). Hinweise: MCP-Pfad mit Schrägstrich, `^~`-Locations, Layer-Caching im API-Dockerfile, `ValidateOnStart`, Passwort-Sonderzeichen, Buildx-Cache in CI, Log-Rauschen; Web-Image als root (Paket-Vorgabe) |
+| 2026-11-07 | Nacharbeit an implementer-sonnet (9 Punkte) |
+| 2026-11-07 | Nacharbeit fertig: Nginx-Resolver mit `resolve`, `depends_on` healthy + restart, DataProtection-Volume mit chown, MCP-Pfade mit Schrägstrich, `^~`-Locations, Restore-Layer, `ValidateOnStart`, Passwort-Quoting, Buildx-Cache (bake) in CI, kein `ASPNETCORE_URLS`. Orchestrator: 973 Tests grün, `docker compose up --build` → 3 gesunde Container, Login und Workspace-Anlage aus Vorlage im Browser über Port 8080 geprüft. Abgeschlossen, Commit siehe Backlog |

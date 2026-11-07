@@ -1,0 +1,56 @@
+# agcowork without Aspire: PostgreSQL, API and Nginx with the Angular build.
+# Usage: cp .env.example .env && docker compose up -d --build   ->   http://localhost:${WEB_PORT:-8080}
+name: agcowork
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agcowork
+      POSTGRES_USER: agcowork
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+    volumes:
+      - agcowork-compose-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agcowork -d agcowork"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Port intentionally not published. Add `ports: ["5432:5432"]` in a docker-compose.override.yml if needed.
+
+  api:
+    build:
+      context: .
+      dockerfile: src/backend/Agcowork.Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Password is quoted so special characters (except a double quote) survive; it must not contain ';'.
+      ConnectionStrings__agcowork: Host=postgres;Port=5432;Database=agcowork;Username=agcowork;Password="${POSTGRES_PASSWORD}"
+      Agcowork__Bootstrap__AdminEmail: ${AGCOWORK_ADMIN_EMAIL:?Set AGCOWORK_ADMIN_EMAIL in .env}
+      Agcowork__Bootstrap__AdminPassword: ${AGCOWORK_ADMIN_PASSWORD:?Set AGCOWORK_ADMIN_PASSWORD in .env}
+      # No TLS locally: cookies must work over http. Behind a TLS reverse proxy remove this (default: Always).
+      Agcowork__Cookies__SecurePolicy: SameAsRequest
+    volumes:
+      - agcowork-compose-dpkeys:/home/app/.aspnet/DataProtection-Keys
+    # Port intentionally not published; only the web service reaches the API.
+
+  web:
+    build:
+      context: .
+      dockerfile: src/frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+        restart: true
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  agcowork-compose-pgdata:
+  agcowork-compose-dpkeys:

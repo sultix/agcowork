@@ -26,3 +26,6 @@ appsettings.*.local.json
 .idea/
 .vscode/
 *.swp
+
+# Local compose secrets
+.env

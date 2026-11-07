@@ -26,6 +26,27 @@ Ohne Aspire: API mit `dotnet run --project src/backend/Agcowork.Api` (Port 5180)
 Den Dialog einmal mit „Immer erlauben“ bestätigen, sonst hängt der Start.
 Notlösung: `ASPIRE_DCP_USE_DEVELOPER_CERTIFICATE=false` in der Shell setzen.
 
+## Start mit Docker Compose
+
+Der Betreiber-Weg ohne Aspire und ohne lokales SDK: PostgreSQL, API und Nginx mit dem Angular-Produktionsbuild.
+Aspire bleibt der Entwickler-Weg.
+
+```
+cp .env.example .env              # Passwörter und Admin-Zugang anpassen
+docker compose up -d --build
+```
+
+- App: http://localhost:8080 (Port über `WEB_PORT` in `.env`). Login mit `AGCOWORK_ADMIN_EMAIL` und
+  `AGCOWORK_ADMIN_PASSWORD` aus `.env` (mindestens 12 Zeichen; der Admin entsteht nur beim ersten Start mit leerer Datenbank).
+- MCP für Agenten: `http://localhost:8080/w/{slug}/mcp` (Instanz-Tools unter `/mcp`), Key wie unter „Agenten anbinden“.
+- Nur Nginx veröffentlicht einen Port; Postgres und API sind nur im Compose-Netz erreichbar.
+- **TLS:** Compose setzt `Agcowork__Cookies__SecurePolicy=SameAsRequest`, weil lokal kein TLS läuft. Hinter einem
+  TLS-Reverse-Proxy diese Variable entfernen: außerhalb von Development gilt dann `Always` (Cookie nur über https).
+- Daten liegen im Volume `agcowork-compose-pgdata` und überleben `docker compose down`.
+  Auch die Sitzungs-Schlüssel liegen in einem Volume (`agcowork-compose-dpkeys`), Logins überleben also einen Neustart.
+  `docker compose down -v` löscht beide Volumes und setzt alles zurück, auch alle Sitzungen.
+- Im API-Log erscheint beim Start eine Npgsql-Warnung zu `libgssapi_krb5`; sie ist harmlos (Kerberos wird nicht genutzt).
+
 ## Tests
 
 ```

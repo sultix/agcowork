@@ -558,7 +558,7 @@ SignalR-Gruppe gewechselt.
 
 ## 8. Betrieb
 
-- **Lokal**: `dotnet run --project src/backend/Agcowork.AppHost` startet alles (Aspire). Alternativ `docker compose up`.
+- **Lokal**: `dotnet run --project src/backend/Agcowork.AppHost` startet alles (Aspire). Alternativ `docker compose up -d --build` (Betreiber-Weg, AP-018): drei Container (`postgres`, `api`, `web` = Nginx mit Angular-Build), nur Port 8080 veröffentlicht; Nginx leitet `/api/`, `/health*`, `/openapi/`, `/mcp` und `/w/{slug}/mcp` (ungepuffert, Streamable HTTP) an die API, alles andere an die SPA. Ohne TLS setzt Compose `Agcowork:Cookies:SecurePolicy=SameAsRequest`; Standard außerhalb Development ist `Always`.
 - **Daten**: ein Postgres-Volume; Backup = `pg_dump`; zusätzlich täglicher Markdown-Export pro Workspace (git-freundlich, ein Ordner je Workspace).
 - **Workspace-Lebenszyklus**: Anlegen durch Instanz-Admin (optional aus Vorlage), Archivieren (read-only), Löschen nur nach Export.
 - **Migrationen**: EF Core, beim Start angewendet (Single-Instance).
