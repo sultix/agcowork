@@ -21,7 +21,8 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.TryAddSingleton(TimeProvider.System);
+        // Microsecond precision: matches what PostgreSQL stores (see MicrosecondTimeProvider).
+        services.TryAddSingleton<TimeProvider, MicrosecondTimeProvider>();
 
         // Tenant of the current scope: set by the tenancy middleware, read by use cases and the DbContext filter.
         services.TryAddScoped<ITenantContextAccessor, TenantContextAccessor>();
