@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { recordLeaveGuard } from '../records/record-leave.guard';
 
 const placeholder = () =>
   import('../../shared/ui/placeholder-page.component').then((m) => m.PlaceholderPageComponent);
@@ -10,8 +11,27 @@ export const workspaceShellRoutes: Routes = [
     loadComponent: () =>
       import('./workspace-shell.component').then((m) => m.WorkspaceShellComponent),
     children: [
-      { path: '', loadComponent: placeholder, data: { title: 'Workspace-Start' } },
-      { path: 'spaces/:spaceId', loadComponent: placeholder, data: { title: 'Space' } },
+      {
+        path: '',
+        loadComponent: () =>
+          import('../spaces/workspace-home.component').then((m) => m.WorkspaceHomeComponent),
+      },
+      {
+        path: 'spaces/:spaceId',
+        loadComponent: () =>
+          import('../spaces/space-page.component').then((m) => m.SpacePageComponent),
+      },
+      {
+        path: 'collections/:collectionId',
+        loadComponent: () =>
+          import('../collections/collection-page.component').then((m) => m.CollectionPageComponent),
+      },
+      {
+        path: 'records/:recordId',
+        canDeactivate: [recordLeaveGuard],
+        loadComponent: () =>
+          import('../records/record-document.component').then((m) => m.RecordDocumentComponent),
+      },
       { path: 'search', loadComponent: placeholder, data: { title: 'Suche' } },
       { path: 'activity', loadComponent: placeholder, data: { title: 'Aktivität' } },
       {

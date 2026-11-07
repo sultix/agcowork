@@ -215,7 +215,11 @@ export class MarkdownEditorComponent {
     this.timer = setTimeout(() => this.flush(), this.debounceMs());
   }
 
-  private flush(): void {
+  /**
+   * Emits a pending (still debounced) change right away. Callers that are about to save or leave
+   * the page use it; emitting while the component is being destroyed is not possible (NG0953).
+   */
+  flush(): void {
     this.clearTimer();
     if (!this.handle) {
       return;

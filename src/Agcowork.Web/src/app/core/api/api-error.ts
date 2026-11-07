@@ -67,6 +67,10 @@ export class ApiError extends Error {
     readonly title?: string,
     readonly traceId?: string,
     readonly url?: string,
+    /** Only for 409 `revision_mismatch`: the record's current revision. */
+    readonly currentRevision?: number,
+    /** Only for 409 `revision_mismatch`: what changed since `expectedRevision` (`null`: unknown). */
+    readonly changedKeys?: readonly string[] | null,
   ) {
     super(detail ?? title ?? `API request failed with ${status} (${code})`);
   }
@@ -106,6 +110,12 @@ export class ApiError extends Error {
       asString(body.title),
       asString(body.traceId),
       url,
+      typeof body.currentRevision === 'number' ? body.currentRevision : undefined,
+      Array.isArray(body.changedKeys)
+        ? body.changedKeys.filter((k): k is string => typeof k === 'string')
+        : body.changedKeys === null
+          ? null
+          : undefined,
     );
   }
 

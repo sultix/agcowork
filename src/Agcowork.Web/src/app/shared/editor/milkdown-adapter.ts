@@ -14,6 +14,7 @@ import { history } from '@milkdown/kit/plugin/history';
 import {
   commonmark,
   createCodeBlockCommand,
+  imageSchema,
   insertHrCommand,
   toggleEmphasisCommand,
   toggleInlineCodeCommand,
@@ -27,7 +28,7 @@ import {
 import { gfm, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm';
 import { Plugin, PluginKey } from '@milkdown/kit/prose/state';
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view';
-import { $prose, callCommand } from '@milkdown/kit/utils';
+import { $prose, $view, callCommand } from '@milkdown/kit/utils';
 import type {
   MarkdownCommand,
   MarkdownEditorHandle,
@@ -47,6 +48,21 @@ export const STRINGIFY_OPTIONS = {
   rule: '-',
   listItemIndent: 'one',
 } as const;
+
+/**
+ * Images are never loaded (no proxy yet, and agent content must not trigger requests to foreign
+ * hosts): the node view shows `alt` and the URL as text. The node itself, and so the Markdown,
+ * stays unchanged.
+ */
+const imagePlaceholder = $view(imageSchema.node, () => (node) => {
+  const dom = document.createElement('span');
+  dom.className = 'ag-md-image';
+  dom.setAttribute('data-testid', 'image-placeholder');
+  const alt = String(node.attrs['alt'] ?? '');
+  const src = String(node.attrs['src'] ?? '');
+  dom.textContent = `[Bild${alt ? `: ${alt}` : ''}] (${src})`;
+  return { dom };
+});
 
 const PLACEHOLDER_REFRESH = 'ag-placeholder-refresh';
 const placeholderKey = new PluginKey('ag-placeholder');
@@ -115,6 +131,7 @@ export async function createMilkdownEditor(
     .use(gfm)
     .use(history)
     .use(clipboard)
+    .use(imagePlaceholder)
     .use(bridge)
     .create();
 

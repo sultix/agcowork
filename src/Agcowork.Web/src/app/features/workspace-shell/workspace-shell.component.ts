@@ -4,6 +4,7 @@ import { BackendStatus, HealthService } from '../../core/api/health.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { ADMIN_ROLES, WorkspacesStore } from '../workspaces/workspaces.store';
+import { WorkspaceTreeComponent } from '../spaces/workspace-tree.component';
 import { WorkspaceSwitcherComponent } from '../workspaces/workspace-switcher.component';
 import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
 
@@ -22,6 +23,7 @@ const STATUS_LABELS: Record<BackendStatus, string> = {
     RouterLinkActive,
     SessionMenuComponent,
     WorkspaceSwitcherComponent,
+    WorkspaceTreeComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -39,6 +41,9 @@ const STATUS_LABELS: Record<BackendStatus, string> = {
             >
           }
         </nav>
+        <div class="mt-6 border-t border-border pt-4">
+          <ag-workspace-tree />
+        </div>
       </aside>
       <div class="flex min-w-0 flex-1 flex-col">
         <header class="flex items-center justify-between border-b border-border px-6 py-3">

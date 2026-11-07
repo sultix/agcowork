@@ -18,6 +18,9 @@ const ERROR_TEXTS: Record<string, string> = {
   email_taken: 'Diese E-Mail-Adresse wird bereits von einem anderen Actor verwendet.',
   self_lockout:
     'Du kannst dich nicht selbst deaktivieren und dir nicht selbst instance:admin entziehen.',
+  revision_mismatch: 'Der Record wurde zwischenzeitlich von jemand anderem geändert.',
+  record_archived:
+    'Der Record ist archiviert und damit schreibgeschützt. Stelle ihn zuerst wieder her.',
   workspace_archived: 'Der Workspace ist archiviert und damit schreibgeschützt.',
   forbidden: 'Dafür fehlen die nötigen Rechte.',
   not_found: 'Nicht gefunden. Möglicherweise wurde der Eintrag inzwischen gelöscht.',

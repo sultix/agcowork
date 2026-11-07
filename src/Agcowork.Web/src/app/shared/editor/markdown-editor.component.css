@@ -175,3 +175,13 @@
 .ag-md .ag-md-error {
   color: var(--ag-danger);
 }
+
+.ag-md-image {
+  display: inline-block;
+  border: 1px dashed var(--color-border, #ccc);
+  border-radius: 0.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.875em;
+  opacity: 0.8;
+  word-break: break-all;
+}

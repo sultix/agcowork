@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | im Review |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-016: `features/workspaces/workspaces.store.ts` (resource abhängig von Slug/Session), `features/workspace-settings/members.component.ts` (Liste + Formulare + Fehlercodes), `shared/ui/*` (Badge, ConfirmDialog, FieldErrors, `describeError`), `core/testing/test-utils.ts`; AP-012: `shared/editor/markdown-editor` (`value`, `valueChange`, `editorBlur`, `getMarkdown()`), `shared/raw-view`; AP-013: `api.workspace(slug)`, `toServerErrors` |
@@ -93,3 +93,8 @@ Ende-zu-Ende-Pfad Mensch ↔ Agent über dieselben Daten offen.
 | 2026-11-07 | an implementer-sonnet übergeben |
 | 2026-11-07 | Bericht: 366 Tests grün, Lint/Build grün; AK 1–6 per Playwright (Workspace mit 10 Property-Typen, 60 Records). `ag-property-editor` als Dispatcher (eigene Komponenten nur Relation/Actor), `RecordSaveService` (Auto-Save, Konflikt), `record-leave.guard`, `MembersStore`, `WorkspaceTreeStore`, Fixtures in test-utils. Abweichungen: Baseline für `getMarkdown()` erst beim ersten Fokus; Editor wird bei Reload neu erzeugt; keine Shell-Breadcrumbs (Seiten-Breadcrumbs); `recordCount` nur auf Collection-Seite. Offen: Monaco-Konsolenfehler im Dev-Server (AP-012), Strg+S bei Markdown-Property im Debounce, `Idempotency-Key` nicht gesendet (ApiClient ohne Header) |
 | 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: **Blockiert**. B1: nach „Überschreiben“ bleibt veralteter Body im Editor, nächster Save löscht fremden Text ohne Konflikt. Wichtig: Bilder werden geladen (Entscheidung nicht umgesetzt, nicht gemeldet); Leave-Guard sperrt bei dauerhaftem Save-Fehler ein; kein `beforeunload`; Markdown-Property verliert Debounce-Text bei Destroy. Hinweise: Number-/Date-Zwischenzustände, Server-Trim setzt Feld zurück, Pager-Race, JSON-Guard, fehlende Tests. Patch-Semantik, Sicherheit, Property-Typen, Fixtures in Ordnung; `RecordSaveService` als Muster für AP-015 |
+| 2026-11-07 | Nacharbeit an implementer-sonnet (B1, W1–W4, H1–H4, H6); danach erneute Prüfung der Blocker/Wichtig-Punkte |
+| 2026-11-07 | Nacharbeit fertig: 384 Tests grün. Overwrite holt Body nach, Bild-Platzhalter-NodeView, `canLeave()` mit Verwerfen-Dialog, `beforeunload`, `flush()` für Editor/Property-Editoren, badInput-Handling, Trim-Erhalt, Pager-Race, `invalid`-Signal. An reviewer zur erneuten Prüfung |
+| 2026-11-07 | Erneute Prüfung: Freigabe mit Hinweisen; W1–W4, H1–H4, H6 bestätigt. Rest von B1 (W5): `refreshBody()` blockiert bei anderen Edits, hat keinen Fehlerpfad und verwirft Debounce-Text; H7: `canLeave()` gibt trotz Edits während des Saves frei. Letzte Nacharbeit an implementer-sonnet |
+| 2026-11-07 | Fertig: 388 Tests grün; `refreshBody()` nur bei `bodyDirty`, `bodyStale` erzwingt 409 nach GET-Fehler, `canLeave()` speichert nach, max. 3×. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |

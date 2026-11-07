@@ -6,6 +6,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
 import { authGuard } from './core/auth/auth.guard';
 import { instanceAdminGuard } from './features/admin/admin.guard';
+import { recordLeaveGuard } from './features/records/record-leave.guard';
 import { SessionStatus, SessionStore } from './core/auth/session.store';
 import { ADMIN_ME } from './core/testing/test-utils';
 import { FakeCodeEditor, provideFakeCodeEditor } from './shared/raw-view/fake-code-editor';
@@ -55,6 +56,8 @@ describe('app routes', () => {
         'workspaces',
         'w/:workspaceSlug',
         'w/:workspaceSlug/spaces/:spaceId',
+        'w/:workspaceSlug/collections/:collectionId',
+        'w/:workspaceSlug/records/:recordId',
         'w/:workspaceSlug/search',
         'w/:workspaceSlug/activity',
         'workspaces/new',
@@ -105,6 +108,9 @@ describe('app routes', () => {
     '/workspaces/new',
     '/w/demo',
     '/w/demo/activity',
+    '/w/demo/spaces/s1',
+    '/w/demo/collections/c1',
+    '/w/demo/records/r1',
     '/w/demo/settings',
     '/admin/actors',
   ])('navigate_AnonymousToProtected_%s_EndsOnLoginWithReturnUrl', async (url) => {
@@ -123,6 +129,15 @@ describe('app routes', () => {
     const router = TestBed.inject(Router);
     expect(router.url.startsWith('/login?')).toBe(true);
     expect(router.parseUrl(router.url).queryParams['returnUrl']).toBe(url);
+  });
+
+  it('routes_RecordDocument_GuardsAgainstLeavingWithUnsavedChanges', async () => {
+    const shell = await loadChildren(routes.find((r) => r.path === 'w/:workspaceSlug')!);
+    const children = shell![0].children!;
+
+    expect(children.find((r) => r.path === 'records/:recordId')?.canDeactivate).toEqual([
+      recordLeaveGuard,
+    ]);
   });
 
   it('routes_ProtectedAreas_HaveAuthGuard', () => {

@@ -95,6 +95,17 @@ describe('createMilkdownEditor', () => {
     expect(normalize(await roundTrip(markdown))).toBe(normalize(markdown));
   });
 
+  it('image_Markdown_RendersPlaceholderWithoutImgAndKeepsMarkdown', async () => {
+    const markdown = 'Vorher ![Logo](https://example.org/logo.png) nachher\n';
+
+    const { editor, root } = await mount(markdown);
+
+    expect(root.querySelector('img')).toBeNull();
+    const placeholder = root.querySelector('[data-testid="image-placeholder"]');
+    expect(placeholder?.textContent).toBe('[Bild: Logo] (https://example.org/logo.png)');
+    expect(normalize(editor.getMarkdown())).toBe(normalize(markdown));
+  });
+
   it('roundTrip_NestedList_KeepsIndentationExactly', async () => {
     const markdown = '- a\n  - a1\n    - a1x\n- b\n  1. b1\n  2. b2\n';
 

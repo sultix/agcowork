@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-014: `features/records/record-document.component.ts` + `record-save.service.ts` (Laden, Save mit `expectedRevision`, 409), `features/spaces` (Activity-Ausschnitt auf der Startseite); AP-012: `shared/raw-view` (`language`, `isValid`, `valueChange`); AP-016: Listen mit Cursor, `describeError` |
@@ -79,3 +79,4 @@ nachvollziehen, welcher Agent oder Mensch was wann geändert hat. Damit ist F6
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-sonnet übergeben |
