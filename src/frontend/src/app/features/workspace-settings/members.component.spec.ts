@@ -177,6 +177,16 @@ describe('MembersComponent', () => {
     expect(root().querySelector('input#add-actor')).not.toBeNull();
   });
 
+  it('add_AllActorsAreMembers_ShowsHintWithAdminLinkAndDisablesSubmit', async () => {
+    await render({ members: [OWNER, AGENT], actors: [AGENT_ACTOR] });
+
+    expect(root().querySelector('select#add-actor')).toBeNull();
+    const hint = q('no-candidates')!;
+    expect(hint.textContent).toContain('bereits Mitglied');
+    expect(hint.querySelector('a')!.getAttribute('href')).toBe('/admin/actors');
+    expect((q('add-submit') as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('add_NoActor_ShowsRequiredError', async () => {
     await render({});
 

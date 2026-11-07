@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormField, form, required, submit } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCircleAlert, lucideEllipsis, lucidePencil, lucideTrash2 } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
@@ -61,6 +62,7 @@ function sameSet(a: readonly string[], b: readonly string[]): boolean {
     DatePipe,
     NgTemplateOutlet,
     FormField,
+    RouterLink,
     NgIcon,
     HlmAlertImports,
     HlmButton,
@@ -225,7 +227,18 @@ function sameSet(a: readonly string[], b: readonly string[]): boolean {
 
               <div hlmField class="gap-2">
                 <label hlmFieldLabel for="add-actor">Actor</label>
-                @if (actors(); as list) {
+                @if (noCandidates()) {
+                  <p class="text-sm text-muted-foreground" data-testid="no-candidates">
+                    Alle aktiven Actors sind bereits Mitglied. Neue Menschen oder Agenten legst du
+                    unter
+                    <a
+                      routerLink="/admin/actors"
+                      class="font-medium text-foreground underline underline-offset-4"
+                      >Administration → Actors</a
+                    >
+                    an.
+                  </p>
+                } @else if (actors(); as list) {
                   <hlm-native-select selectId="add-actor" class="w-full" [formField]="form.actorId">
                     <option hlmNativeSelectOption value="">Bitte wählen …</option>
                     @for (actor of list; track actor.id) {
@@ -292,7 +305,7 @@ function sameSet(a: readonly string[], b: readonly string[]): boolean {
                   hlmBtn
                   type="submit"
                   data-testid="add-submit"
-                  [disabled]="form().submitting()"
+                  [disabled]="form().submitting() || noCandidates()"
                 >
                   Hinzufügen
                 </button>
@@ -409,6 +422,8 @@ export class MembersComponent {
     const memberIds = new Set(this.members().map((m) => m.actorId));
     return this.actorsResource.value().filter((a) => a.isActive && !memberIds.has(a.id));
   });
+  /** Every active actor is already a member: nothing to pick, point to the actor admin. */
+  protected readonly noCandidates = computed(() => this.actors()?.length === 0);
 
   private readonly addModel = signal<AddModel>({ actorId: '', role: 'editor' });
   protected readonly form = form(this.addModel, (path) => {
