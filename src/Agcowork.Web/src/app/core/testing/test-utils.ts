@@ -88,6 +88,9 @@ export type Space = components['schemas']['SpaceDto'];
 export type Collection = components['schemas']['CollectionDto'];
 export type RecordDto = components['schemas']['RecordDto'];
 export type Member = components['schemas']['MemberDto'];
+export type ActivityEvent = components['schemas']['ActivityEventDto'];
+export type Revision = components['schemas']['RevisionDto'];
+export type RevisionSummary = components['schemas']['RevisionSummaryDto'];
 export type PropertyDefinition = components['schemas']['PropertyDefinitionDto'];
 
 export const SPACE_ID = '0199a000-0000-7000-8000-0000000000b1';
@@ -185,6 +188,53 @@ export function member(overrides: Partial<Member> = {}): Member {
     scopes: ['read', 'write', 'schema', 'admin'],
     createdBy: ADMIN_ME.id,
     createdAt: '2026-11-07T10:00:00Z',
+    ...overrides,
+  };
+}
+
+export function activityEvent(
+  overrides: Omit<Partial<ActivityEvent>, 'diff'> & { diff?: unknown } = {},
+): ActivityEvent {
+  return {
+    seq: 1,
+    id: 'e1',
+    type: 'record.updated',
+    actorId: AGENT_ID,
+    targetType: 'record',
+    targetId: RECORD_ID,
+    spaceId: SPACE_ID,
+    collectionId: COLLECTION_ID,
+    at: '2026-11-07T11:00:00Z',
+    ...overrides,
+    diff: (overrides.diff ?? {}) as never,
+  };
+}
+
+export function revisionSummary(
+  no: number,
+  overrides: Partial<RevisionSummary> = {},
+): RevisionSummary {
+  return {
+    no,
+    kind: 'updated',
+    actorId: ADMIN_ME.id,
+    at: '2026-11-07T11:00:00Z',
+    reason: null,
+    ...overrides,
+  };
+}
+
+export function revision(no: number, overrides: Partial<Revision> = {}): Revision {
+  return {
+    recordId: RECORD_ID,
+    no,
+    kind: 'updated',
+    title: 'Login bauen',
+    properties: {} as never,
+    body: '',
+    actorId: ADMIN_ME.id,
+    at: '2026-11-07T11:00:00Z',
+    reason: null,
     ...overrides,
   };
 }

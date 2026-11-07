@@ -83,7 +83,9 @@ describe('WorkspaceHomeComponent', () => {
 
     const items = all('activity-item');
     expect(items).toHaveLength(2);
-    expect(text(items[0])).toContain('Admin hat einen Record angelegt „Login bauen“');
+    expect(text(items[0])).toContain('hat Record angelegt');
+    expect(text(items[0])).toContain('„Login bauen“');
+    expect(text(items[0])).toContain('Admin');
     expect(text(items[1])).toContain('hat einen Record archiviert');
     expect(all('activity-link').map((a) => a.getAttribute('href'))).toEqual([
       `/w/demo/records/${RECORD_ID}`,

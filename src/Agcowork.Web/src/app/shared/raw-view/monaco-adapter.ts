@@ -1,6 +1,12 @@
 // Curated Monaco build: core API plus the contributions a raw view needs. Importing
 // `editor.main` instead would pull every language and the TypeScript service (several MB).
 import * as monaco from 'monaco-editor/editor/editor.api.js';
+// Services the editor's own contributions ask for (code lens, drop into editor, suggestions).
+// A contribution that is bundled without its service registration makes Monaco log
+// "depends on UNKNOWN service …" on every editor creation.
+import 'monaco-editor/editor/contrib/codelens/browser/codeLensCache.js';
+import 'monaco-editor/editor/common/services/treeViewsDndService.js';
+import 'monaco-editor/editor/contrib/suggest/browser/suggestMemory.js';
 import 'monaco-editor/editor/contrib/bracketMatching/browser/bracketMatching.js';
 import 'monaco-editor/editor/contrib/clipboard/browser/clipboard.js';
 import 'monaco-editor/editor/contrib/comment/browser/comment.js';

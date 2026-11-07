@@ -27,6 +27,11 @@ export class MembersStore {
     this.listResource.hasValue() ? this.listResource.value() : [],
   );
 
+  /** Kind (`human` or `agent`) of an actor; `null` while the member is unknown. */
+  kindOf(actorId: string | null | undefined): string | null {
+    return this.members().find((m) => m.actorId === actorId)?.kind ?? null;
+  }
+
   /** Display name of an actor; the id itself while the member is unknown (or not loaded yet). */
   nameOf(actorId: string | null | undefined): string {
     if (!actorId) {

@@ -88,6 +88,9 @@ export class RecordSaveService {
   /** Called before every save to pull text the editor has not reported yet (see document view). */
   beforeSave: (() => void) | null = null;
 
+  /** `false` turns the 2 s auto-save off: saves happen only on request (raw view). */
+  autosave = true;
+
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.loadToken++;
@@ -156,6 +159,16 @@ export class RecordSaveService {
     this.dirtyKeys.update((keys) => new Set(keys).add(key));
     this.clearFieldError(key);
     this.schedule();
+  }
+
+  /**
+   * Drops unsaved property edits and shows the server's values again. For views that derive
+   * the property patch from their own text before every save (raw view) and must not keep a
+   * failed patch alive.
+   */
+  discardPropertyEdits(): void {
+    this.dirtyKeys.set(new Set());
+    this.properties.set({ ...this.record()?.properties });
   }
 
   setBody(body: string): void {
@@ -394,6 +407,9 @@ export class RecordSaveService {
 
   private schedule(): void {
     this.clearTimer();
+    if (!this.autosave) {
+      return;
+    }
     this.timer = setTimeout(() => {
       this.timer = null;
       void this.save();

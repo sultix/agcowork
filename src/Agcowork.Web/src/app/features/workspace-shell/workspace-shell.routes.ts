@@ -32,8 +32,25 @@ export const workspaceShellRoutes: Routes = [
         loadComponent: () =>
           import('../records/record-document.component').then((m) => m.RecordDocumentComponent),
       },
+      {
+        path: 'records/:recordId/raw',
+        canDeactivate: [recordLeaveGuard],
+        loadComponent: () =>
+          import('../records/raw/record-raw.component').then((m) => m.RecordRawComponent),
+      },
+      {
+        path: 'records/:recordId/history',
+        loadComponent: () =>
+          import('../records/history/record-history.component').then(
+            (m) => m.RecordHistoryComponent,
+          ),
+      },
       { path: 'search', loadComponent: placeholder, data: { title: 'Suche' } },
-      { path: 'activity', loadComponent: placeholder, data: { title: 'Aktivität' } },
+      {
+        path: 'activity',
+        loadComponent: () =>
+          import('../activity/activity-feed.component').then((m) => m.ActivityFeedComponent),
+      },
       {
         path: 'settings',
         loadComponent: () =>

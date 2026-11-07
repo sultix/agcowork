@@ -17,8 +17,11 @@ export class FakeCodeEditor implements CodeEditorHandle {
   dark: boolean;
   destroyed = false;
   readonly setValueCalls: string[] = [];
+  /** The element the editor was mounted into. */
+  readonly root: HTMLElement;
 
   constructor(private readonly options: CodeEditorOptions) {
+    this.root = options.root;
     this.value = options.value;
     this.language = options.language;
     this.readonly = options.readonly;

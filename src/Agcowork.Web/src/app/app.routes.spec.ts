@@ -58,6 +58,8 @@ describe('app routes', () => {
         'w/:workspaceSlug/spaces/:spaceId',
         'w/:workspaceSlug/collections/:collectionId',
         'w/:workspaceSlug/records/:recordId',
+        'w/:workspaceSlug/records/:recordId/raw',
+        'w/:workspaceSlug/records/:recordId/history',
         'w/:workspaceSlug/search',
         'w/:workspaceSlug/activity',
         'workspaces/new',
@@ -111,6 +113,8 @@ describe('app routes', () => {
     '/w/demo/spaces/s1',
     '/w/demo/collections/c1',
     '/w/demo/records/r1',
+    '/w/demo/records/r1/raw',
+    '/w/demo/records/r1/history',
     '/w/demo/settings',
     '/admin/actors',
   ])('navigate_AnonymousToProtected_%s_EndsOnLoginWithReturnUrl', async (url) => {
@@ -136,6 +140,15 @@ describe('app routes', () => {
     const children = shell![0].children!;
 
     expect(children.find((r) => r.path === 'records/:recordId')?.canDeactivate).toEqual([
+      recordLeaveGuard,
+    ]);
+  });
+
+  it('routes_RecordRaw_GuardsAgainstLeavingWithUnsavedChanges', async () => {
+    const shell = await loadChildren(routes.find((r) => r.path === 'w/:workspaceSlug')!);
+    const children = shell![0].children!;
+
+    expect(children.find((r) => r.path === 'records/:recordId/raw')?.canDeactivate).toEqual([
       recordLeaveGuard,
     ]);
   });

@@ -12,15 +12,15 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-006](AP-006-schema.md) | Spaces, Collections, Property-Schema, Validierung, JSON Schema, Record-Vorlagen | 1 | implementer-opus | AP-005 | abgeschlossen | b0ad4fd |
 | [AP-007](AP-007-records.md) | Records, Revisionen, Activity, optimistische Nebenläufigkeit, append | 1 | implementer-opus | AP-006 | abgeschlossen | aa97706 |
 | [AP-008](AP-008-views.md) | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | abgeschlossen | 26c830f |
-| [AP-009](AP-009-filter-dsl.md) | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007, AP-008 | in Arbeit | |
+| [AP-009](AP-009-filter-dsl.md) | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007, AP-008 | im Review | |
 | [AP-010](AP-010-workspace-vorlage.md) | Workspace-Vorlage „Software-Projekt“ und `empty`, Anlage aus Vorlage | 1 | implementer-sonnet | AP-006, AP-008 | abgeschlossen | 7d1faa5 |
 | [AP-011](AP-011-mcp-server.md) | MCP-Server: Workspace- und Instanz-Tools, Resources, Auth, Isolationstests | 1 | implementer-opus | AP-009, AP-010 | angelegt | |
 | [AP-012](AP-012-editor-bausteine.md) | Frontend: Markdown-Editor und Raw-View als Bausteine | 1 | implementer-opus | AP-002 | abgeschlossen | 2fc5c4c |
 | [AP-013](AP-013-frontend-client-login.md) | Frontend: OpenAPI-Client, Login, Session, Auth-Guard | 1 | implementer-opus | AP-004 | abgeschlossen | 72abfeb |
-| [AP-014](AP-014-frontend-dokument.md) | Frontend: Space-Navigation, Collections, Record-Liste, Dokument-View, Property-Editoren | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | abgeschlossen | (folgt) |
+| [AP-014](AP-014-frontend-dokument.md) | Frontend: Space-Navigation, Collections, Record-Liste, Dokument-View, Property-Editoren | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | abgeschlossen | ccf39fb |
 | [AP-015](AP-015-frontend-tabelle.md) | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, View-Wechsel, Board | 1 | implementer-opus | AP-009, AP-014 | angelegt | |
 | [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | 45c5e25 |
-| [AP-017](AP-017-frontend-raw-historie.md) | Frontend: Raw-View (bearbeitbar), Historie mit Diff, Aktivitätsfeed | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-014 | in Arbeit | |
+| [AP-017](AP-017-frontend-raw-historie.md) | Frontend: Raw-View (bearbeitbar), Historie mit Diff, Aktivitätsfeed | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-014 | abgeschlossen | (folgt) |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -37,6 +37,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-006 Bericht | Self-Relations (z. B. `supersedes` in Entscheidungen) brauchen beim Anlegen die eigene Collection-ID | AP-010: Vorlage legt Collection erst ohne Self-Relation an und ergänzt sie per `UpdateSchema`, oder baut die Domain direkt |
 | AP-006 Bericht | Body-Records aus AP-004/005 erscheinen in OpenAPI mit allen Feldern als required | Kleinpaket: Default-Werte an Body-Records (Muster AP-006), danach `schema.d.ts` neu erzeugen |
 | AP-006 Bericht | Architektur §2 nennt `DefaultTemplateId`, umgesetzt ist `Template.IsDefault`; §4.3 ohne `describe`-Route | Orchestrator zieht Doku nach dem Review nach |
+| AP-009 Bericht | Nach `relation.multiple` false→true bleiben Skalar-Altwerte stehen; `RecordValuesSchemaHook` greift nicht; nächster PATCH scheitert am Validator | Kleinpaket Backend: Hook wandelt Skalar → Array bei dieser Typänderung (Muster select→multi_select) |
+| AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | Kleinpaket Frontend: Header-Option im ApiClient + Idempotency-Key bei POST /records; Backend: `targetTitle` im ActivityEvent-DTO |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |
 | AP-016 Bericht | Nicht-Admins können Mitglieder nur per Actor-ID einladen; keine Actor-Suche | Backend-Kleinpaket: `GET /w/{slug}/members/candidates?q=` oder `GET /actors?q=` mit eingeschränkten Feldern für Workspace-Admins |
 | AP-013 Review | `openapi-typescript` 7.13 verlangt TypeScript ^5, Projekt nutzt TS 6; npm-`overrides` erzwingt TS 6 | Bei jedem Update von openapi-typescript oder TypeScript prüfen, Override entfernen sobald Peer-Range passt |

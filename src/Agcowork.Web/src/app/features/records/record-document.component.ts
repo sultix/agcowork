@@ -28,6 +28,8 @@ import { BreadcrumbsComponent, Crumb } from '../../shared/ui/breadcrumbs.compone
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { WorkspacesStore } from '../workspaces/workspaces.store';
 import { WorkspaceTreeStore } from '../spaces/workspace-tree.store';
+import { ConflictDialogComponent } from './conflict-dialog.component';
+import { RecordTabsComponent } from './record-tabs.component';
 import { RecordSaveService } from './record-save.service';
 
 type Collection = components['schemas']['CollectionDto'];
@@ -44,9 +46,11 @@ type Collection = components['schemas']['CollectionDto'];
     BadgeComponent,
     BreadcrumbsComponent,
     ConfirmDialogComponent,
+    ConflictDialogComponent,
     MarkdownEditorComponent,
     PropertyEditorComponent,
     RawViewComponent,
+    RecordTabsComponent,
   ],
   providers: [RecordSaveService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,6 +64,7 @@ type Collection = components['schemas']['CollectionDto'];
         <p class="text-sm text-danger" role="alert" data-testid="load-error">{{ message }}</p>
       } @else if (saver.record(); as record) {
         <ag-breadcrumbs [crumbs]="crumbs()" />
+        <ag-record-tabs [recordId]="recordId()" />
 
         <input
           type="text"
@@ -193,57 +198,12 @@ type Collection = components['schemas']['CollectionDto'];
     </section>
 
     @if (saver.conflict(); as conflict) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div
-          class="w-full max-w-md rounded-lg border border-border bg-surface p-6"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="conflict-title"
-          data-testid="conflict-dialog"
-        >
-          <h2 id="conflict-title" class="text-lg font-semibold">Von jemand anderem geändert</h2>
-          <p class="mt-2 text-sm text-muted">
-            Der Record wurde gespeichert, seit du ihn geöffnet hast
-            @if (conflict.currentRevision !== null) {
-              (jetzt Revision {{ conflict.currentRevision }})
-            }
-            .
-          </p>
-          @if (conflict.changedKeys?.length) {
-            <p class="mt-2 text-sm">Geändert wurde:</p>
-            <ul class="mt-1 flex flex-wrap gap-1" data-testid="conflict-keys">
-              @for (key of conflict.changedKeys; track key) {
-                <li>
-                  <ag-badge>{{ key }}</ag-badge>
-                </li>
-              }
-            </ul>
-          }
-          <p class="mt-3 text-sm text-muted">
-            „Neu laden“ verwirft deine Änderungen. „Überschreiben“ speichert sie über den neuen
-            Stand.
-          </p>
-          <div class="mt-6 flex justify-end gap-2">
-            <button
-              type="button"
-              class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-hover"
-              data-testid="conflict-reload"
-              (click)="saver.reload()"
-            >
-              Neu laden
-            </button>
-            <button
-              type="button"
-              class="rounded-md bg-danger px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
-              data-testid="conflict-overwrite"
-              [disabled]="saver.saving()"
-              (click)="saver.overwrite()"
-            >
-              Überschreiben
-            </button>
-          </div>
-        </div>
-      </div>
+      <ag-conflict-dialog
+        [conflict]="conflict"
+        [saving]="saver.saving()"
+        (reload)="saver.reload()"
+        (overwrite)="saver.overwrite()"
+      />
     }
 
     <ag-confirm-dialog

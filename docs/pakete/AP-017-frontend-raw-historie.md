@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-014: `features/records/record-document.component.ts` + `record-save.service.ts` (Laden, Save mit `expectedRevision`, 409), `features/spaces` (Activity-Ausschnitt auf der Startseite); AP-012: `shared/raw-view` (`language`, `isValid`, `valueChange`); AP-016: Listen mit Cursor, `describeError` |
@@ -80,3 +80,10 @@ nachvollziehen, welcher Agent oder Mensch was wann geändert hat. Damit ist F6
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-sonnet übergeben |
+| 2026-11-07 | Bericht: 456 Tests grün; AK 1–3 per Playwright. Raw ohne Auto-Save (explizit/Strg+S), JSON-Diff → Patch mit `null`; Historie mit eigenem LCS-Zeilen-Diff, Wiederherstellen per PATCH; Activity-Feed mit Filtern, `view.*`-Events ergänzt; Monaco-Konsolenfehler behoben (fehlende Service-Registrierungen); Bug gefunden: abgelehnter Key blieb dirty → Property-Dirtiness wird nach Save verworfen. `Idempotency-Key` weiter offen (ApiClient ohne Header) |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: **Blockiert**. B1: Leeren des JSON-Editors zerstört alle Editoren (`ready` an Textlänge gebunden), Body-Änderungen unspeicherbar. Wichtig: Wiederherstellen ohne geladenes Schema sendet berechnete Keys als null (422); Revision mit entfernten Keys nicht wiederherstellbar; Raw-Seite setzt JSON bei Record-Wechsel nicht zurück. Hinweise: JSON blockiert Body-Save, Fehlerliste ungefiltert, Hinweis bei No-op-Restore, Titel im Feed, Diff-Grenze, Filter beim Workspace-Wechsel, Timer. JSON-Diff, Konfliktpfade, Viewer, Feed, gemeinsame Teile ohne Befund |
+| 2026-11-07 | Nacharbeit an implementer-sonnet (B1, W1–W3, H1–H4, H6–H7); danach erneute Prüfung |
+| 2026-11-07 | Nacharbeit fertig: 465 Tests grün; `jsonLoaded`-Signal, `canRestore` mit Schema, Restore nur Schema-Keys mit Hinweis auf unbekannte, Reset bei Record-Wechsel, Body-Save trotz ungültigem JSON, gefilterte Fehlerliste, No-op-Hinweis, Feed-Texte, Filter-Reset bei Workspace-Wechsel. An reviewer zur erneuten Prüfung |
+| 2026-11-07 | Erneute Prüfung: Freigabe mit Hinweisen; B1, W1–W3 bestätigt. Zwei Hinweise: halbfertiges JSON nach Body-Save still ersetzt; alte Filter beim Workspace-Wechsel einmal mitgesendet. Letzte Nacharbeit an implementer-sonnet |
+| 2026-11-07 | Fertig: 466 Tests grün; JSON bleibt nach Body-Save erhalten (Auffüll-Effekt nur bei echtem Laden), Feed-Reset in einem Effekt. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |
