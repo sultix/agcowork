@@ -24,20 +24,22 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-018](AP-018-docker-compose.md) | Docker Compose für den lokalen Start ohne Aspire (Postgres, API, Nginx + Angular) | Betrieb | implementer-sonnet | AP-011 | abgeschlossen | f1c615a |
 | [AP-019](AP-019-ui-fundament-spartan.md) | UI-Fundament: spartan/ui (shadcn), Theme neutral, Shell, Referenz-Migration | UI | implementer-opus | AP-012–AP-017 | abgeschlossen | eda627c |
 | [AP-020](AP-020-ui-migration-verwaltung.md) | UI-Migration: Verwaltung, Spaces, Collections, Aktivität | UI | implementer-sonnet | AP-019 | abgeschlossen | 5463f97 |
-| [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | abgeschlossen | |
+| [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | abgeschlossen | 559d0a2 |
+| [AP-022](AP-022-haertung-backend.md) | Härtung Backend: Passwort ändern/zurücksetzen, Sitzungen entwerten, relation-Hook, OpenAPI-Defaults, Activity-Titel | Härtung | implementer-opus | AP-004–AP-011 | in Arbeit | |
+| [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | angelegt | |
 
 ## Zurückgestellte Review-Hinweise
 
 | Quelle | Hinweis | Entscheidung |
 |---|---|---|
-| AP-019 Review | `npm audit --omit=dev`: kritischer Fund `dompurify` unter `monaco-editor` (bestand schon vor AP-019); `@spartan-ng/cli` bringt Nx und einen high-Fund (`zod`, nur dev) | Kleinpaket: Monaco-Update oder `overrides` für dompurify prüfen; CLI-Fund beobachten |
+| AP-019 Review | `npm audit --omit=dev`: kritischer Fund `dompurify` unter `monaco-editor` (bestand schon vor AP-019); `@spartan-ng/cli` bringt Nx und einen high-Fund (`zod`, nur dev) | dompurify → AP-023; CLI-Fund beobachten |
 | AP-019 Review | Theme-Aufblitzen beim Laden (Inline-Skript in `index.html`) nicht automatisiert getestet; bei künftiger CSP braucht das Skript Hash/Nonce | Mit dem ersten Playwright-Paket |
 | AP-019 Review | Brain setzt `aria-invalid` fest auf `control.invalid` (schon vor der ersten Eingabe), roter Rahmen erst bei ungültig+berührt; nicht konfigurierbar | Upstream-Issue bei spartan oder eigene Brain-Erweiterung, wenn ein A11y-Paket ansteht |
 | AP-020 Review | Brain-Popover setzt `role="dialog"` am Overlay ohne Label-Input; Name nur als `role="group"` innerhalb | mit dem aria-invalid-Punkt als Upstream-Issue bei spartan |
 | AP-020 Bericht | Schema-Übersicht der Collection als `<details>`, kein Helm-Collapsible erzeugt | bei Bedarf `ng g @spartan-ng/cli:ui collapsible` und umstellen |
 | AP-021 Review | Spalten-Panel (Spalten ein-/ausblenden) ohne Test; kein Test für `lucideKanban` im Board-Tab | mit dem nächsten Paket an `view-page` nachziehen |
 | AP-019 Review | `HlmSidebarService` schreibt Cookie `sidebar_state` (`path=/`), geht bei jedem API-Request mit | unkritisch; bei Cookie-Policy-Änderungen beachten |
-| AP-002 Review | `HealthService` lädt `/health` nur einmal; startet das Backend später, bleibt „nicht erreichbar“ bis zum Reload | Phase 1: Polling oder Klick-Reload im Paket zur Kopfzeile/Statusanzeige |
+| AP-002 Review | `HealthService` lädt `/health` nur einmal; startet das Backend später, bleibt „nicht erreichbar“ bis zum Reload | → AP-023 |
 | AP-012 Review | Markdown-Bilder laden als `<img src>` von fremder Herkunft (Tracking/IP-Leak) | Entschieden: Platzhalter-NodeView (alt + URL-Text), umgesetzt in AP-014-Nacharbeit; Bild-Proxy Phase 3 |
 | AP-012 Review | Monaco-Adapter ohne Test; `token()` liest nur 6-stellige Hex-Werte; drei verwaiste CSS-Chunks (3×186 kB) im Build | Token-Parser erledigt in AP-019 (`css-color.ts`, oklch → Hex). Offen Phase 2: Adapter-Test im Browser (Playwright), verwaiste CSS-Chunks |
 | AP-007 Bericht | Activity `Seq` ist Identity: Leser in kurzen Abständen können Events überspringen, deren Transaktion später committet | Phase 2 (SignalR/Outbox): Outbox mit Commit-Reihenfolge oder `pg_current_xact_id`-Fenster |
@@ -46,16 +48,16 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-007 Review | `idempotency_keys` werden nie aufgeräumt; `LoadParentAsync` bis 32 Abfragen; Frontmatter ohne YAML-1.1-Sonderfälle (`0x1F`, `.inf`) | Phase 2: Cleanup-Job, rekursive CTE, YAML-Quoting erweitern |
 | AP-006 Review | `UpdateTemplate` und `UpdateSchema` ohne gemeinsames Concurrency-Token: entfernter Key kann im Preset bleiben | AP-007 prüft Presets beim Anlegen erneut; Phase 2 ggf. Token an Templates |
 | AP-006 Bericht | Self-Relations (z. B. `supersedes` in Entscheidungen) brauchen beim Anlegen die eigene Collection-ID | AP-010: Vorlage legt Collection erst ohne Self-Relation an und ergänzt sie per `UpdateSchema`, oder baut die Domain direkt |
-| AP-006 Bericht | Body-Records aus AP-004/005 erscheinen in OpenAPI mit allen Feldern als required | Kleinpaket: Default-Werte an Body-Records (Muster AP-006), danach `schema.d.ts` neu erzeugen |
+| AP-006 Bericht | Body-Records aus AP-004/005 erscheinen in OpenAPI mit allen Feldern als required | → AP-022 |
 | AP-006 Bericht | Architektur §2 nennt `DefaultTemplateId`, umgesetzt ist `Template.IsDefault`; §4.3 ohne `describe`-Route | Orchestrator zieht Doku nach dem Review nach |
 | AP-011 Review | `collection_describe` ruft zwei Use-Cases ohne gemeinsamen Snapshot; `ListActivity` nicht nach Record filterbar | Phase 2: `history_get` mit Activity je Record, Use-Case zusammenführen |
-| AP-009 Bericht | Nach `relation.multiple` false→true bleiben Skalar-Altwerte stehen; `RecordValuesSchemaHook` greift nicht; nächster PATCH scheitert am Validator | Kleinpaket Backend: Hook wandelt Skalar → Array bei dieser Typänderung (Muster select→multi_select) |
+| AP-009 Bericht | Nach `relation.multiple` false→true bleiben Skalar-Altwerte stehen; `RecordValuesSchemaHook` greift nicht; nächster PATCH scheitert am Validator | → AP-022 |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
-| AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | Kleinpaket Frontend: Header-Option im ApiClient + Idempotency-Key bei POST /records; Backend: `targetTitle` im ActivityEvent-DTO |
+| AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |
 | AP-016 Bericht | Nicht-Admins können Mitglieder nur per Actor-ID einladen; keine Actor-Suche | Backend-Kleinpaket: `GET /w/{slug}/members/candidates?q=` oder `GET /actors?q=` mit eingeschränkten Feldern für Workspace-Admins |
 | AP-013 Review | `openapi-typescript` 7.13 verlangt TypeScript ^5, Projekt nutzt TS 6; npm-`overrides` erzwingt TS 6 | Bei jedem Update von openapi-typescript oder TypeScript prüfen, Override entfernen sobald Peer-Range passt |
-| AP-004 Review | Kein Weg, ein Passwort nachträglich zu setzen (Reset, Änderung); Bootstrap-Passwort bleibt dauerhaft gültig | Phase 2: `PATCH /me/password`, Admin-Reset; Bootstrap-Admin nach erstem Login zum Ändern auffordern |
+| AP-004 Review | Kein Weg, ein Passwort nachträglich zu setzen (Reset, Änderung); Bootstrap-Passwort bleibt dauerhaft gültig | → AP-022/AP-023; Passwortänderung entwertet ältere Cookies |
 | AP-004 Review | Cookies zustandslos (Logout entwertet abgegriffenes Cookie nicht) | Phase 2: Session-Revocation bei Bedarf. DataProtection-Keys: Compose-Volume in AP-018; für andere Deployments `PersistKeysToDbContext` prüfen |
 | AP-018 Review | Web-Image läuft als root (nginx:alpine) | Später `nginxinc/nginx-unprivileged` mit `listen 8080` |
 | AP-004 Review | Bootstrap mit mehreren Instanzen gleichzeitig → zweite stürzt ab | niedrig, Single-Instance-Annahme |
@@ -63,4 +65,4 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-012 Bericht | Aufgaben-Checkboxen im WYSIWYG nicht klickbar; Milkdown vergibt Überschriften-IDs aus dem Text | Phase 2 Komfort; ID-Präfix prüfen |
 | AP-003 Review | `actions/*@v4` laufen auf Node 20, das GitHub 2026 abkündigt | Erledigt 2026-11-07: checkout v7, setup-node v7, setup-dotnet v6 |
 | AP-001 Review | `/health/ready` öffnet pro Aufruf eine DB-Verbindung und ist wie `/openapi/v1.json` in Production ohne Auth erreichbar | Wenn Hosting entschieden ist: Reverse-Proxy/Rate-Limit; OpenAPI in Production ggf. hinter Auth. In Architektur §7 vermerkt |
-| AP-002 Review | Jede 2xx-Antwort gilt als „ok“, auch `Degraded`; 503 erscheint als „nicht erreichbar“ | Phase 1: Health-JSON auswerten, drei Zustände anzeigen |
+| AP-002 Review | Jede 2xx-Antwort gilt als „ok“, auch `Degraded`; 503 erscheint als „nicht erreichbar“ | → AP-023 |
