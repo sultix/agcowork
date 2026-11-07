@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten von Use-Cases, Endpunkten, Fehlerformat) |
@@ -97,3 +97,4 @@ Use-Case-Klassen, Result/Fehler-Typ, Fehlerformat auf dem Draht, Endpunkt-Gruppe
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |
