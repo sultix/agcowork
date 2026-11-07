@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-013: `core/api/api-client.ts` (typisierter Client, `api.workspace(slug)`), `core/api/field-errors.ts` + `features/auth/login.component.ts` (Signal Forms mit Serverfehlern), `core/auth/session.store.ts` (resource-Muster), `app.routes.spec.ts`, `workspace-shell.component.spec.ts`; AP-002: `WorkspaceContext` |
@@ -88,3 +88,4 @@ ist agcowork erstmals ohne REST-Client bedienbar, und Agenten können eingericht
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-sonnet übergeben |

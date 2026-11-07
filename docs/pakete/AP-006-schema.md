@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-005: Tenant-Entitäten, `RequireScope`, Workspace-Endpunkte, Isolations-Fixture; AP-004: Use-Case-/Fehler-Muster |
@@ -87,3 +87,4 @@ gegen ein Schema ist zentral implementiert und wird von AP-007 (Records) wiederv
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |
