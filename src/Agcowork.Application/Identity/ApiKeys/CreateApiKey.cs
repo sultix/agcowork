@@ -58,6 +58,13 @@ public sealed class CreateApiKey(
                 .ToValidationError();
         }
 
+        // Workspaces are not tenant entities, so this lookup is unfiltered; the key restriction needs a real workspace.
+        if (request.WorkspaceId is { } workspaceId
+            && !await db.Workspaces.AnyAsync(w => w.Id == workspaceId, cancellationToken).ConfigureAwait(false))
+        {
+            return new FieldError("workspaceId", ErrorCodes.NotFound, "No workspace with this id exists.").ToValidationError();
+        }
+
         var generated = generator.Generate();
         var key = ApiKey.Issue(actor, generated.Prefix, generated.SecretHash, request.Scopes ?? [], request.WorkspaceId, request.ExpiresAt, timeProvider);
         db.ApiKeys.Add(key);

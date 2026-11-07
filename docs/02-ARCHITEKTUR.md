@@ -137,11 +137,20 @@ Alle Indizes beginnen mit `WorkspaceId`.
 
 1. Routing extrahiert `{workspaceSlug}` aus `/w/{slug}/…` (REST, MCP und SignalR gleich).
 2. Authentifizierung liefert den Actor (API-Key → Agent, Cookie → Mensch).
-3. Tenancy-Middleware lädt den Workspace, prüft die Membership des Actors (und ggf. die
-   Workspace-Einschränkung des Keys) und setzt `ITenantContext { WorkspaceId, Membership }`.
-   Kein Treffer → 404 (nicht 403, um die Existenz fremder Workspaces nicht zu verraten).
-4. Der `DbContext` wendet einen **Global Query Filter** `e.WorkspaceId == tenant.WorkspaceId`
-   auf alle Tenant-Entitäten an und setzt `WorkspaceId` beim Anlegen automatisch.
+3. `TenantResolutionMiddleware` (nach `UseAuthorization`, nur für Endpunkte mit
+   `TenantEndpointMetadata`; Middleware statt Endpoint-Filter, weil Minimal APIs die Handler-Services
+   vor Filtern binden) lädt den Workspace, prüft die Membership des Actors und ggf. die
+   Workspace-Einschränkung des Keys und setzt `ITenantContext { WorkspaceId, Slug, IsArchived,
+   Membership, EffectiveScopes }` (einmal pro Scope). Kein Treffer → 404 (nicht 403, um die
+   Existenz fremder Workspaces nicht zu verraten). Archiviert + schreibendes Verb → 409.
+4. Der `DbContext` wendet einen **benannten Global Query Filter** (`tenant`)
+   `e.WorkspaceId == tenant.WorkspaceId` per Konvention auf alle `ITenantEntity` an; ohne
+   Tenant-Kontext greift `Guid.Empty`, es kommt also nichts zurück. `IgnoreQueryFilters` nur in
+   begründeten, kommentierten Stellen (`ResolveTenant`, `ListMyWorkspaces`, Instanz-Admin).
+   Der `TenantSaveChangesInterceptor` (fest in `AgcoworkDbContextOptions.Configure`) setzt
+   `WorkspaceId` bei `Added` und verweigert fremde `WorkspaceId`; einzige Ausnahme sind
+   Tenant-Entitäten, deren Workspace im selben `SaveChanges` neu entsteht (Workspace-Anlage,
+   Vorlagen). `ExecuteUpdate`/`ExecuteDelete` umgehen den Interceptor, nicht den Filter.
 5. Pro Transaktion `SET LOCAL app.workspace_id = …`; PostgreSQL **Row-Level-Security**
    verwirft alles andere (Phase 2, zweites Netz unabhängig von EF).
 6. SignalR-Verbindungen treten der Gruppe `ws:{WorkspaceId}` bei; Events gehen nur dorthin.
@@ -149,6 +158,20 @@ Alle Indizes beginnen mit `WorkspaceId`.
 **Weitere Regeln**
 
 - Relationen zwischen Records werden beim Schreiben auf gleichen Workspace geprüft.
+- Rollen → Scopes: viewer = read; editor = read, write; admin = read, write, schema, admin; owner =
+  alles plus Owner-Übertragung und Archivieren. Effektive Scopes = Membership-Scopes ∩ Key-Scopes
+  (leere Key-Scopes = uneingeschränkt). `instance:admin` impliziert `workspaces:create`.
+- Owner-Invariante (mindestens ein Owner) wird unter `LockWorkspaceAsync` (`SELECT … FOR UPDATE`)
+  geprüft, damit zwei gleichzeitige Herabstufungen nicht beide durchkommen.
+- Indizes auf Tenant-Tabellen beginnen mit `workspace_id`; einzige Ausnahme ist der FK-Index
+  `ix_memberships_actor_id` für „meine Workspaces“ (Modelltest prüft alle anderen).
+- Use-Cases prüfen `RequireWritable` (409 bei archiviert) vor `RequireScope`. Die Middleware setzt nur
+  `IsArchived`; ob ein Aufruf schreibt, weiß allein der Use-Case (POST kann lesen: Query, MCP).
+- Ein Key mit Workspace- oder Scope-Einschränkung trägt **keine Instanz-Scopes**; sonst könnte er sich
+  über `POST /actors/{self}/keys` einen uneingeschränkten Key erzeugen.
+- Eigene Mitgliedschaft darf nur eingeschränkt, nie erweitert werden (409 `self_escalation`).
+- Der Interceptor schützt auch die Workspace-Wurzel: Modified/Deleted auf einen anderen Workspace als
+  den Tenant wirft. `ExecuteUpdate`/`ExecuteDelete` nie mit `IgnoreQueryFilters` oder `SetProperty(WorkspaceId, …)`.
 - Volltext- und semantische Suche filtern immer auf `WorkspaceId` (Teil des Index).
 - Caches sind per `WorkspaceId` geschlüsselt.
 - Instanz-Ebene (außerhalb des Tenant-Kontexts): Login, `GET /workspaces` (eigene
@@ -157,8 +180,9 @@ Alle Indizes beginnen mit `WorkspaceId`.
 - Ein API-Key authentifiziert den Actor instanzweit; die Tenancy-Middleware prüft pro
   Anfrage die Mitgliedschaft im adressierten Workspace. Ein Key mit `WorkspaceId`-Einschränkung
   wird in jedem anderen Workspace abgelehnt.
-- **Isolationstests** in der CI: zwei Workspaces mit Daten, ein Key je Workspace, jeder
-  REST- und MCP-Aufruf wird mit fremder ID ausprobiert und muss 404 liefern.
+- **Isolationstests** in der CI: `TenancyFixture` (Workspaces `alpha`/`beta`, je ein Agent mit Key,
+  ein Nicht-Mitglied, ein auf `alpha` eingeschränkter Key). Jeder neue Endpunkt wird mit einer Zeile
+  `AssertIsolatedAsync(method, relPath, body, homeStatus)` abgesichert, fremde IDs mit `AssertNotFoundAsync`.
 
 ## 3. Views: Datenmodell ≠ Präsentation
 

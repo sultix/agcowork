@@ -1,8 +1,9 @@
+using Agcowork.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Agcowork.Api.Auth;
 
-/// <summary>Requires an <see cref="ActorClaims.InstanceScope"/> claim with <see cref="Scope"/>.</summary>
+/// <summary>Requires <see cref="Scope"/> among the <see cref="ActorClaims.InstanceScope"/> claims, directly or implied (<see cref="InstanceScope.Grants"/>).</summary>
 /// <remarks>
 /// Requirement and handler in one class only works because the check needs nothing but the claims:
 /// ASP.NET's pass-through handler invokes it, and the instance is created by hand, outside DI.
@@ -16,7 +17,8 @@ internal sealed class InstanceScopeRequirement(string scope)
 
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, InstanceScopeRequirement requirement)
     {
-        if (context.User.HasClaim(ActorClaims.InstanceScope, requirement.Scope))
+        var held = context.User.FindAll(ActorClaims.InstanceScope).Select(claim => claim.Value);
+        if (InstanceScope.Grants(held, requirement.Scope))
         {
             context.Succeed(requirement);
         }

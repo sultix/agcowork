@@ -18,7 +18,7 @@ public sealed class WorkspacePersistenceTests(AgcoworkApiFactory factory)
     {
         var ct = TestContext.Current.CancellationToken;
         var slug = UniqueSlug();
-        var workspace = Workspace.Create(slug, "Roundtrip", new FakeTimeProvider(Now));
+        var workspace = Workspace.Create(slug, "Roundtrip", "About", await AdminIdAsync(), new FakeTimeProvider(Now));
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
@@ -34,6 +34,9 @@ public sealed class WorkspacePersistenceTests(AgcoworkApiFactory factory)
 
             Assert.Equal(workspace.Id, loaded.Id);
             Assert.Equal("Roundtrip", loaded.Name);
+            Assert.Equal("About", loaded.Description);
+            Assert.Equal(Workspace.EmptySettings, loaded.Settings);
+            Assert.Null(loaded.ArchivedAt);
             Assert.Equal(Now, loaded.CreatedAt);
         }
     }
@@ -44,18 +47,19 @@ public sealed class WorkspacePersistenceTests(AgcoworkApiFactory factory)
         var ct = TestContext.Current.CancellationToken;
         var slug = UniqueSlug();
         var clock = new FakeTimeProvider(Now);
+        var creator = await AdminIdAsync();
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
-            db.Workspaces.Add(Workspace.Create(slug, "First", clock));
+            db.Workspaces.Add(Workspace.Create(slug, "First", null, creator, clock));
             await db.SaveChangesAsync(ct);
         }
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
-            db.Workspaces.Add(Workspace.Create(slug, "Second", clock));
+            db.Workspaces.Add(Workspace.Create(slug, "Second", null, creator, clock));
 
             // AgcoworkDbContext translates unique violations; the provider exception stays the inner exception.
             var exception = await Assert.ThrowsAsync<UniqueConstraintViolationException>(() => db.SaveChangesAsync(ct));
@@ -64,6 +68,14 @@ public sealed class WorkspacePersistenceTests(AgcoworkApiFactory factory)
             Assert.Equal(PostgresErrorCodes.UniqueViolation, postgres.SqlState);
             Assert.Equal("ix_workspaces_slug", postgres.ConstraintName);
         }
+    }
+
+    /// <summary>Workspaces reference their creator; the bootstrap admin always exists.</summary>
+    private async Task<Guid> AdminIdAsync()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
+        return await db.Actors.Where(a => a.Email == factory.AdminEmail).Select(a => a.Id).SingleAsync(TestContext.Current.CancellationToken);
     }
 
     private static string UniqueSlug() => $"ws-{Guid.NewGuid():N}"[..20];

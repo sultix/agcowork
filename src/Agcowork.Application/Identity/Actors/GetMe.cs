@@ -36,6 +36,7 @@ public sealed class GetMe(IAgcoworkDbContext db, ICurrentActor currentActor) : I
             key = apiKey is null ? null : ApiKeyDto.From(apiKey);
         }
 
-        return new MeDto(actor.Id, actor.Kind, actor.Name, actor.Role, actor.Email, [.. actor.InstanceScopes], key);
+        // The caller's effective instance scopes: a restricted key carries none, even if the actor has some.
+        return new MeDto(actor.Id, actor.Kind, actor.Name, actor.Role, actor.Email, [.. currentActor.InstanceScopes.Order(StringComparer.Ordinal)], key);
     }
 }

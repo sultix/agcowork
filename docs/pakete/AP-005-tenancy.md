@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-004: Use-Case-Klassen, `Result`, ProblemDetails-Format, Endpunkt-Gruppen, `AgcoworkApiFactory` mit `CreateAdminClient`/`CreateAgentClient` |
@@ -96,3 +96,8 @@ unschreibbar macht, und ein Isolations-Testmuster, das alle folgenden Pakete kop
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: 269 Tests grün (84/90/95), 0 Warnungen. Middleware statt Endpoint-Filter (Minimal-API-Binding), benannter Query-Filter `tenant`, Interceptor fest in DbContextOptions, Scopes als text[], `LockWorkspaceAsync` (FOR UPDATE) für Owner-Invariante, `TenancyFixture` mit `AssertIsolatedAsync`. Abweichungen: `ITenantContext.IsArchived`; Interceptor erlaubt Tenant-Entitäten für neu angelegten Workspace im selben SaveChanges; FK-Index `ix_memberships_actor_id` ohne workspace_id-Präfix (dokumentiert); fehlendes `templateId` = `empty` (AP-010 stellt um). Offen: kein Test für die Sperre; ExecuteUpdate/Delete umgehen den Interceptor |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; §2a Punkt für Punkt erfüllt, kein Weg zu fremden Daten gefunden. Wichtig: eingeschränkter Key behält Instanz-Scopes (Umgehung der Einschränkung über neuen Key); Middleware wertet jedes POST als Schreibzugriff (bricht Query und MCP in archivierten Workspaces). Hinweise: Sperre ohne Test, Workspace-Wurzel nicht vom Interceptor geschützt, Bulk-Regel fehlt, Migration bricht bei verwaisten api_keys.workspace_id, Fixture ohne Cookie-Fall, Admin kann eigene Einschränkung aufheben |
+| 2026-11-07 | Entscheidungen: eingeschränkte Keys ohne Instanz-Scopes; 409 nur aus `RequireWritable`; eigene Mitgliedschaft nur einschränkbar. Nacharbeit an implementer-opus (8 Punkte) |
+| 2026-11-07 | Nacharbeit fertig: 280 Tests grün (84/92/104). `ApiKey.IsRestricted` → keine Instanz-Scopes, `/me` zeigt effektive Instanz-Scopes; 409 nur aus `RequireWritable`; Sperre deterministisch getestet (Selbst-Herabstufung zweier Owner); `MemberAuthorization` lädt eigene Mitgliedschaft unter der Sperre neu; Fixture mit Cookie-Mensch. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |

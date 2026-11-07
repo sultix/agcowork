@@ -8,7 +8,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-002](AP-002-angular-geruest.md) | Angular-Gerüst (Angular 22, zoneless, Tailwind, Vitest) | 0 | implementer-opus | – | abgeschlossen | 926ec91 |
 | [AP-003](AP-003-aspire-verdrahtung-ci.md) | Aspire-Verdrahtung, CI und README | 0 | implementer-sonnet | AP-001, AP-002 | abgeschlossen | 49ff518 |
 | [AP-004](AP-004-identitaet.md) | Identität: Actors, API-Keys, Login, Auth-Pipeline, Instanz-Endpunkte | 1 | implementer-opus | AP-001 | abgeschlossen | 7680648 |
-| [AP-005](AP-005-tenancy.md) | Tenancy: Workspace, Membership, Tenant-Kontext, Query-Filter, Members-Endpunkte, Isolations-Fixture | 1 | implementer-opus | AP-004 | in Arbeit | |
+| [AP-005](AP-005-tenancy.md) | Tenancy: Workspace, Membership, Tenant-Kontext, Query-Filter, Members-Endpunkte, Isolations-Fixture | 1 | implementer-opus | AP-004 | Nacharbeit | |
 | [AP-006](AP-006-schema.md) | Spaces, Collections, Property-Schema, Validierung, JSON Schema, Record-Vorlagen | 1 | implementer-opus | AP-005 | angelegt | |
 | AP-007 | Records, Revisionen, Activity, optimistische Nebenläufigkeit, append | 1 | implementer-opus | AP-006 | geplant | |
 | AP-008 | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | geplant | |
@@ -16,11 +16,11 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-010 | Workspace-Vorlage „Software-Projekt“ und `empty`, Anlage aus Vorlage | 1 | implementer-sonnet | AP-006, AP-008 | geplant | |
 | AP-011 | MCP-Server: Workspace- und Instanz-Tools, Resources, Auth, Isolationstests | 1 | implementer-opus | AP-009, AP-010 | geplant | |
 | [AP-012](AP-012-editor-bausteine.md) | Frontend: Markdown-Editor und Raw-View als Bausteine | 1 | implementer-opus | AP-002 | abgeschlossen | 2fc5c4c |
-| [AP-013](AP-013-frontend-client-login.md) | Frontend: OpenAPI-Client, Login, Session, Auth-Guard | 1 | implementer-opus | AP-004 | in Arbeit | |
-| AP-014 | Frontend: Workspace-Liste, Space-Navigation, Collections, Dokument-View verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013 | geplant | |
+| [AP-013](AP-013-frontend-client-login.md) | Frontend: OpenAPI-Client, Login, Session, Auth-Guard | 1 | implementer-opus | AP-004 | Nacharbeit | |
+| AP-014 | Frontend: Space-Navigation, Collections, Dokument-View verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | geplant | |
 | AP-015 | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, Property-Editoren | 1 | implementer-opus | AP-009, AP-013 | geplant | |
-| AP-016 | Frontend: Aktivitätsfeed, Mitglieder, Agenten/Keys, Workspace-Verwaltung | 1 | implementer-sonnet | AP-007, AP-013 | geplant | |
-| AP-017 | Frontend: Raw-View und Historie verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013 | geplant | |
+| [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | angelegt | |
+| AP-017 | Frontend: Raw-View, Historie und Aktivitätsfeed verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013 | geplant | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -29,6 +29,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-002 Review | `HealthService` lädt `/health` nur einmal; startet das Backend später, bleibt „nicht erreichbar“ bis zum Reload | Phase 1: Polling oder Klick-Reload im Paket zur Kopfzeile/Statusanzeige |
 | AP-012 Review | `javascript:`-Links filtert Milkdown bereits (Allowlist http/https/mailto/tel/ftp, Test folgt); Markdown-Bilder laden als `<img src>` von fremder Herkunft (Tracking/IP-Leak) | **Vor AP-014 entscheiden**: Bilder nur von eigener Herkunft oder Proxy, sonst Platzhalter |
 | AP-012 Review | Monaco-Adapter ohne Test; `token()` liest nur 6-stellige Hex-Werte; drei verwaiste CSS-Chunks (3×186 kB) im Build | Phase 2: Adapter-Test im Browser (Playwright), Token-Parser erweitern, wenn Tokens auf oklch wechseln |
+| AP-013 Review | `openapi-typescript` 7.13 verlangt TypeScript ^5, Projekt nutzt TS 6; npm-`overrides` erzwingt TS 6 | Bei jedem Update von openapi-typescript oder TypeScript prüfen, Override entfernen sobald Peer-Range passt |
 | AP-004 Review | Kein Weg, ein Passwort nachträglich zu setzen (Reset, Änderung); Bootstrap-Passwort bleibt dauerhaft gültig | Phase 2: `PATCH /me/password`, Admin-Reset; Bootstrap-Admin nach erstem Login zum Ändern auffordern |
 | AP-004 Review | Cookies zustandslos (Logout entwertet abgegriffenes Cookie nicht); DataProtection-Keys nicht persistiert (Sessions weg nach Neustart) | Betrieb/Deploy: DataProtection-Keys in DB oder Volume persistieren; Session-Revocation bei Bedarf |
 | AP-004 Review | Bootstrap mit mehreren Instanzen gleichzeitig → zweite stürzt ab | niedrig, Single-Instance-Annahme |

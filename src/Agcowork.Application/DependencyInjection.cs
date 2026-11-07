@@ -1,5 +1,6 @@
 using System.Reflection;
 using Agcowork.Application.Common;
+using Agcowork.Application.Tenancy;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -10,11 +11,15 @@ public static class DependencyInjection
     /// <summary>
     /// Registers application-layer services: the clock and every <see cref="IUseCase{TRequest,TResponse}"/>
     /// / <see cref="IUseCase{TRequest}"/> implementation of this assembly as a scoped service of its
-    /// concrete type (adapters inject e.g. <c>CreateActor</c> directly).
+    /// concrete type (adapters inject e.g. <c>CreateActor</c> directly), and the tenant context.
     /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.TryAddSingleton(TimeProvider.System);
+
+        // Tenant of the current scope: set by the tenancy middleware, read by use cases and the DbContext filter.
+        services.TryAddScoped<ITenantContextAccessor, TenantContextAccessor>();
+        services.TryAddScoped<ITenantContext, CurrentTenantContext>();
 
         foreach (var useCase in FindUseCases(typeof(DependencyInjection).Assembly))
         {

@@ -1,4 +1,5 @@
 using Agcowork.Domain.Identity;
+using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,8 +17,8 @@ internal sealed class ApiKeyConfiguration : IEntityTypeConfiguration<ApiKey>
         builder.HasIndex(k => k.Prefix).IsUnique();
         builder.Property(k => k.SecretHash).HasMaxLength(ApiKey.SecretHashLength).IsRequired();
         builder.PrimitiveCollection(k => k.Scopes).IsRequired();
-        // Workspace restriction is only stored here; the foreign key to workspaces follows with tenancy (AP-005).
-        builder.Property(k => k.WorkspaceId);
+        // Optional restriction to one workspace, evaluated by ResolveTenant. Never SetNull: that would widen the key.
+        builder.HasOne<Workspace>().WithMany().HasForeignKey(k => k.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(k => k.ExpiresAt);
         builder.Property(k => k.LastUsedAt);
         builder.Property(k => k.RevokedAt);

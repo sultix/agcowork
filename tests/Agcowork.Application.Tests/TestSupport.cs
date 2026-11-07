@@ -1,4 +1,5 @@
 using Agcowork.Application.Common.Security;
+using Agcowork.Application.Tenancy;
 using Agcowork.Domain.Identity;
 using Agcowork.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -34,8 +35,12 @@ public sealed class PostgresFixture : IAsyncLifetime
         NpgsqlConnection.ClearAllPools();
     }
 
-    /// <summary>Creates a fresh, migrated, empty database and returns a context on it.</summary>
-    public async Task<AgcoworkDbContext> CreateDatabaseAsync()
+    /// <summary>
+    /// Creates a fresh, migrated, empty database and returns a context on it. Pass a tenant accessor to
+    /// get the tenant query filter and interceptor behaviour of a request; without one the context acts
+    /// like one outside any tenant (tenant entities invisible, writes to them rejected).
+    /// </summary>
+    public async Task<AgcoworkDbContext> CreateDatabaseAsync(ITenantContextAccessor? tenantAccessor = null)
     {
         var name = $"t_{Guid.NewGuid():N}";
         await using (var connection = new NpgsqlConnection(WithDatabase("postgres")))
@@ -45,7 +50,7 @@ public sealed class PostgresFixture : IAsyncLifetime
             await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
-        return Open(WithDatabase(name));
+        return Open(WithDatabase(name), tenantAccessor);
     }
 
     public async ValueTask DisposeAsync() => await _postgres.DisposeAsync();
@@ -53,11 +58,11 @@ public sealed class PostgresFixture : IAsyncLifetime
     private string WithDatabase(string database) =>
         new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString()) { Database = database, Pooling = false }.ConnectionString;
 
-    private static AgcoworkDbContext Open(string connectionString)
+    private static AgcoworkDbContext Open(string connectionString, ITenantContextAccessor? tenantAccessor = null)
     {
         var options = new DbContextOptionsBuilder<AgcoworkDbContext>();
         AgcoworkDbContextOptions.Configure(options, connectionString);
-        return new AgcoworkDbContext(options.Options);
+        return new AgcoworkDbContext(options.Options, tenantAccessor);
     }
 }
 
@@ -67,7 +72,10 @@ public sealed class PostgresGroup : ICollectionFixture<PostgresFixture>
     public const string Name = "postgres";
 }
 
-/// <summary>Base for use-case tests: a fresh database per test in <see cref="Db"/>.</summary>
+/// <summary>
+/// Base for use-case tests: a fresh database per test in <see cref="Db"/>. <see cref="Tenant"/> controls the
+/// tenant <see cref="Db"/> sees (none by default); set it before calling workspace use cases.
+/// </summary>
 [Collection(PostgresGroup.Name)]
 public abstract class DatabaseTest(PostgresFixture postgres) : IAsyncLifetime
 {
@@ -75,9 +83,12 @@ public abstract class DatabaseTest(PostgresFixture postgres) : IAsyncLifetime
 
     protected AgcoworkDbContext Db => _db ?? throw new InvalidOperationException("Database not initialized.");
 
+    /// <summary>Tenant of <see cref="Db"/>; switchable within a test, unlike the production accessor.</summary>
+    protected TestTenantAccessor Tenant { get; } = new();
+
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    public async ValueTask InitializeAsync() => _db = await postgres.CreateDatabaseAsync();
+    public async ValueTask InitializeAsync() => _db = await postgres.CreateDatabaseAsync(Tenant);
 
     public async ValueTask DisposeAsync()
     {
@@ -90,16 +101,27 @@ public abstract class DatabaseTest(PostgresFixture postgres) : IAsyncLifetime
     }
 }
 
+/// <summary>Tenant accessor for tests: <see cref="Current"/> can be replaced at any time.</summary>
+public sealed class TestTenantAccessor : ITenantContextAccessor
+{
+    public ITenantContext? Current { get; set; }
+
+    public void SetTenant(ITenantContext tenant) => Current = tenant;
+}
+
 /// <summary>Configurable <see cref="ICurrentActor"/> for use-case tests.</summary>
 internal sealed class TestActor : ICurrentActor
 {
     private readonly Guid? _id;
 
-    private TestActor(Guid? id, ActorKind kind, IEnumerable<string> scopes)
+    private TestActor(Guid? id, ActorKind kind, IEnumerable<string> scopes, Guid? apiKeyId = null, Guid? keyWorkspace = null, IEnumerable<string>? keyScopes = null)
     {
         _id = id;
         Kind = kind;
         InstanceScopes = scopes.ToHashSet(StringComparer.Ordinal);
+        ApiKeyId = apiKeyId;
+        KeyWorkspaceRestriction = keyWorkspace;
+        KeyScopes = (keyScopes ?? []).ToHashSet(StringComparer.Ordinal);
     }
 
     public static TestActor Anonymous { get; } = new(null, ActorKind.Human, []);
@@ -107,6 +129,10 @@ internal sealed class TestActor : ICurrentActor
     public static TestActor Admin(Guid? id = null) => new(id ?? Guid.CreateVersion7(), ActorKind.Human, [InstanceScope.Admin]);
 
     public static TestActor Agent(Guid? id = null, params string[] scopes) => new(id ?? Guid.CreateVersion7(), ActorKind.Agent, scopes);
+
+    /// <summary>The same actor calling with an API key that carries the given restrictions.</summary>
+    public TestActor WithKey(Guid? workspaceRestriction = null, params string[] keyScopes) =>
+        new(Id, Kind, InstanceScopes, Guid.CreateVersion7(), workspaceRestriction, keyScopes);
 
     public bool IsAuthenticated => _id is not null;
 
@@ -116,9 +142,9 @@ internal sealed class TestActor : ICurrentActor
 
     public IReadOnlySet<string> InstanceScopes { get; }
 
-    public Guid? ApiKeyId => null;
+    public Guid? ApiKeyId { get; }
 
-    public Guid? KeyWorkspaceRestriction => null;
+    public Guid? KeyWorkspaceRestriction { get; }
 
-    public IReadOnlySet<string> KeyScopes { get; } = new HashSet<string>();
+    public IReadOnlySet<string> KeyScopes { get; }
 }

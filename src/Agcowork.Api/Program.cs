@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Agcowork.Api.Auth;
 using Agcowork.Api.Endpoints;
 using Agcowork.Api.Http;
+using Agcowork.Api.Tenancy;
 using Agcowork.Application;
 using Agcowork.Infrastructure;
 using Agcowork.Infrastructure.Persistence;
@@ -41,7 +42,9 @@ builder.Services.AddProblemDetails(options =>
             context.ProblemDetails.Detail ??= badRequest.Message;
         }
     });
-builder.Services.AddOpenApi(options => options.AddSchemaTransformer<ProblemDetailsSchemaTransformer>());
+builder.Services.AddOpenApi(options => options
+    .AddSchemaTransformer<ProblemDetailsSchemaTransformer>()
+    .AddOperationTransformer<WorkspaceSlugOpenApiTransformer>());
 builder.Services.AddAgcoworkAuthentication(builder.Environment);
 
 var app = builder.Build();
@@ -57,6 +60,7 @@ app.UseStatusCodePages();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<TenantResolutionMiddleware>();
 
 app.MapOpenApi();
 if (app.Environment.IsDevelopment())

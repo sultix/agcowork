@@ -1,5 +1,7 @@
 using Agcowork.Api.Auth;
 using Agcowork.Api.Endpoints.Identity;
+using Agcowork.Api.Endpoints.Workspaces;
+using Agcowork.Api.Tenancy;
 
 namespace Agcowork.Api.Endpoints;
 
@@ -11,6 +13,9 @@ internal static class ApiV1
 {
     public const string Prefix = "/api/v1";
 
+    /// <summary>Route of the workspace group; everything workspace-bound goes below it.</summary>
+    public const string WorkspacePrefix = "/w/{" + TenantEndpointMetadata.SlugRouteValue + "}";
+
     public static IEndpointRouteBuilder MapApiV1(this IEndpointRouteBuilder app)
     {
         var api = app.MapGroup(Prefix)
@@ -21,6 +26,16 @@ internal static class ApiV1
         api.MapMeEndpoints();
         api.MapActorEndpoints();
         api.MapApiKeyEndpoints();
+        api.MapWorkspaceInstanceEndpoints();
+
+        // Tenant scope (architecture §2a): TenantResolutionMiddleware resolves {workspaceSlug} and the membership
+        // before any endpoint here runs. Unknown workspace, no membership or a key for another workspace: 404.
+        var workspace = api.MapGroup(WorkspacePrefix)
+            .WithMetadata(TenantEndpointMetadata.Instance)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        workspace.MapWorkspaceEndpoints();
+        workspace.MapMemberEndpoints();
 
         return app;
     }

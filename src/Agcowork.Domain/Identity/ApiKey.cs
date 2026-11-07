@@ -41,10 +41,16 @@ public sealed class ApiKey
     /// <summary>SHA-256 of the secret part of the token.</summary>
     public byte[] SecretHash { get; private set; }
 
-    /// <summary>Optional restriction (subset of <see cref="KeyScope.All"/>); empty means the membership rights apply in full.</summary>
+    /// <summary>
+    /// Optional restriction (subset of <see cref="KeyScope.All"/>); empty means the membership rights apply in full.
+    /// Any restriction also drops the actor's instance scopes for this key (<see cref="IsRestricted"/>).
+    /// </summary>
     public IReadOnlyList<string> Scopes { get; private set; }
 
-    /// <summary>Optional restriction to a single workspace. Evaluated by the tenancy layer.</summary>
+    /// <summary>
+    /// Optional restriction to a single workspace. Evaluated by the tenancy layer; also drops the actor's
+    /// instance scopes for this key (<see cref="IsRestricted"/>).
+    /// </summary>
     public Guid? WorkspaceId { get; private set; }
 
     public DateTimeOffset? ExpiresAt { get; private set; }
@@ -109,6 +115,13 @@ public sealed class ApiKey
     }
 
     public bool IsRevoked => RevokedAt is not null;
+
+    /// <summary>
+    /// True when the key is restricted to a workspace or carries its own scopes. Restricted keys authenticate
+    /// without the actor's instance scopes (<c>instance:admin</c>, <c>workspaces:create</c>): they are
+    /// workspace credentials only.
+    /// </summary>
+    public bool IsRestricted => WorkspaceId is not null || Scopes.Count > 0;
 
     public bool IsExpiredAt(DateTimeOffset now) => ExpiresAt is { } expiry && expiry <= now;
 

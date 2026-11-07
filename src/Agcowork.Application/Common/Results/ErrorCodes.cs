@@ -18,4 +18,5 @@ public static class ErrorCodes
     public const string OutOfRange = "out_of_range";
     public const string NotAllowed = "not_allowed";
     public const string Conflict = "conflict";
+    public const string ActorInactive = "actor_inactive";
 }

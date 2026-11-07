@@ -1,6 +1,7 @@
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Identity.Authentication;
 using Agcowork.Domain.Identity;
+using Agcowork.Domain.Workspaces;
 using Agcowork.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
@@ -17,18 +18,39 @@ public sealed class AuthenticateApiKeyTests(PostgresFixture postgres) : Database
     [Fact]
     public async Task HandleAsync_ValidKey_ReturnsAgentWithKeyClaims()
     {
-        var workspaceId = Guid.CreateVersion7();
-        var (agent, key, token) = await SeedAsync(scopes: [KeyScope.Read], workspaceId: workspaceId);
+        var (agent, key, token) = await SeedAsync(scopes: [KeyScope.Read], restrictToWorkspace: true);
 
         var result = await Sut().HandleAsync(new AuthenticateApiKeyRequest(token), TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(agent.Id, result.Value.ActorId);
         Assert.Equal(ActorKind.Agent, result.Value.Kind);
-        Assert.Equal([InstanceScope.WorkspacesCreate], result.Value.InstanceScopes);
+        // Restricted key: the actor's instance scopes do not travel with it.
+        Assert.Empty(result.Value.InstanceScopes);
         Assert.Equal(key.Id, result.Value.ApiKeyId);
-        Assert.Equal(workspaceId, result.Value.KeyWorkspaceId);
+        Assert.NotNull(key.WorkspaceId);
+        Assert.Equal(key.WorkspaceId, result.Value.KeyWorkspaceId);
         Assert.Equal([KeyScope.Read], result.Value.KeyScopes);
+    }
+
+    [Fact]
+    public async Task HandleAsync_UnrestrictedKey_CarriesInstanceScopes()
+    {
+        var (_, _, token) = await SeedAsync();
+
+        var result = await Sut().HandleAsync(new AuthenticateApiKeyRequest(token), TestContext.Current.CancellationToken);
+
+        Assert.Equal([InstanceScope.WorkspacesCreate], result.Value.InstanceScopes);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ScopeRestrictedKey_NoInstanceScopes()
+    {
+        var (_, _, token) = await SeedAsync(scopes: [KeyScope.Write]);
+
+        var result = await Sut().HandleAsync(new AuthenticateApiKeyRequest(token), TestContext.Current.CancellationToken);
+
+        Assert.Empty(result.Value.InstanceScopes);
     }
 
     [Theory]
@@ -126,13 +148,23 @@ public sealed class AuthenticateApiKeyTests(PostgresFixture postgres) : Database
 
     private async Task<(Actor Agent, ApiKey Key, string Token)> SeedAsync(
         IReadOnlyList<string>? scopes = null,
-        Guid? workspaceId = null,
+        bool restrictToWorkspace = false,
         DateTimeOffset? expiresAt = null)
     {
         var agent = Actor.CreateAgent("Claude", null, null, [InstanceScope.WorkspacesCreate], _clock);
+        Db.Actors.Add(agent);
+
+        // The workspace restriction is a foreign key, so the workspace has to exist.
+        Guid? workspaceId = null;
+        if (restrictToWorkspace)
+        {
+            var workspace = Workspace.Create("restricted", "Restricted", null, agent.Id, _clock);
+            Db.Workspaces.Add(workspace);
+            workspaceId = workspace.Id;
+        }
+
         var generated = _generator.Generate();
         var key = ApiKey.Issue(agent, generated.Prefix, generated.SecretHash, scopes ?? [], workspaceId, expiresAt, _clock);
-        Db.Actors.Add(agent);
         Db.ApiKeys.Add(key);
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return (agent, key, generated.Token);

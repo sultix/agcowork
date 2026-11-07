@@ -132,6 +132,9 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_api_keys_prefix");
 
+                    b.HasIndex("WorkspaceId")
+                        .HasDatabaseName("ix_api_keys_workspace_id");
+
                     b.ToTable("api_keys", (string)null);
                 });
 
@@ -157,21 +160,87 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                     b.ToTable("local_logins", (string)null);
                 });
 
+            modelBuilder.Entity("Agcowork.Domain.Workspaces.Membership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("role");
+
+                    b.PrimitiveCollection<string[]>("Scopes")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("scopes");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_memberships");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_memberships_actor_id");
+
+                    b.HasIndex("WorkspaceId", "ActorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_memberships_workspace_id_actor_id");
+
+                    b.ToTable("memberships", (string)null);
+                });
+
             modelBuilder.Entity("Agcowork.Domain.Workspaces.Workspace", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<string>("Settings")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("settings")
+                        .HasDefaultValueSql("'{}'::jsonb");
 
                     b.Property<string>("Slug")
                         .IsRequired()
@@ -181,6 +250,9 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_workspaces");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_workspaces_created_by");
 
                     b.HasIndex("Slug")
                         .IsUnique()
@@ -197,6 +269,12 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_api_keys_actors_actor_id");
+
+                    b.HasOne("Agcowork.Domain.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_api_keys_workspaces_workspace_id");
                 });
 
             modelBuilder.Entity("Agcowork.Domain.Identity.LocalLogin", b =>
@@ -207,6 +285,33 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_local_logins_actors_actor_id");
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Workspaces.Membership", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Identity.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_memberships_actors_actor_id");
+
+                    b.HasOne("Agcowork.Domain.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_memberships_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Workspaces.Workspace", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Identity.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workspaces_actors_created_by");
                 });
 #pragma warning restore 612, 618
         }
