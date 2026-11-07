@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | im Review |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-016: `features/workspaces/workspaces.store.ts` (resource abhängig von Slug/Session), `features/workspace-settings/members.component.ts` (Liste + Formulare + Fehlercodes), `shared/ui/*` (Badge, ConfirmDialog, FieldErrors, `describeError`), `core/testing/test-utils.ts`; AP-012: `shared/editor/markdown-editor` (`value`, `valueChange`, `editorBlur`, `getMarkdown()`), `shared/raw-view`; AP-013: `api.workspace(slug)`, `toServerErrors` |
@@ -91,3 +91,5 @@ Ende-zu-Ende-Pfad Mensch ↔ Agent über dieselben Daten offen.
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-sonnet übergeben |
+| 2026-11-07 | Bericht: 366 Tests grün, Lint/Build grün; AK 1–6 per Playwright (Workspace mit 10 Property-Typen, 60 Records). `ag-property-editor` als Dispatcher (eigene Komponenten nur Relation/Actor), `RecordSaveService` (Auto-Save, Konflikt), `record-leave.guard`, `MembersStore`, `WorkspaceTreeStore`, Fixtures in test-utils. Abweichungen: Baseline für `getMarkdown()` erst beim ersten Fokus; Editor wird bei Reload neu erzeugt; keine Shell-Breadcrumbs (Seiten-Breadcrumbs); `recordCount` nur auf Collection-Seite. Offen: Monaco-Konsolenfehler im Dev-Server (AP-012), Strg+S bei Markdown-Property im Debounce, `Idempotency-Key` nicht gesendet (ApiClient ohne Header) |
+| 2026-11-07 | an reviewer übergeben |

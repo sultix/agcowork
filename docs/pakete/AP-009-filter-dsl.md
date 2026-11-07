@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-007: `ListRecords` (Cursor nach `(CreatedAt, Id)`), `RecordDto`-Mapper; AP-008: `ViewDefinitionValidator` (strukturelle Filter-Validierung, Records für Filter/Sorts); AP-006: `ISchemaProvider`, Property-Typen |
@@ -94,3 +94,4 @@ ausführen (Filter + Sorts aus dem View). Die Übersetzung nach SQL nutzt den GI
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |
