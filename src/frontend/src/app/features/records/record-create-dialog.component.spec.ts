@@ -66,14 +66,14 @@ describe('RecordCreateDialogComponent', () => {
 
   afterEach(() => http.verify());
 
-  const el = () => fixture.nativeElement as HTMLElement;
+  /** The dialog renders into the CDK overlay container at the end of `<body>`. */
   const q = <T extends HTMLElement = HTMLElement>(id: string) =>
-    el().querySelector<T>(`[data-testid="${id}"]`);
+    document.body.querySelector<T>(`[data-testid="${id}"]`);
 
   it('submit_FreePage_PostsTitleAndSpaceWithoutLoadingTemplates', async () => {
     await settle(fixture);
     expect(q('create-template')).toBeNull();
-    expect(el().querySelector('h2')!.textContent).toContain('Neue Seite');
+    expect(document.body.querySelector('h2')!.textContent).toContain('Neue Seite');
 
     typeInto(q<HTMLInputElement>('create-title')!, '  Notizen  ');
     q<HTMLButtonElement>('create-submit')!.click();
@@ -139,7 +139,10 @@ describe('RecordCreateDialogComponent', () => {
     await settle(fixture);
 
     q<HTMLButtonElement>('create-cancel')!.click();
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    q('create-record-dialog')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    await settle(fixture);
 
     expect(host.cancelled).toBe(2);
   });

@@ -121,7 +121,9 @@ describe('RecordHistoryComponent', () => {
   const rev = (no: number) => root().querySelector<HTMLElement>(`[data-no="${no}"]`)!;
 
   async function select(no: number): Promise<void> {
-    rev(no).querySelector<HTMLInputElement>('[data-testid="revision-select"]')!.click();
+    rev(no)
+      .querySelector<HTMLElement>('[data-testid="revision-select"] [role="checkbox"]')!
+      .click();
     harness.fixture.detectChanges();
   }
 

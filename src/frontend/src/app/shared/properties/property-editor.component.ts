@@ -10,6 +10,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
 import { MembersStore } from '../../core/workspace/members.store';
 import { MarkdownEditorComponent } from '../editor/markdown-editor.component';
 import { RawViewComponent } from '../raw-view/raw-view.component';
@@ -47,6 +49,8 @@ function sameJson(a: unknown, b: unknown): boolean {
   selector: 'ag-property-editor',
   imports: [
     DatePipe,
+    HlmInput,
+    HlmLabel,
     NgTemplateOutlet,
     ActorEditorComponent,
     MarkdownEditorComponent,
@@ -68,7 +72,7 @@ function sameJson(a: unknown, b: unknown): boolean {
       @case ('number') {
         <input
           type="number"
-          class="w-full rounded-md border border-border bg-bg px-2 py-1 text-sm"
+          hlmInput
           data-testid="editor-input"
           [attr.aria-label]="definition().name"
           [attr.step]="step()"
@@ -80,6 +84,7 @@ function sameJson(a: unknown, b: unknown): boolean {
       @case ('checkbox') {
         <input
           type="checkbox"
+          class="size-4 accent-primary"
           data-testid="editor-input"
           [attr.aria-label]="definition().name"
           [checked]="value() === true"
@@ -96,9 +101,10 @@ function sameJson(a: unknown, b: unknown): boolean {
       @case ('multi_select') {
         <div class="flex flex-wrap gap-2" data-testid="editor-multi">
           @for (option of definition().options ?? []; track option.value) {
-            <label class="inline-flex items-center gap-1 text-sm">
+            <label hlmLabel class="gap-1.5 font-normal">
               <input
                 type="checkbox"
+                class="size-4 accent-primary"
                 [attr.data-option]="option.value"
                 [checked]="list().includes(option.value)"
                 [disabled]="locked()"
@@ -106,14 +112,15 @@ function sameJson(a: unknown, b: unknown): boolean {
               />{{ option.label }}
             </label>
           } @empty {
-            <span class="text-sm text-muted">Keine Optionen.</span>
+            <span class="text-sm text-muted-foreground">Keine Optionen.</span>
           }
         </div>
       }
       @case ('date') {
         <input
           type="date"
-          class="rounded-md border border-border bg-bg px-2 py-1 text-sm"
+          hlmInput
+          class="w-auto"
           data-testid="editor-input"
           [attr.aria-label]="definition().name"
           [value]="text().slice(0, 10)"
@@ -124,7 +131,8 @@ function sameJson(a: unknown, b: unknown): boolean {
       @case ('datetime') {
         <input
           type="datetime-local"
-          class="rounded-md border border-border bg-bg px-2 py-1 text-sm"
+          hlmInput
+          class="w-auto"
           data-testid="editor-input"
           [attr.aria-label]="definition().name"
           [value]="localDateTime()"
@@ -135,7 +143,7 @@ function sameJson(a: unknown, b: unknown): boolean {
       @case ('url') {
         <input
           type="url"
-          class="w-full rounded-md border border-border bg-bg px-2 py-1 text-sm"
+          hlmInput
           data-testid="editor-input"
           [attr.aria-label]="definition().name"
           [value]="text()"
@@ -146,7 +154,7 @@ function sameJson(a: unknown, b: unknown): boolean {
       @case ('email') {
         <input
           type="email"
-          class="w-full rounded-md border border-border bg-bg px-2 py-1 text-sm"
+          hlmInput
           data-testid="editor-input"
           [attr.aria-label]="definition().name"
           [value]="text()"
@@ -198,7 +206,7 @@ function sameJson(a: unknown, b: unknown): boolean {
       @default {
         <input
           type="text"
-          class="w-full rounded-md border border-border bg-bg px-2 py-1 text-sm"
+          hlmInput
           data-testid="editor-input"
           [attr.aria-label]="definition().name"
           [value]="text()"
@@ -210,7 +218,7 @@ function sameJson(a: unknown, b: unknown): boolean {
 
     <ng-template #single>
       <select
-        class="w-full rounded-md border border-border bg-bg px-2 py-1 text-sm"
+        hlmInput
         data-testid="editor-select"
         [attr.aria-label]="definition().name"
         [disabled]="locked()"
@@ -228,7 +236,7 @@ function sameJson(a: unknown, b: unknown): boolean {
     @if (errors().length > 0) {
       <div data-testid="editor-errors" role="alert">
         @for (message of errors(); track $index) {
-          <p class="mt-1 text-sm text-danger">{{ message }}</p>
+          <p class="mt-1 text-sm text-destructive">{{ message }}</p>
         }
       </div>
     }

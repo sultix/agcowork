@@ -1,4 +1,8 @@
 import { NgTemplateOutlet } from '@angular/common';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideX } from '@ng-icons/lucide';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmInput } from '@spartan-ng/helm/input';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -46,18 +50,20 @@ interface BuilderModel {
  */
 @Component({
   selector: 'ag-filter-builder',
-  imports: [NgTemplateOutlet, FilterValueEditorComponent],
+  imports: [NgTemplateOutlet, NgIcon, HlmButton, HlmInput, FilterValueEditorComponent],
+  providers: [provideIcons({ lucideX })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
-      class="rounded-md border border-border bg-surface p-3 text-sm"
+      class="rounded-xl border bg-card p-3 text-sm text-card-foreground"
       data-testid="filter-builder"
     >
       @if (model().state; as state) {
         <div class="flex flex-wrap items-center gap-2">
-          <span class="text-muted">Treffer müssen</span>
+          <span class="text-muted-foreground">Treffer müssen</span>
           <select
-            class="rounded-md border border-border bg-bg px-2 py-1"
+            hlmInput
+            class="w-auto"
             data-testid="filter-root-kind"
             aria-label="Verknüpfung der Bedingungen"
             [disabled]="readonly()"
@@ -84,9 +90,10 @@ interface BuilderModel {
                 data-testid="filter-group"
               >
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-muted">Gruppe:</span>
+                  <span class="text-muted-foreground">Gruppe:</span>
                   <select
-                    class="rounded-md border border-border bg-bg px-2 py-1"
+                    hlmInput
+                    class="w-auto"
                     data-testid="filter-group-kind"
                     aria-label="Verknüpfung in der Gruppe"
                     [disabled]="readonly()"
@@ -98,7 +105,10 @@ interface BuilderModel {
                   @if (!readonly()) {
                     <button
                       type="button"
-                      class="ml-auto text-muted hover:text-danger"
+                      hlmBtn
+                      variant="ghost"
+                      size="sm"
+                      class="ml-auto text-muted-foreground hover:text-destructive"
                       data-testid="filter-group-remove"
                       (click)="remove(item.id)"
                     >
@@ -121,7 +131,10 @@ interface BuilderModel {
                 @if (!readonly()) {
                   <button
                     type="button"
-                    class="mt-2 text-accent hover:underline"
+                    hlmBtn
+                    variant="ghost"
+                    size="sm"
+                    class="mt-2"
                     data-testid="filter-group-add"
                     (click)="addCondition(item.id)"
                   >
@@ -131,7 +144,9 @@ interface BuilderModel {
               </li>
             }
           } @empty {
-            <li class="text-muted" data-testid="filter-empty">Kein Filter: alle Records.</li>
+            <li class="text-muted-foreground" data-testid="filter-empty">
+              Kein Filter: alle Records.
+            </li>
           }
         </ul>
 
@@ -139,7 +154,9 @@ interface BuilderModel {
           <div class="mt-3 flex flex-wrap gap-3">
             <button
               type="button"
-              class="text-accent hover:underline"
+              hlmBtn
+              variant="ghost"
+              size="sm"
               data-testid="filter-add"
               (click)="addCondition(null)"
             >
@@ -147,7 +164,9 @@ interface BuilderModel {
             </button>
             <button
               type="button"
-              class="text-accent hover:underline"
+              hlmBtn
+              variant="ghost"
+              size="sm"
               data-testid="filter-add-group"
               (click)="addGroup()"
             >
@@ -155,7 +174,10 @@ interface BuilderModel {
             </button>
             <button
               type="button"
-              class="ml-auto text-muted hover:text-danger"
+              hlmBtn
+              variant="ghost"
+              size="sm"
+              class="ml-auto text-muted-foreground hover:text-destructive"
               data-testid="filter-clear"
               (click)="clear()"
             >
@@ -164,14 +186,17 @@ interface BuilderModel {
           </div>
         }
       } @else {
-        <p class="text-muted" data-testid="filter-unsupported">
+        <p class="text-muted-foreground" data-testid="filter-unsupported">
           Dieser Filter (z. B. mit „not“ oder tiefer Verschachtelung) lässt sich hier nicht
           bearbeiten. Er bleibt aktiv; das JSON steht unten.
         </p>
         @if (!readonly()) {
           <button
             type="button"
-            class="mt-2 text-muted hover:text-danger"
+            hlmBtn
+            variant="ghost"
+            size="sm"
+            class="mt-2 text-muted-foreground hover:text-destructive"
             data-testid="filter-clear"
             (click)="clear()"
           >
@@ -181,14 +206,19 @@ interface BuilderModel {
       }
 
       <details class="mt-3" data-testid="filter-json">
-        <summary class="cursor-pointer text-muted">Filter als JSON (für Agenten)</summary>
+        <summary class="cursor-pointer text-muted-foreground">
+          Filter als JSON (für Agenten)
+        </summary>
         <pre
-          class="mt-2 max-h-64 overflow-auto rounded-md bg-bg p-2 font-mono text-xs"
+          class="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-2 font-mono text-xs"
           data-testid="filter-json-text"
           >{{ json() }}</pre>
         <button
           type="button"
-          class="mt-1 text-accent hover:underline"
+          hlmBtn
+          variant="ghost"
+          size="sm"
+          class="mt-1"
           data-testid="filter-json-copy"
           (click)="copy()"
         >
@@ -200,7 +230,8 @@ interface BuilderModel {
     <ng-template #conditionRow let-condition let-groupId="groupId">
       <div class="flex flex-wrap items-start gap-2" data-testid="filter-condition">
         <select
-          class="rounded-md border border-border bg-bg px-2 py-1"
+          hlmInput
+          class="w-auto"
           data-testid="filter-prop"
           aria-label="Feld"
           [disabled]="readonly()"
@@ -215,7 +246,8 @@ interface BuilderModel {
         </select>
         @if (fieldOf(condition.prop); as field) {
           <select
-            class="rounded-md border border-border bg-bg px-2 py-1"
+            hlmInput
+            class="w-auto"
             data-testid="filter-op"
             aria-label="Operator"
             [disabled]="readonly()"
@@ -237,19 +269,22 @@ interface BuilderModel {
           }
         }
         @if (!complete(condition)) {
-          <span class="self-center text-xs text-muted" data-testid="filter-incomplete"
+          <span class="self-center text-xs text-muted-foreground" data-testid="filter-incomplete"
             >unvollständig, wird ignoriert</span
           >
         }
         @if (!readonly()) {
           <button
             type="button"
-            class="self-center text-muted hover:text-danger"
+            hlmBtn
+            variant="ghost"
+            size="icon-sm"
+            class="self-center text-muted-foreground hover:text-destructive"
             data-testid="filter-remove"
             [attr.aria-label]="'Bedingung entfernen'"
             (click)="remove(condition.id)"
           >
-            ×
+            <ng-icon name="lucideX" />
           </button>
         }
       </div>

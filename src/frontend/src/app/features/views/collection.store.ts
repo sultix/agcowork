@@ -31,13 +31,14 @@ export const VIEW_TYPE_LABELS: Readonly<Record<string, string>> = {
   document: 'Dokument',
 };
 
+/** Lucide icon name per view type (register the icons where they are rendered). */
 export const VIEW_TYPE_ICONS: Readonly<Record<string, string>> = {
-  table: '▦',
-  board: '▥',
-  list: '☰',
-  gallery: '▣',
-  raw: '{}',
-  document: '▤',
+  table: 'lucideTable',
+  board: 'lucideKanban',
+  list: 'lucideList',
+  gallery: 'lucideLayoutGrid',
+  raw: 'lucideBraces',
+  document: 'lucideFileText',
 };
 
 interface Source {

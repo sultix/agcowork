@@ -11,6 +11,13 @@ import {
   untracked,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
+import { HlmLabel } from '@spartan-ng/helm/label';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { FilterBuilderComponent } from '../../shared/filter/filter-builder.component';
 import { FilterNode, SortSpec, countConditions } from '../../shared/filter/filter-dsl';
@@ -41,10 +48,17 @@ import {
   imports: [
     BoardViewComponent,
     FilterBuilderComponent,
+    HlmAlertImports,
+    HlmBadge,
+    HlmButton,
+    HlmCheckbox,
+    HlmLabel,
+    NgIcon,
     RouterLink,
     SortChipsComponent,
     TableViewComponent,
   ],
+  providers: [provideIcons({ lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (view(); as view) {
@@ -52,22 +66,24 @@ import {
         <div class="mt-3 flex flex-wrap items-center gap-2 text-sm" data-testid="view-toolbar">
           <button
             type="button"
-            class="rounded-md border border-border px-2 py-1 hover:bg-surface-hover"
+            hlmBtn
+            variant="outline"
+            size="sm"
             data-testid="filter-toggle"
             [attr.aria-expanded]="filterOpen()"
             (click)="filterOpen.set(!filterOpen())"
           >
             Filter
             @if (conditionCount() > 0) {
-              <span class="ml-1 rounded-full bg-accent px-1.5 text-xs text-accent-fg">{{
-                conditionCount()
-              }}</span>
+              <span hlmBadge class="h-4 min-w-4 px-1">{{ conditionCount() }}</span>
             }
           </button>
           @if (isTable()) {
             <button
               type="button"
-              class="rounded-md border border-border px-2 py-1 hover:bg-surface-hover"
+              hlmBtn
+              variant="outline"
+              size="sm"
               data-testid="columns-toggle"
               [attr.aria-expanded]="columnsOpen()"
               (click)="columnsOpen.set(!columnsOpen())"
@@ -81,12 +97,14 @@ import {
             (sortsChange)="setSorts($event)"
           />
           @if (modified()) {
-            <span class="ml-auto text-xs text-muted" data-testid="view-modified"
+            <span class="ml-auto text-xs text-muted-foreground" data-testid="view-modified"
               >Geändert (nur in dieser Sitzung)</span
             >
             <button
               type="button"
-              class="rounded-md border border-border px-2 py-1 hover:bg-surface-hover"
+              hlmBtn
+              variant="outline"
+              size="sm"
               data-testid="view-reset"
               (click)="reset()"
             >
@@ -95,7 +113,8 @@ import {
             @if (store.canWrite()) {
               <button
                 type="button"
-                class="rounded-md bg-accent px-3 py-1 font-medium text-accent-fg disabled:opacity-60"
+                hlmBtn
+                size="sm"
                 data-testid="view-save"
                 [disabled]="saving()"
                 (click)="save()"
@@ -106,13 +125,10 @@ import {
           }
         </div>
         @if (saveError(); as message) {
-          <p
-            class="mt-2 text-sm whitespace-pre-line text-danger"
-            role="alert"
-            data-testid="view-save-error"
-          >
-            {{ message }}
-          </p>
+          <div hlmAlert variant="destructive" class="mt-2" data-testid="view-save-error">
+            <ng-icon name="lucideCircleAlert" />
+            <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+          </div>
         }
         @if (filterOpen()) {
           <ag-filter-builder
@@ -124,17 +140,17 @@ import {
         }
         @if (columnsOpen() && isTable()) {
           <fieldset
-            class="mt-2 flex flex-wrap gap-3 rounded-md border border-border bg-surface p-3 text-sm"
+            class="mt-2 flex flex-wrap gap-3 rounded-xl border bg-card p-3 text-sm text-card-foreground"
             data-testid="columns-panel"
           >
-            <legend class="px-1 text-muted">Sichtbare Spalten</legend>
+            <legend class="px-1 text-muted-foreground">Sichtbare Spalten</legend>
             @for (definition of columnChoices(); track definition.key) {
-              <label class="inline-flex items-center gap-1">
-                <input
-                  type="checkbox"
+              <label hlmLabel class="gap-1.5 font-normal" [for]="'column-' + definition.key">
+                <hlm-checkbox
+                  [inputId]="'column-' + definition.key"
                   [attr.data-key]="definition.key"
                   [checked]="visibleKeys().includes(definition.key)"
-                  (change)="toggleColumn(definition.key)"
+                  (checkedChange)="toggleColumn(definition.key)"
                 />
                 {{ definition.name }}
               </label>
@@ -142,7 +158,7 @@ import {
           </fieldset>
         }
         @if (typeHint(); as hint) {
-          <p class="mt-2 text-xs text-muted" data-testid="view-type-hint">{{ hint }}</p>
+          <p class="mt-2 text-xs text-muted-foreground" data-testid="view-type-hint">{{ hint }}</p>
         }
         <div class="mt-3">
           @if (view.type === 'board') {
@@ -165,11 +181,11 @@ import {
         </div>
       }
     } @else if (store.viewsLoaded()) {
-      <p class="mt-4 text-sm text-muted" data-testid="view-missing">
+      <p class="mt-4 text-sm text-muted-foreground" data-testid="view-missing">
         Diese View gibt es nicht (mehr).
         @if (store.defaultView(); as fallback) {
           <a
-            class="text-accent hover:underline"
+            class="font-medium underline underline-offset-4"
             [routerLink]="[
               '/w',
               context.slug(),

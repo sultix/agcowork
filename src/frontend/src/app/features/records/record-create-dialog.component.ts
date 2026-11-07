@@ -11,6 +11,14 @@ import {
   untracked,
 } from '@angular/core';
 import { FormField, form, required, submit } from '@angular/forms/signals';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import type { BrnDialogState } from '@spartan-ng/brain/dialog';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDialogImports } from '@spartan-ng/helm/dialog';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmInput } from '@spartan-ng/helm/input';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import type { components } from '../../core/api/generated/schema';
@@ -33,84 +41,97 @@ interface CreateModel {
  */
 @Component({
   selector: 'ag-record-create-dialog',
-  imports: [FormField, FieldErrorsComponent],
+  imports: [
+    FormField,
+    NgIcon,
+    FieldErrorsComponent,
+    HlmAlertImports,
+    HlmButton,
+    HlmDialogImports,
+    HlmFieldImports,
+    HlmInput,
+  ],
+  providers: [provideIcons({ lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(document:keydown.escape)': 'cancelled.emit()' },
   template: `
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <form
-        class="w-full max-w-md rounded-lg border border-border bg-surface p-6"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-record-title"
-        novalidate
-        data-testid="create-record-dialog"
-        (submit)="onSubmit($event)"
-      >
-        <h2 id="create-record-title" class="text-lg font-semibold">
-          {{ collectionId() ? 'Neuer Record' : 'Neue Seite' }}
-        </h2>
-        @if (formError(); as message) {
-          <p
-            class="mt-3 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-            role="alert"
-            data-testid="form-error"
-          >
-            {{ message }}
-          </p>
-        }
-
-        <label for="record-title" class="mt-4 block text-sm font-medium">Titel</label>
-        <input
-          id="record-title"
-          type="text"
-          autocomplete="off"
-          class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-          data-testid="create-title"
-          [formField]="form.title"
-        />
-        <div data-testid="title-errors">
-          @if (form.title().touched() && form.title().invalid()) {
-            <ag-field-errors [errors]="form.title().errors()" />
-          }
-        </div>
-
-        @if (templates().length > 1) {
-          <label for="record-template" class="mt-4 block text-sm font-medium">Vorlage</label>
-          <select
-            id="record-template"
-            class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-            data-testid="create-template"
-            [formField]="form.templateId"
-          >
-            @for (template of templates(); track template.id) {
-              <option [value]="template.id">
-                {{ template.name }}{{ template.isDefault ? ' (Standard)' : '' }}
-              </option>
+    <hlm-dialog
+      state="open"
+      [closeOnOutsidePointerEvents]="false"
+      (stateChanged)="onStateChanged($event)"
+    >
+      <hlm-dialog-content *hlmDialogPortal [showCloseButton]="false">
+        <hlm-dialog-header>
+          <h2 hlmDialogTitle>
+            {{ collectionId() ? 'Neuer Record' : 'Neue Seite' }}
+          </h2>
+        </hlm-dialog-header>
+        <form novalidate data-testid="create-record-dialog" (submit)="onSubmit($event)">
+          <div hlmFieldGroup class="gap-5">
+            @if (formError(); as message) {
+              <div hlmAlert variant="destructive" data-testid="form-error">
+                <ng-icon name="lucideCircleAlert" />
+                <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+              </div>
             }
-          </select>
-        }
 
-        <div class="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-hover"
-            data-testid="create-cancel"
-            (click)="cancelled.emit()"
-          >
-            Abbrechen
-          </button>
-          <button
-            type="submit"
-            class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg disabled:opacity-60"
-            data-testid="create-submit"
-            [disabled]="form().submitting()"
-          >
-            Anlegen
-          </button>
-        </div>
-      </form>
-    </div>
+            <div hlmField class="gap-2">
+              <label hlmFieldLabel for="record-title">Titel</label>
+              <input
+                hlmInput
+                id="record-title"
+                type="text"
+                autocomplete="off"
+                data-testid="create-title"
+                [formField]="form.title"
+              />
+              <div data-testid="title-errors">
+                @if (form.title().touched() && form.title().invalid()) {
+                  <ag-field-errors [errors]="form.title().errors()" />
+                }
+              </div>
+            </div>
+
+            @if (templates().length > 1) {
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="record-template">Vorlage</label>
+                <select
+                  hlmInput
+                  id="record-template"
+                  data-testid="create-template"
+                  [formField]="form.templateId"
+                >
+                  @for (template of templates(); track template.id) {
+                    <option [value]="template.id">
+                      {{ template.name }}{{ template.isDefault ? ' (Standard)' : '' }}
+                    </option>
+                  }
+                </select>
+              </div>
+            }
+
+            <hlm-dialog-footer>
+              <button
+                type="button"
+                hlmBtn
+                variant="outline"
+                data-testid="create-cancel"
+                (click)="cancelled.emit()"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="submit"
+                hlmBtn
+                data-testid="create-submit"
+                [disabled]="form().submitting()"
+              >
+                Anlegen
+              </button>
+            </hlm-dialog-footer>
+          </div>
+        </form>
+      </hlm-dialog-content>
+    </hlm-dialog>
   `,
 })
 export class RecordCreateDialogComponent {
@@ -161,6 +182,13 @@ export class RecordCreateDialogComponent {
         }
       });
     });
+  }
+
+  /** Brain closed the dialog (Escape): the parent removes the component. */
+  protected onStateChanged(state: BrnDialogState): void {
+    if (state === 'closed') {
+      this.cancelled.emit();
+    }
   }
 
   protected async onSubmit(event: Event): Promise<void> {

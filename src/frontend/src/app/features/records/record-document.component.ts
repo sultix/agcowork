@@ -13,6 +13,14 @@ import {
   viewChild,
   viewChildren,
 } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import type { BrnDialogState } from '@spartan-ng/brain/dialog';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDialogImports } from '@spartan-ng/helm/dialog';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import { ApiError } from '../../core/api/api-error';
@@ -44,6 +52,12 @@ type Collection = components['schemas']['CollectionDto'];
   imports: [
     DatePipe,
     BadgeComponent,
+    HlmAlertImports,
+    HlmButton,
+    HlmDialogImports,
+    HlmInput,
+    HlmSkeleton,
+    NgIcon,
     BreadcrumbsComponent,
     ConfirmDialogComponent,
     ConflictDialogComponent,
@@ -52,7 +66,7 @@ type Collection = components['schemas']['CollectionDto'];
     RawViewComponent,
     RecordTabsComponent,
   ],
-  providers: [RecordSaveService],
+  providers: [RecordSaveService, provideIcons({ lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:keydown)': 'onKeydown($event)',
@@ -61,14 +75,18 @@ type Collection = components['schemas']['CollectionDto'];
   template: `
     <section class="mx-auto max-w-4xl p-6">
       @if (saver.loadError(); as message) {
-        <p class="text-sm text-danger" role="alert" data-testid="load-error">{{ message }}</p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
       } @else if (saver.record(); as record) {
         <ag-breadcrumbs [crumbs]="crumbs()" />
         <ag-record-tabs [recordId]="recordId()" />
 
         <input
           type="text"
-          class="mt-2 w-full border-b border-transparent bg-transparent text-2xl font-semibold focus:border-border focus:outline-none"
+          hlmInput
+          class="mt-2 h-auto border-transparent bg-transparent px-1 py-1 text-2xl font-semibold shadow-none md:text-2xl dark:bg-transparent"
           aria-label="Titel"
           data-testid="record-title"
           [value]="saver.title()"
@@ -76,11 +94,11 @@ type Collection = components['schemas']['CollectionDto'];
           (input)="saver.setTitle($any($event.target).value)"
         />
         @for (message of saver.fieldErrors()['title'] ?? []; track $index) {
-          <p class="mt-1 text-sm text-danger" data-testid="title-error">{{ message }}</p>
+          <p class="mt-1 text-sm text-destructive" data-testid="title-error">{{ message }}</p>
         }
 
         <div
-          class="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted"
+          class="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground"
           data-testid="record-meta"
         >
           <span data-testid="record-revision">Revision {{ record.revision }}</span>
@@ -98,7 +116,7 @@ type Collection = components['schemas']['CollectionDto'];
           @if (!readonly()) {
             <button
               type="button"
-              class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg disabled:opacity-60"
+              hlmBtn
               data-testid="save"
               [disabled]="saver.saving() || !saver.isDirty()"
               (click)="saveNow()"
@@ -108,7 +126,8 @@ type Collection = components['schemas']['CollectionDto'];
           }
           <button
             type="button"
-            class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-hover"
+            hlmBtn
+            variant="outline"
             data-testid="show-markdown"
             (click)="showMarkdown()"
           >
@@ -117,7 +136,8 @@ type Collection = components['schemas']['CollectionDto'];
           @if (canWrite()) {
             <button
               type="button"
-              class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-hover"
+              hlmBtn
+              variant="outline"
               data-testid="archive-toggle"
               (click)="confirming.set(true)"
             >
@@ -127,30 +147,30 @@ type Collection = components['schemas']['CollectionDto'];
         </div>
 
         @if (saver.saveError() ?? actionError(); as message) {
-          <p
-            class="mt-3 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-            role="alert"
-            data-testid="save-error"
-          >
-            {{ message }}
+          <div hlmAlert variant="destructive" class="mt-3" data-testid="save-error">
+            <ng-icon name="lucideCircleAlert" />
+            <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
             @if (saver.bodyStale() !== null) {
               <button
                 type="button"
-                class="ml-2 rounded-md border border-danger px-2 py-0.5"
+                hlmAlertAction
+                hlmBtn
+                variant="outline"
+                size="xs"
                 data-testid="reload-stale"
                 (click)="saver.reload()"
               >
                 Neu laden
               </button>
             }
-          </p>
+          </div>
         }
         @if (readonly() && record.archivedAt) {
-          <p class="mt-3 text-sm text-muted" data-testid="readonly-notice">
+          <p class="mt-3 text-sm text-muted-foreground" data-testid="readonly-notice">
             Archiviert und schreibgeschützt.
           </p>
         } @else if (readonly()) {
-          <p class="mt-3 text-sm text-muted" data-testid="readonly-notice">
+          <p class="mt-3 text-sm text-muted-foreground" data-testid="readonly-notice">
             Du hast hier nur Leserechte.
           </p>
         }
@@ -162,7 +182,7 @@ type Collection = components['schemas']['CollectionDto'];
               data-testid="properties-panel"
             >
               @for (def of visibleDefinitions(); track def.key) {
-                <dt class="pt-1 text-sm text-muted" [attr.title]="def.description">
+                <dt class="pt-1 text-sm text-muted-foreground" [attr.title]="def.description">
                   {{ def.name }}
                   @if (def.required) {
                     <span aria-hidden="true"> *</span>
@@ -193,7 +213,11 @@ type Collection = components['schemas']['CollectionDto'];
           }
         </div>
       } @else {
-        <p class="text-sm text-muted">Wird geladen …</p>
+        <div class="flex flex-col gap-3" data-testid="record-loading">
+          <hlm-skeleton class="h-6 w-48" />
+          <hlm-skeleton class="h-10 w-full" />
+          <hlm-skeleton class="h-64 w-full" />
+        </div>
       }
     </section>
 
@@ -229,27 +253,33 @@ type Collection = components['schemas']['CollectionDto'];
       (cancelled)="answerLeave(false)"
     />
 
-    @if (markdownView() !== null) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div
-          class="flex max-h-full w-full max-w-3xl flex-col rounded-lg border border-border bg-surface p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Markdown"
-          data-testid="markdown-dialog"
-        >
-          <ag-raw-view language="markdown" [readonly]="true" [value]="markdownView() ?? ''" />
+    <hlm-dialog
+      [state]="markdownView() !== null ? 'open' : 'closed'"
+      (stateChanged)="onMarkdownState($event)"
+    >
+      <hlm-dialog-content
+        *hlmDialogPortal
+        class="max-h-full sm:max-w-3xl"
+        [showCloseButton]="false"
+        data-testid="markdown-dialog"
+      >
+        <hlm-dialog-header>
+          <h2 hlmDialogTitle>Markdown</h2>
+        </hlm-dialog-header>
+        <ag-raw-view language="markdown" [readonly]="true" [value]="markdownView() ?? ''" />
+        <hlm-dialog-footer>
           <button
             type="button"
-            class="mt-3 self-end rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-hover"
+            hlmBtn
+            variant="outline"
             data-testid="markdown-close"
             (click)="markdownView.set(null)"
           >
             Schließen
           </button>
-        </div>
-      </div>
-    }
+        </hlm-dialog-footer>
+      </hlm-dialog-content>
+    </hlm-dialog>
   `,
 })
 export class RecordDocumentComponent {
@@ -431,6 +461,13 @@ export class RecordDocumentComponent {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
       void this.saveNow();
+    }
+  }
+
+  /** Brain closed the Markdown dialog itself (Escape). */
+  protected onMarkdownState(state: BrnDialogState): void {
+    if (state === 'closed') {
+      this.markdownView.set(null);
     }
   }
 

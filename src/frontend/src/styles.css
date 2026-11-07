@@ -98,46 +98,6 @@
   --color-success-foreground: var(--success-foreground);
 }
 
-/*
- * TRANSITIONAL ALIASES (AP-019). The old token classes keep their old meaning until AP-020/AP-021
- * have migrated every feature; the orchestrator removes this block afterwards. Mapping old -> new
- * class: docs/02-ARCHITEKTUR.md §6 "UI-Bausteine". Do not use these classes in new code.
- *
- * `muted` and `accent` collide with shadcn names that mean *surfaces* (bg-muted, hover:bg-accent),
- * which Helm components rely on. The old meanings (`text-muted` = secondary text, `bg-accent` =
- * primary fill) are therefore restored only where Helm never uses the name:
- * - property-specific theme keys (Tailwind resolves `--text-color-*` before `--color-*`) for
- *   text-muted, text-accent, border-accent, ring-accent;
- * - plain-class overrides for `bg-accent` and `hover:bg-accent/40` (Helm only uses `bg-accent`
- *   behind variants such as hover: or focus:, which keep the shadcn meaning). New code that needs
- *   the shadcn accent surface writes it with a variant (hover:bg-accent) or uses bg-muted.
- */
-@theme inline {
-  --color-bg: var(--background);
-  --color-surface: var(--card);
-  --color-surface-hover: var(--accent);
-  --color-fg: var(--foreground);
-  --color-accent-fg: var(--primary-foreground);
-  --color-danger: var(--destructive);
-  --text-color-muted: var(--muted-foreground);
-  --text-color-accent: var(--primary);
-  --border-color-accent: var(--primary);
-  --ring-color-accent: var(--primary);
-}
-
-/* Unlayered like the generated utilities (spartan imports them without a layer), so these
-   later rules win over the generated `.bg-accent` / `.hover:bg-accent/40`. */
-.bg-accent {
-  background-color: var(--primary);
-}
-
-.hover\:bg-accent\/40:hover {
-  @media (hover: hover) {
-    background-color: color-mix(in oklab, var(--primary) 40%, transparent);
-  }
-}
-/* END TRANSITIONAL ALIASES */
-
 @layer base {
   * {
     @apply border-border outline-ring/50;

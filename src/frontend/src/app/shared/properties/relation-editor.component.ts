@@ -8,6 +8,11 @@ import {
   resource,
   signal,
 } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideX } from '@ng-icons/lucide';
+import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmInput } from '@spartan-ng/helm/input';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import type { components } from '../../core/api/generated/schema';
@@ -26,36 +31,39 @@ const MAX_SUGGESTIONS = 8;
 @Component({
   selector: 'ag-relation-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgIcon, HlmBadge, HlmButton, HlmInput],
+  providers: [provideIcons({ lucideX })],
   template: `
     <div class="flex flex-wrap items-center gap-1" data-testid="relation-selected">
       @for (id of selected(); track id) {
-        <span
-          class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
-          data-testid="relation-chip"
-        >
+        <span hlmBadge variant="outline" class="gap-1" data-testid="relation-chip">
           {{ titleOf(id) }}
           @if (!readonly()) {
             <button
               type="button"
-              class="text-muted hover:text-danger"
+              hlmBtn
+              variant="ghost"
+              size="icon-xs"
+              class="size-4 rounded-full hover:text-destructive"
               [attr.aria-label]="'Entfernen: ' + titleOf(id)"
               data-testid="relation-remove"
               (click)="remove(id)"
             >
-              ×
+              <ng-icon name="lucideX" />
             </button>
           }
         </span>
       } @empty {
         @if (readonly()) {
-          <span class="text-sm text-muted">–</span>
+          <span class="text-sm text-muted-foreground">–</span>
         }
       }
     </div>
     @if (!readonly()) {
       <input
         type="search"
-        class="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1 text-sm"
+        hlmInput
+        class="mt-1"
         placeholder="Record suchen …"
         data-testid="relation-search"
         [attr.aria-label]="'Relation suchen'"
@@ -64,22 +72,25 @@ const MAX_SUGGESTIONS = 8;
       />
       @if (query() !== '') {
         <ul
-          class="mt-1 rounded-md border border-border bg-surface text-sm"
+          class="mt-1 rounded-md border bg-popover p-1 text-sm text-popover-foreground shadow-md"
           data-testid="relation-suggestions"
         >
           @for (candidate of suggestions(); track candidate.id) {
             <li>
               <button
                 type="button"
-                class="block w-full px-2 py-1 text-left hover:bg-surface-hover"
+                hlmBtn
+                variant="ghost"
+                size="sm"
+                class="w-full min-w-0 justify-start font-normal"
                 data-testid="relation-suggestion"
                 (click)="add(candidate.id)"
               >
-                {{ candidate.title }}
+                <span class="truncate">{{ candidate.title }}</span>
               </button>
             </li>
           } @empty {
-            <li class="px-2 py-1 text-muted">Keine Treffer.</li>
+            <li class="px-2 py-1 text-muted-foreground">Keine Treffer.</li>
           }
         </ul>
       }

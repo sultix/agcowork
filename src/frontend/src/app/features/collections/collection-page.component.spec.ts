@@ -160,7 +160,7 @@ describe('CollectionPageComponent', () => {
     expect(text(q('record-count'))).toBe('2 Records');
     expect(all('schema-chips')[0].querySelectorAll('li')).toHaveLength(3);
     expect(text(q('breadcrumbs'))).toBe('Produkt›Aufgaben');
-    expect(all('view-tab').map(text)).toEqual(['Tabelle']);
+    expect(all('view-tab').map(text)).toEqual(['Tabelle (Standard)']);
     // the default view is marked with a star icon inside its tab
     expect(all('view-tab')[0].querySelector('[data-testid="view-default-mark"]')).not.toBeNull();
     expect(all('table-row')).toHaveLength(2);

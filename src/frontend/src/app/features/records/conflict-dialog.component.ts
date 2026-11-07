@@ -1,46 +1,47 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { HlmAlertDialogImports } from '@spartan-ng/helm/alert-dialog';
+import { HlmButton } from '@spartan-ng/helm/button';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import type { RevisionConflict } from './record-save.service';
 
 /** "Von jemand anderem geändert": the dialog for a 409 `revision_mismatch` (document and raw view). */
 @Component({
   selector: 'ag-conflict-dialog',
-  imports: [BadgeComponent],
+  imports: [BadgeComponent, HlmAlertDialogImports, HlmButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        class="w-full max-w-md rounded-lg border border-border bg-surface p-6"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="conflict-title"
-        data-testid="conflict-dialog"
-      >
-        <h2 id="conflict-title" class="text-lg font-semibold">Von jemand anderem geändert</h2>
-        <p class="mt-2 text-sm text-muted">
-          Der Record wurde gespeichert, seit du ihn geöffnet hast
-          @if (conflict().currentRevision !== null) {
-            (jetzt Revision {{ conflict().currentRevision }})
-          }
-          .
-        </p>
-        @if (conflict().changedKeys?.length) {
-          <p class="mt-2 text-sm">Geändert wurde:</p>
-          <ul class="mt-1 flex flex-wrap gap-1" data-testid="conflict-keys">
-            @for (key of conflict().changedKeys; track key) {
-              <li>
-                <ag-badge>{{ key }}</ag-badge>
-              </li>
+    <hlm-alert-dialog state="open" [disableClose]="true" autoFocus="first-heading">
+      <hlm-alert-dialog-content *hlmAlertDialogPortal data-testid="conflict-dialog">
+        <hlm-alert-dialog-header>
+          <h2 hlmAlertDialogTitle>Von jemand anderem geändert</h2>
+          <p hlmAlertDialogDescription>
+            Der Record wurde gespeichert, seit du ihn geöffnet hast
+            @if (conflict().currentRevision !== null) {
+              (jetzt Revision {{ conflict().currentRevision }})
             }
-          </ul>
+            .
+          </p>
+        </hlm-alert-dialog-header>
+        @if (conflict().changedKeys?.length) {
+          <div class="flex flex-col gap-1">
+            <p class="text-sm">Geändert wurde:</p>
+            <ul class="flex flex-wrap gap-1" data-testid="conflict-keys">
+              @for (key of conflict().changedKeys; track key) {
+                <li>
+                  <ag-badge>{{ key }}</ag-badge>
+                </li>
+              }
+            </ul>
+          </div>
         }
-        <p class="mt-3 text-sm text-muted">
+        <p class="text-sm text-muted-foreground">
           „Neu laden“ verwirft deine Änderungen. „Überschreiben“ speichert sie über den neuen Stand.
         </p>
-        <div class="mt-6 flex justify-end gap-2">
+        <hlm-alert-dialog-footer>
           <button
             type="button"
-            class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-hover"
+            hlmBtn
+            variant="outline"
             data-testid="conflict-reload"
             (click)="reload.emit()"
           >
@@ -48,16 +49,17 @@ import type { RevisionConflict } from './record-save.service';
           </button>
           <button
             type="button"
-            class="rounded-md bg-danger px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+            hlmBtn
+            variant="destructive"
             data-testid="conflict-overwrite"
             [disabled]="saving()"
             (click)="overwrite.emit()"
           >
             Überschreiben
           </button>
-        </div>
-      </div>
-    </div>
+        </hlm-alert-dialog-footer>
+      </hlm-alert-dialog-content>
+    </hlm-alert-dialog>
   `,
 })
 export class ConflictDialogComponent {

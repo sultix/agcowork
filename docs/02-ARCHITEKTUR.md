@@ -596,9 +596,9 @@ danger` → Helm-Badge `secondary | default | Erfolgsfarben | destructive`), `ag
 Alert-Dialog), `ag-session-menu` (Dropdown mit Avatar), `ag-theme-toggle` (System/Hell/Dunkel),
 `ag-breadcrumbs`, `ag-field-errors`, `ag-actor-label`, `ag-placeholder-page`.
 
-**Klassen-Mapping alt → neu** (Migrationsvorschrift für AP-020/AP-021). Bis alle Features umgestellt
-sind, bilden Übergangs-Aliase in `styles.css` die alten Klassen auf das Theme ab; danach werden sie
-entfernt. Neue Templates verwenden nur die rechte Spalte.
+**Klassen-Mapping alt → neu** (Migrationsvorschrift aus AP-020/AP-021). Die alten Klassen existieren
+seit Abschluss von AP-021 nicht mehr (Übergangs-Aliase entfernt); die Tabelle bleibt als Referenz für
+alten Code in Branches. Neue Templates verwenden nur die rechte Spalte.
 
 | Alte Klasse | Neue Klasse / Baustein | Hinweis |
 |---|---|---|
@@ -655,7 +655,13 @@ variant="destructive"` bzw. Dropdown-Eintrag `variant="destructive"`.
   Popover-Inhalte (`role="dialog"`) brauchen einen zugänglichen Namen (`aria-label`).
 - _Native Elemente_ sind erlaubt, wo Helm-Wrapper Virtual Scroll, Inline-Edit oder Escape/Enter-
   Verhalten gefährden: `<select hlmInput>` und `<input type="checkbox" class="size-4 accent-primary">`
-  (AP-021: Tabelle, Property-Editoren, Filter). Routen-Tabs als `<a role="tab">` mit Helm-Tabs-Klassen.
+  (AP-021: Tabelle, Property-Editoren, Filter). Routen-Tabs (Links, die navigieren) als `nav` mit `<a aria-current="page">` und Helm-Tabs-Klassen
+  (inkl. `dark:bg-input/30 dark:border-input` am aktiven Eintrag), nicht `role="tab"`.
+- _Icons mit Bedeutung_: `ng-icon` ist `aria-hidden`; trägt ein Icon Information (Sortierrichtung,
+  Standard-Markierung), daneben `<span class="sr-only">…</span>`.
+- _Dialoge mit Eingaben oder Datenfolgen_: `[closeOnOutsidePointerEvents]="false"`; Dialoge, die eine
+  folgenreiche Entscheidung abfragen (Konflikt), mit `autoFocus="first-heading"`, damit kein
+  Aktionsknopf vorbelegt ist (Brain-Default `first-tabbable`).
 - _Icons_ nur Lucide: `provideIcons({ lucideX })` in der Komponente, `<ng-icon name="lucideX" />`.
   Keine Unicode-Pfeile oder Emoji als Bedien-Icons (Daten wie Space-Icons ausgenommen).
 - _Overlays_ (Dialog, Alert-Dialog, Dropdown, Popover, Tooltip, Select) rendern in den CDK-Overlay-

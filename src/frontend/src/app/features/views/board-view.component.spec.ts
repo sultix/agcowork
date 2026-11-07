@@ -209,7 +209,7 @@ describe('BoardViewComponent', () => {
     await settle(fixture);
 
     expect(cards('open')).toEqual([RECORD_ID]);
-    expect(all('conflict-dialog')).toHaveLength(1);
+    expect(all('conflict-dialog', document.body)).toHaveLength(1);
   });
 
   it('drop_SameColumn_SendsNothing', async () => {

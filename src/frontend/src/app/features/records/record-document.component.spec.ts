@@ -374,6 +374,15 @@ describe('RecordDocumentComponent', () => {
       expect(text(q('conflict-keys'))).toBe('statusbody');
     });
 
+    it('save_RevisionMismatch_DoesNotFocusAnActionButton', async () => {
+      await conflicted();
+
+      // Enter or Space right after the dialog opened must not trigger "Neu laden"
+      expect(document.activeElement).not.toBe(q('conflict-reload'));
+      expect(document.activeElement).not.toBe(q('conflict-overwrite'));
+      expect(q('conflict-dialog')!.contains(document.activeElement)).toBe(true);
+    });
+
     it('conflictReload_DiscardsOwnChangesAndLoadsServerState', async () => {
       await conflicted();
 
@@ -764,6 +773,20 @@ describe('RecordDocumentComponent', () => {
       q('markdown-close')!.click();
       await change();
       expect(q('markdown-dialog')).toBeNull();
+    });
+
+    it('showMarkdown_Escape_ClosesDialog', async () => {
+      await render();
+
+      q('show-markdown')!.click();
+      (await expectRequest(http, 'GET', `${RECORD_URL}?format=markdown`)).flush('Hallo');
+      await settle(harness.fixture);
+      expect(q('markdown-dialog')).not.toBeNull();
+
+      q('markdown-dialog')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      await vi.waitFor(() => expect(q('markdown-dialog')).toBeNull());
     });
 
     it('showMarkdown_PendingChanges_SavesFirst', async () => {

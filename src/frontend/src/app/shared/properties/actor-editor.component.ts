@@ -1,14 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { HlmInput } from '@spartan-ng/helm/input';
 import { MembersStore } from '../../core/workspace/members.store';
 import { PropertyValue, asText } from './property-types';
 
 /** Select for `actor` properties: the members (people and agents) of the workspace. */
 @Component({
   selector: 'ag-actor-editor',
+  imports: [HlmInput],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <select
-      class="w-full rounded-md border border-border bg-bg px-2 py-1 text-sm disabled:opacity-70"
+      hlmInput
       data-testid="actor-select"
       [attr.aria-label]="label()"
       [disabled]="readonly()"

@@ -11,6 +11,12 @@ import {
   untracked,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { sameFilter } from '../../shared/filter/filter-dsl';
 import { PropertyDefinition, asText } from '../../shared/properties/property-types';
@@ -88,20 +94,26 @@ export function groupRecords(
     CdkDropListGroup,
     CellValueComponent,
     ConflictDialogComponent,
+    HlmAlertImports,
+    HlmCardImports,
+    HlmInput,
+    HlmSkeleton,
+    NgIcon,
     RouterLink,
   ],
-  providers: [InlineEditService],
+  providers: [InlineEditService, provideIcons({ lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (!groupDefinition()) {
       <p
-        class="rounded-md border border-border p-4 text-sm text-muted"
+        class="rounded-xl border border-dashed p-4 text-sm text-muted-foreground"
         data-testid="board-no-group"
       >
         Dieses Board hat keine gültige Gruppierung (select- oder status-Property).
         @if (canWrite() && groupChoices().length > 0) {
           <select
-            class="ml-2 rounded-md border border-border bg-bg px-2 py-1"
+            hlmInput
+            class="ml-2 w-auto"
             data-testid="board-group-select"
             aria-label="Gruppieren nach"
             (change)="groupByChange.emit($any($event.target).value)"
@@ -115,34 +127,43 @@ export function groupRecords(
       </p>
     } @else {
       @if (pager.error(); as message) {
-        <p class="text-sm text-danger" role="alert" data-testid="board-error">{{ message }}</p>
+        <div hlmAlert variant="destructive" data-testid="board-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
       } @else if (pager.isLoading() && pager.items().length === 0) {
-        <p class="text-sm text-muted">Wird geladen …</p>
+        <div class="flex gap-3" data-testid="board-loading">
+          <hlm-skeleton class="h-40 w-72" />
+          <hlm-skeleton class="h-40 w-72" />
+          <hlm-skeleton class="h-40 w-72" />
+        </div>
       }
       @if (pager.hasMore()) {
-        <p class="mb-2 text-xs text-muted" data-testid="board-truncated">
+        <p class="mb-2 text-xs text-muted-foreground" data-testid="board-truncated">
           Es werden die ersten {{ limit }} von
           {{ (pager.count() ?? 0) >= 10000 ? 'mehr als 10 000' : pager.count() }} Records gezeigt.
           Ein Filter grenzt die Auswahl ein.
         </p>
       }
       @if (moveError(); as message) {
-        <p class="mb-2 text-sm text-danger" role="alert" data-testid="board-move-error">
-          {{ message }}
-        </p>
+        <div hlmAlert variant="destructive" class="mb-2" data-testid="board-move-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
       }
       <div class="flex gap-3 overflow-x-auto pb-4" cdkDropListGroup data-testid="board">
         @for (column of columns(); track column.value) {
           @if (column.groupStart) {
             <div
-              class="flex w-6 shrink-0 items-center justify-start pt-2 text-xs font-medium text-muted [writing-mode:vertical-rl]"
+              class="flex w-6 shrink-0 items-center justify-start pt-2 text-xs font-medium text-muted-foreground [writing-mode:vertical-rl]"
               data-testid="board-group"
             >
               {{ groupLabel(column.groupStart) }}
             </div>
           }
           <section
-            class="flex w-72 shrink-0 flex-col rounded-md border border-border bg-surface"
+            hlmCard
+            class="w-72 shrink-0 gap-0 bg-muted/50 py-0 shadow-none"
             data-testid="board-column"
             [attr.data-value]="column.value ?? ''"
           >
@@ -150,7 +171,7 @@ export function groupRecords(
               class="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium"
             >
               <span>{{ column.label }}</span>
-              <span class="text-xs text-muted" data-testid="board-column-count">{{
+              <span class="text-xs text-muted-foreground" data-testid="board-column-count">{{
                 column.records.length
               }}</span>
             </h3>
@@ -163,7 +184,9 @@ export function groupRecords(
             >
               @for (record of column.records; track record.id) {
                 <article
-                  class="cursor-grab rounded-md border border-border bg-bg p-2 text-sm"
+                  hlmCard
+                  size="sm"
+                  class="cursor-grab gap-1 px-2 py-2"
                   cdkDrag
                   data-testid="board-card"
                   [attr.data-id]="record.id"
@@ -171,14 +194,14 @@ export function groupRecords(
                   [cdkDragDisabled]="!canMove(record)"
                 >
                   <a
-                    class="font-medium text-accent hover:underline"
+                    class="font-medium underline underline-offset-4"
                     data-testid="board-card-link"
                     [routerLink]="['/w', context.slug(), 'records', record.id]"
                     >{{ record.title || 'Ohne Titel' }}</a
                   >
                   @for (field of fieldsOf(record); track field.key) {
                     <div class="mt-1 flex gap-2 text-xs">
-                      <span class="shrink-0 text-muted">{{ field.name }}</span>
+                      <span class="shrink-0 text-muted-foreground">{{ field.name }}</span>
                       <ag-cell-value [definition]="field" [value]="valueOf(record, field.key)" />
                     </div>
                   }

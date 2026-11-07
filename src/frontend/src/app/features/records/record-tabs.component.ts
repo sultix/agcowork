@@ -8,14 +8,17 @@ import { WorkspaceContext } from '../../core/workspace/workspace-context.service
   imports: [RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <nav class="mt-3 flex gap-1 border-b border-border text-sm" aria-label="Ansicht">
+    <nav
+      class="mt-3 inline-flex w-fit items-center gap-1 rounded-lg bg-muted p-[3px] text-muted-foreground"
+      aria-label="Ansicht"
+    >
       @for (tab of tabs(); track tab.testId) {
         <a
           [routerLink]="tab.link"
-          routerLinkActive="border-accent! text-fg! font-medium"
+          routerLinkActive="bg-background! text-foreground! shadow-sm! dark:bg-input/30! dark:border-input!"
           ariaCurrentWhenActive="page"
           [routerLinkActiveOptions]="{ exact: true }"
-          class="-mb-px border-b-2 border-transparent px-3 py-1.5 text-muted hover:text-fg"
+          class="inline-flex h-8 items-center rounded-md border border-transparent px-2.5 text-sm font-medium whitespace-nowrap outline-none transition-all hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           [attr.data-testid]="tab.testId"
           >{{ tab.label }}</a
         >

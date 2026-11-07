@@ -1,10 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideArrowDown, lucideArrowUp, lucideX } from '@ng-icons/lucide';
+import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmButton } from '@spartan-ng/helm/button';
 import type { PropertyDefinition } from '../properties/property-types';
 import { SortSpec, filterFields } from './filter-dsl';
 
 /** The active sorting as removable chips (in priority order); set by clicking column headers. */
 @Component({
   selector: 'ag-sort-chips',
+  imports: [NgIcon, HlmBadge, HlmButton],
+  providers: [provideIcons({ lucideArrowDown, lucideArrowUp, lucideX })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (chips().length > 0) {
@@ -13,22 +19,33 @@ import { SortSpec, filterFields } from './filter-dsl';
         aria-label="Sortierung"
         data-testid="sort-chips"
       >
-        <li class="text-muted">Sortiert nach</li>
+        <li class="text-muted-foreground">Sortiert nach</li>
         @for (chip of chips(); track chip.prop; let i = $index) {
           <li
-            class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5"
+            hlmBadge
+            variant="outline"
+            class="gap-1"
             data-testid="sort-chip"
             [attr.data-prop]="chip.prop"
           >
-            <span>{{ chip.name }} {{ chip.dir === 'asc' ? '↑' : '↓' }}</span>
+            <span>{{ chip.name }}</span>
+            <ng-icon
+              [name]="chip.dir === 'asc' ? 'lucideArrowUp' : 'lucideArrowDown'"
+              [attr.data-dir]="chip.dir"
+              data-testid="sort-chip-dir"
+            />
+            <span class="sr-only">{{ chip.dir === 'asc' ? 'aufsteigend' : 'absteigend' }}</span>
             <button
               type="button"
-              class="text-muted hover:text-danger"
+              hlmBtn
+              variant="ghost"
+              size="icon-xs"
+              class="size-4 rounded-full hover:text-destructive"
               data-testid="sort-chip-remove"
               [attr.aria-label]="'Sortierung entfernen: ' + chip.name"
               (click)="remove(i)"
             >
-              ×
+              <ng-icon name="lucideX" />
             </button>
           </li>
         }

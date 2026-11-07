@@ -9,6 +9,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { HlmButton } from '@spartan-ng/helm/button';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
@@ -35,20 +36,22 @@ export const TABLE_PAGE_SIZE = 200;
  */
 @Component({
   selector: 'ag-table-view',
-  imports: [ConfirmDialogComponent, ConflictDialogComponent, DataTableComponent],
+  imports: [ConfirmDialogComponent, ConflictDialogComponent, DataTableComponent, HlmButton],
   providers: [InlineEditService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (selection().size > 0) {
       <div
-        class="mb-2 flex items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm"
+        class="mb-2 flex items-center gap-3 rounded-lg border bg-card px-3 py-2 text-sm"
         data-testid="selection-bar"
       >
         <span>{{ selection().size }} ausgewählt</span>
         @if (canWrite()) {
           <button
             type="button"
-            class="rounded-md border border-danger px-2 py-1 text-danger hover:bg-surface-hover"
+            hlmBtn
+            variant="destructive"
+            size="sm"
             data-testid="archive-selected"
             (click)="confirmArchive.set(true)"
           >
@@ -57,19 +60,21 @@ export const TABLE_PAGE_SIZE = 200;
         }
         <button
           type="button"
-          class="text-muted hover:text-fg"
+          hlmBtn
+          variant="ghost"
+          size="sm"
           data-testid="selection-clear"
           (click)="selection.set(emptySelection)"
         >
           Auswahl aufheben
         </button>
         @if (archiveError(); as message) {
-          <span class="text-danger" role="alert">{{ message }}</span>
+          <span class="text-destructive" role="alert">{{ message }}</span>
         }
       </div>
     }
     @if (pager.count(); as count) {
-      <p class="mb-1 text-xs text-muted" data-testid="match-count">
+      <p class="mb-1 text-xs text-muted-foreground" data-testid="match-count">
         {{ count >= 10000 ? 'mehr als 10 000' : count }} Treffer
       </p>
     }

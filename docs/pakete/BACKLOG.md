@@ -23,8 +23,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-017](AP-017-frontend-raw-historie.md) | Frontend: Raw-View (bearbeitbar), Historie mit Diff, Aktivitätsfeed | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-014 | abgeschlossen | 7492762 |
 | [AP-018](AP-018-docker-compose.md) | Docker Compose für den lokalen Start ohne Aspire (Postgres, API, Nginx + Angular) | Betrieb | implementer-sonnet | AP-011 | abgeschlossen | f1c615a |
 | [AP-019](AP-019-ui-fundament-spartan.md) | UI-Fundament: spartan/ui (shadcn), Theme neutral, Shell, Referenz-Migration | UI | implementer-opus | AP-012–AP-017 | abgeschlossen | eda627c |
-| [AP-020](AP-020-ui-migration-verwaltung.md) | UI-Migration: Verwaltung, Spaces, Collections, Aktivität | UI | implementer-sonnet | AP-019 | abgeschlossen | |
-| [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | angelegt | |
+| [AP-020](AP-020-ui-migration-verwaltung.md) | UI-Migration: Verwaltung, Spaces, Collections, Aktivität | UI | implementer-sonnet | AP-019 | abgeschlossen | 5463f97 |
+| [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | abgeschlossen | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -35,6 +35,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-019 Review | Brain setzt `aria-invalid` fest auf `control.invalid` (schon vor der ersten Eingabe), roter Rahmen erst bei ungültig+berührt; nicht konfigurierbar | Upstream-Issue bei spartan oder eigene Brain-Erweiterung, wenn ein A11y-Paket ansteht |
 | AP-020 Review | Brain-Popover setzt `role="dialog"` am Overlay ohne Label-Input; Name nur als `role="group"` innerhalb | mit dem aria-invalid-Punkt als Upstream-Issue bei spartan |
 | AP-020 Bericht | Schema-Übersicht der Collection als `<details>`, kein Helm-Collapsible erzeugt | bei Bedarf `ng g @spartan-ng/cli:ui collapsible` und umstellen |
+| AP-021 Review | Spalten-Panel (Spalten ein-/ausblenden) ohne Test; kein Test für `lucideKanban` im Board-Tab | mit dem nächsten Paket an `view-page` nachziehen |
 | AP-019 Review | `HlmSidebarService` schreibt Cookie `sidebar_state` (`path=/`), geht bei jedem API-Request mit | unkritisch; bei Cookie-Policy-Änderungen beachten |
 | AP-002 Review | `HealthService` lädt `/health` nur einmal; startet das Backend später, bleibt „nicht erreichbar“ bis zum Reload | Phase 1: Polling oder Klick-Reload im Paket zur Kopfzeile/Statusanzeige |
 | AP-012 Review | Markdown-Bilder laden als `<img src>` von fremder Herkunft (Tracking/IP-Leak) | Entschieden: Platzhalter-NodeView (alt + URL-Text), umgesetzt in AP-014-Nacharbeit; Bild-Proxy Phase 3 |

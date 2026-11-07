@@ -10,6 +10,13 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
+import { HlmTableImports } from '@spartan-ng/helm/table';
 import { firstValueFrom, fromEvent, takeUntil } from 'rxjs';
 import { ApiClient } from '../../../core/api/api-client';
 import { ApiError } from '../../../core/api/api-error';
@@ -58,13 +65,23 @@ interface Comparison {
     ActorLabelComponent,
     BadgeComponent,
     ConfirmDialogComponent,
+    HlmAlertImports,
+    HlmButton,
+    HlmCheckbox,
+    HlmSkeleton,
+    HlmTableImports,
+    NgIcon,
     RecordHeaderComponent,
   ],
+  providers: [provideIcons({ lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="mx-auto max-w-4xl p-6">
       @if (recordError(); as message) {
-        <p class="text-sm text-danger" role="alert" data-testid="load-error">{{ message }}</p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
       } @else if (record(); as record) {
         <ag-record-header
           [recordId]="recordId()"
@@ -73,7 +90,7 @@ interface Comparison {
           [collectionId]="record.collectionId"
         />
 
-        <p class="mt-3 text-sm text-muted">
+        <p class="mt-3 text-sm text-muted-foreground">
           Wähle eine Revision, um sie mit der vorherigen zu vergleichen, oder zwei Revisionen, um
           sie untereinander zu vergleichen.
         </p>
@@ -84,51 +101,51 @@ interface Comparison {
           </p>
         }
         @if (actionError(); as message) {
-          <p
-            class="mt-3 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-            role="alert"
-            data-testid="action-error"
-          >
-            {{ message }}
-          </p>
+          <div hlmAlert variant="destructive" class="mt-3" data-testid="action-error">
+            <ng-icon name="lucideCircleAlert" />
+            <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+          </div>
         }
         @if (listError(); as message) {
-          <p class="mt-3 text-sm text-danger" role="alert" data-testid="history-error">
-            {{ message }}
-          </p>
+          <div hlmAlert variant="destructive" class="mt-3" data-testid="history-error">
+            <ng-icon name="lucideCircleAlert" />
+            <p hlmAlertDescription>{{ message }}</p>
+          </div>
         }
 
         <ul
-          class="mt-4 divide-y divide-border rounded-lg border border-border"
+          class="mt-4 divide-y divide-border rounded-xl border border-border bg-card text-card-foreground"
           data-testid="revisions"
         >
           @for (rev of items(); track rev.no) {
             <li
               class="flex flex-wrap items-center gap-3 px-4 py-2 text-sm"
-              [class.bg-surface-hover]="isSelected(rev.no)"
+              [class.bg-muted]="isSelected(rev.no)"
               data-testid="revision"
               [attr.data-no]="rev.no"
             >
-              <input
-                type="checkbox"
+              <hlm-checkbox
                 [checked]="isSelected(rev.no)"
-                [attr.aria-label]="'Revision ' + rev.no + ' vergleichen'"
+                [aria-label]="'Revision ' + rev.no + ' vergleichen'"
                 data-testid="revision-select"
-                (change)="toggle(toNumber(rev.no))"
+                (checkedChange)="toggle(toNumber(rev.no))"
               />
               <span class="w-12 font-mono" data-testid="revision-no">#{{ rev.no }}</span>
               <ag-badge>{{ kindLabel(rev.kind) }}</ag-badge>
               <ag-actor-label [actorId]="rev.actorId" />
-              <span class="text-muted">{{ rev.at | date: 'dd.MM.yyyy HH:mm' }}</span>
+              <span class="text-muted-foreground">{{ rev.at | date: 'dd.MM.yyyy HH:mm' }}</span>
               @if (rev.reason) {
-                <span class="min-w-0 truncate text-muted" data-testid="revision-reason"
+                <span class="min-w-0 truncate text-muted-foreground" data-testid="revision-reason"
                   >„{{ rev.reason }}“</span
                 >
               }
               @if (canRestore() && toNumber(rev.no) !== currentRevision()) {
                 <button
                   type="button"
-                  class="ml-auto rounded-md border border-border px-2 py-0.5 hover:bg-surface-hover"
+                  hlmBtn
+                  variant="outline"
+                  size="xs"
+                  class="ml-auto"
                   data-testid="revision-restore"
                   (click)="prepareRestore(toNumber(rev.no))"
                 >
@@ -138,14 +155,16 @@ interface Comparison {
             </li>
           } @empty {
             @if (!listLoading() && !listError()) {
-              <li class="px-4 py-3 text-muted">Keine Revisionen.</li>
+              <li class="px-4 py-3 text-muted-foreground">Keine Revisionen.</li>
             }
           }
         </ul>
         @if (nextCursor()) {
           <button
             type="button"
-            class="mt-3 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-hover disabled:opacity-60"
+            hlmBtn
+            variant="outline"
+            class="mt-3"
             data-testid="load-more"
             [disabled]="listLoading()"
             (click)="loadMore()"
@@ -163,15 +182,16 @@ interface Comparison {
             }
           </h2>
           @if (comparisonError(); as message) {
-            <p class="mt-2 text-sm text-danger" role="alert" data-testid="diff-error">
-              {{ message }}
-            </p>
+            <div hlmAlert variant="destructive" class="mt-2" data-testid="diff-error">
+              <ng-icon name="lucideCircleAlert" />
+              <p hlmAlertDescription>{{ message }}</p>
+            </div>
           } @else if (diff(); as diff) {
             <div data-testid="diff">
               @if (diff.title; as title) {
                 <h3 class="mt-4 text-sm font-semibold">Titel</h3>
                 <p class="mt-1 text-sm" data-testid="diff-title">
-                  <del class="text-danger">{{ title.old }}</del>
+                  <del class="text-destructive">{{ title.old }}</del>
                   →
                   <ins class="text-success no-underline">{{ title.new }}</ins>
                 </p>
@@ -179,27 +199,35 @@ interface Comparison {
 
               <h3 class="mt-4 text-sm font-semibold">Properties</h3>
               @if (diff.properties.length > 0) {
-                <table class="mt-1 w-full text-left text-sm" data-testid="diff-properties">
-                  <thead class="text-muted">
-                    <tr>
-                      <th class="w-1/4 py-1 font-normal">Key</th>
-                      <th class="w-3/8 py-1 font-normal">Alt</th>
-                      <th class="w-3/8 py-1 font-normal">Neu</th>
+                <table hlmTable class="mt-1 text-left" data-testid="diff-properties">
+                  <thead hlmTHead>
+                    <tr hlmTr>
+                      <th hlmTh class="h-8 w-1/4 text-muted-foreground">Key</th>
+                      <th hlmTh class="h-8 w-3/8 text-muted-foreground">Alt</th>
+                      <th hlmTh class="h-8 w-3/8 text-muted-foreground">Neu</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody hlmTBody>
                     @for (change of diff.properties; track change.key) {
                       <tr
-                        class="border-t border-border"
+                        hlmTr
                         data-testid="diff-property"
                         [attr.data-key]="change.key"
                         [attr.data-kind]="change.kind"
                       >
-                        <td class="py-1 pr-2 font-mono">{{ change.key }}</td>
-                        <td class="py-1 pr-2 break-all text-danger" data-testid="diff-old">
+                        <td hlmTd class="py-1 font-mono">{{ change.key }}</td>
+                        <td
+                          hlmTd
+                          class="py-1 break-all whitespace-normal text-destructive"
+                          data-testid="diff-old"
+                        >
                           {{ format(change.old) }}
                         </td>
-                        <td class="py-1 break-all text-success" data-testid="diff-new">
+                        <td
+                          hlmTd
+                          class="py-1 break-all whitespace-normal text-success"
+                          data-testid="diff-new"
+                        >
                           {{ format(change.new) }}
                         </td>
                       </tr>
@@ -207,23 +235,28 @@ interface Comparison {
                   </tbody>
                 </table>
               } @else {
-                <p class="mt-1 text-sm text-muted">Keine Änderungen an den Properties.</p>
+                <p class="mt-1 text-sm text-muted-foreground">
+                  Keine Änderungen an den Properties.
+                </p>
               }
 
               <h3 class="mt-4 text-sm font-semibold">Body</h3>
               @if (diff.bodyChanged) {
                 <pre
-                  class="mt-1 overflow-x-auto rounded-md border border-border bg-surface text-sm"
+                  class="mt-1 overflow-x-auto rounded-md border border-border bg-card text-sm"
                   data-testid="diff-body"
                 ><code>@for (line of diff.body; track $index) {<span class="block px-2 whitespace-pre-wrap" data-testid="diff-line" [attr.data-kind]="line.kind" [class]="lineClass(line.kind)">{{ linePrefix(line.kind) }}{{ line.text }}</span>}</code></pre>
               } @else {
-                <p class="mt-1 text-sm text-muted">Der Body ist unverändert.</p>
+                <p class="mt-1 text-sm text-muted-foreground">Der Body ist unverändert.</p>
               }
             </div>
           }
         }
       } @else {
-        <p class="text-sm text-muted">Wird geladen …</p>
+        <div class="flex flex-col gap-3" data-testid="record-loading">
+          <hlm-skeleton class="h-6 w-48" />
+          <hlm-skeleton class="h-40 w-full" />
+        </div>
       }
     </section>
 
@@ -412,8 +445,8 @@ export class RecordHistoryComponent {
     return kind === 'add'
       ? 'bg-success/10 text-success'
       : kind === 'remove'
-        ? 'bg-danger/10 text-danger'
-        : 'text-muted';
+        ? 'bg-destructive/10 text-destructive'
+        : 'text-muted-foreground';
   }
 
   protected linePrefix(kind: string): string {

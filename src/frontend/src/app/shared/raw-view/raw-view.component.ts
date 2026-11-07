@@ -15,6 +15,8 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { ThemeService } from '../../core/theme/theme.service';
 import { CODE_EDITOR_FACTORY, CodeEditorHandle, RawLanguage } from './code-editor.adapter';
 
@@ -39,20 +41,21 @@ function checkJson(text: string): JsonCheck {
  */
 @Component({
   selector: 'ag-raw-view',
+  imports: [HlmButton, HlmSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    class: 'flex flex-col rounded-lg border border-border bg-surface',
+    class: 'flex flex-col rounded-lg border border-border bg-card',
     '[attr.data-language]': 'language()',
   },
   template: `
     <div class="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-xs">
-      <span class="font-mono uppercase text-muted">{{ language() }}</span>
+      <span class="font-mono uppercase text-muted-foreground">{{ language() }}</span>
       <div class="flex items-center gap-3">
         @if (language() === 'json') {
           @if (isValid()) {
             <span class="text-success" data-testid="raw-status">gültig</span>
           } @else {
-            <span class="text-danger" data-testid="raw-status" role="alert"
+            <span class="text-destructive" data-testid="raw-status" role="alert"
               >ungültig: {{ error() }}</span
             >
           }
@@ -60,7 +63,9 @@ function checkJson(text: string): JsonCheck {
         @if (!readonly()) {
           <button
             type="button"
-            class="rounded border border-border px-2 py-0.5 hover:bg-surface-hover"
+            hlmBtn
+            variant="outline"
+            size="xs"
             data-testid="raw-mode-toggle"
             [attr.aria-pressed]="editing()"
             (click)="editing.set(!editing())"
@@ -71,11 +76,11 @@ function checkJson(text: string): JsonCheck {
       </div>
     </div>
     @if (loadFailed()) {
-      <div class="px-3 py-2 text-sm text-danger" role="alert" data-testid="load-error">
+      <div class="px-3 py-2 text-sm text-destructive" role="alert" data-testid="load-error">
         Ansicht konnte nicht geladen werden.
       </div>
     } @else if (!ready()) {
-      <div class="px-3 py-2 text-sm text-muted">Ansicht wird geladen …</div>
+      <div class="px-3 py-2"><hlm-skeleton class="h-4 w-full" /></div>
     }
     <div #host class="min-h-48 flex-1" data-testid="raw-view-body"></div>
   `,

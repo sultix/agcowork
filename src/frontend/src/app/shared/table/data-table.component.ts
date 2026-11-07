@@ -25,6 +25,11 @@ import {
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideArrowDown, lucideArrowUp } from '@ng-icons/lucide';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { SortSpec, isSortable } from '../filter/filter-dsl';
 import { PropertyEditorComponent } from '../properties/property-editor.component';
 import type { PropertyDefinition, PropertyType } from '../properties/property-types';
@@ -87,14 +92,19 @@ function sameJson(a: unknown, b: unknown): boolean {
     CdkVirtualForOf,
     CdkVirtualScrollViewport,
     CellValueComponent,
+    HlmButton,
+    HlmInput,
+    HlmSkeleton,
+    NgIcon,
     PropertyEditorComponent,
     RouterLink,
   ],
+  providers: [provideIcons({ lucideArrowDown, lucideArrowUp })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block text-sm', '[attr.data-row-count]': 'rows().length' },
   template: `
     <div
-      class="rounded-md border border-border bg-surface"
+      class="overflow-hidden rounded-md border border-border bg-card text-card-foreground"
       role="grid"
       aria-label="Records"
       [attr.aria-rowcount]="rows().length + 1"
@@ -103,7 +113,7 @@ function sameJson(a: unknown, b: unknown): boolean {
     >
       <div class="overflow-hidden border-b border-border" #header>
         <div class="flex" role="row" [style.width.px]="totalWidth()" data-testid="table-header">
-          <div class="sticky left-0 z-10 flex bg-surface">
+          <div class="sticky left-0 z-10 flex bg-card">
             <div
               class="flex items-center justify-center"
               role="columnheader"
@@ -111,6 +121,7 @@ function sameJson(a: unknown, b: unknown): boolean {
             >
               <input
                 type="checkbox"
+                class="size-4 accent-primary"
                 aria-label="Alle geladenen Records auswählen"
                 data-testid="select-all"
                 [checked]="allSelected()"
@@ -128,15 +139,28 @@ function sameJson(a: unknown, b: unknown): boolean {
             >
               <button
                 type="button"
-                class="flex h-9 min-w-0 flex-1 items-center gap-1 px-2 text-left font-medium text-muted hover:text-fg"
+                hlmBtn
+                variant="ghost"
+                class="h-9 min-w-0 flex-1 justify-start gap-1 rounded-none px-2 text-muted-foreground"
                 data-testid="sort-button"
                 (click)="onSortClick(titleKey, $event)"
               >
                 <span class="truncate">{{ titleName() }}</span>
-                <span data-testid="sort-indicator">{{ sortIndicator(titleKey) }}</span>
+                <span
+                  class="inline-flex items-center"
+                  data-testid="sort-indicator"
+                  [attr.data-dir]="sortDir(titleKey)"
+                >
+                  @if (sortDir(titleKey); as dir) {
+                    <ng-icon [name]="dir === 'asc' ? 'lucideArrowUp' : 'lucideArrowDown'" />
+                    @if (sortRank(titleKey); as rank) {
+                      <span class="text-xs">{{ rank }}</span>
+                    }
+                  }
+                </span>
               </button>
               <span
-                class="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40"
+                class="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40"
                 data-testid="resize-handle"
                 (pointerdown)="startResize(titleKey, $event)"
               ></span>
@@ -151,7 +175,7 @@ function sameJson(a: unknown, b: unknown): boolean {
           >
             @for (column of columns(); track column.key) {
               <div
-                class="relative flex items-center bg-surface"
+                class="relative flex items-center bg-card"
                 role="columnheader"
                 cdkDrag
                 cdkDragLockAxis="x"
@@ -164,17 +188,30 @@ function sameJson(a: unknown, b: unknown): boolean {
                 <button
                   type="button"
                   cdkDragHandle
-                  class="flex h-9 min-w-0 flex-1 items-center gap-1 px-2 text-left font-medium text-muted hover:text-fg"
+                  hlmBtn
+                  variant="ghost"
+                  class="h-9 min-w-0 flex-1 justify-start gap-1 rounded-none px-2 text-muted-foreground"
                   data-testid="sort-button"
                   [attr.title]="column.definition.description ?? column.definition.name"
                   [class.cursor-default]="!sortable(column)"
                   (click)="sortable(column) && onSortClick(column.key, $event)"
                 >
                   <span class="truncate">{{ column.definition.name }}</span>
-                  <span data-testid="sort-indicator">{{ sortIndicator(column.key) }}</span>
+                  <span
+                    class="inline-flex items-center"
+                    data-testid="sort-indicator"
+                    [attr.data-dir]="sortDir(column.key)"
+                  >
+                    @if (sortDir(column.key); as dir) {
+                      <ng-icon [name]="dir === 'asc' ? 'lucideArrowUp' : 'lucideArrowDown'" />
+                      @if (sortRank(column.key); as rank) {
+                        <span class="text-xs">{{ rank }}</span>
+                      }
+                    }
+                  </span>
                 </button>
                 <span
-                  class="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40"
+                  class="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40"
                   data-testid="resize-handle"
                   (pointerdown)="startResize(column.key, $event)"
                 ></span>
@@ -185,11 +222,17 @@ function sameJson(a: unknown, b: unknown): boolean {
       </div>
 
       @if (rows().length === 0) {
-        <div class="p-6 text-center text-muted" data-testid="table-state">
+        <div class="p-6 text-center text-muted-foreground" data-testid="table-state">
           @if (loading()) {
-            Wird geladen …
+            <div class="flex flex-col gap-2" data-testid="table-loading">
+              <hlm-skeleton class="h-6 w-full" />
+              <hlm-skeleton class="h-6 w-full" />
+              <hlm-skeleton class="h-6 w-full" />
+            </div>
           } @else if (error()) {
-            <span class="text-danger" role="alert" data-testid="table-error">{{ error() }}</span>
+            <span class="text-destructive" role="alert" data-testid="table-error">{{
+              error()
+            }}</span>
           } @else {
             <span data-testid="table-empty">{{ emptyText() }}</span>
           }
@@ -205,7 +248,7 @@ function sameJson(a: unknown, b: unknown): boolean {
         >
           <div
             *cdkVirtualFor="let row of rows(); trackBy: trackById"
-            class="flex border-b border-border hover:bg-surface-hover"
+            class="flex border-b border-border hover:bg-muted/50"
             role="row"
             data-testid="table-row"
             [attr.data-id]="row.id"
@@ -213,7 +256,7 @@ function sameJson(a: unknown, b: unknown): boolean {
             [style.height.px]="rowHeight"
             [style.width.px]="totalWidth()"
           >
-            <div class="sticky left-0 z-[1] flex bg-surface">
+            <div class="sticky left-0 z-[1] flex bg-card">
               <div
                 class="flex items-center justify-center"
                 role="gridcell"
@@ -221,6 +264,7 @@ function sameJson(a: unknown, b: unknown): boolean {
               >
                 <input
                   type="checkbox"
+                  class="size-4 accent-primary"
                   data-testid="row-select"
                   [attr.aria-label]="'Auswählen: ' + row.title"
                   [checked]="selection().has(row.id)"
@@ -229,7 +273,7 @@ function sameJson(a: unknown, b: unknown): boolean {
               </div>
               <div
                 #titleCell
-                class="flex min-w-0 items-center px-2 outline-none focus:ring-2 focus:ring-accent focus:ring-inset"
+                class="flex min-w-0 items-center px-2 outline-none focus:ring-2 focus:ring-ring focus:ring-inset"
                 role="gridcell"
                 tabindex="0"
                 data-testid="table-cell"
@@ -237,7 +281,7 @@ function sameJson(a: unknown, b: unknown): boolean {
                 [attr.data-status]="cellStatus(row.id, titleKey)"
                 [attr.title]="cellMessage(row.id, titleKey)"
                 [class.ring-2]="!!cellStatus(row.id, titleKey)"
-                [class.ring-danger]="
+                [class.ring-destructive]="
                   cellStatus(row.id, titleKey) === 'error' ||
                   cellStatus(row.id, titleKey) === 'conflict'
                 "
@@ -246,7 +290,7 @@ function sameJson(a: unknown, b: unknown): boolean {
                 (keydown.enter)="startEdit(row, titleKey, null, titleCell)"
               >
                 <a
-                  class="truncate text-accent hover:underline"
+                  class="truncate font-medium underline underline-offset-4"
                   tabindex="-1"
                   data-testid="row-link"
                   [routerLink]="[...linkBase(), row.id]"
@@ -258,7 +302,7 @@ function sameJson(a: unknown, b: unknown): boolean {
             @for (column of columns(); track column.key) {
               <div
                 #cell
-                class="flex min-w-0 items-center px-2 outline-none focus:ring-2 focus:ring-accent focus:ring-inset"
+                class="flex min-w-0 items-center px-2 outline-none focus:ring-2 focus:ring-ring focus:ring-inset"
                 role="gridcell"
                 tabindex="0"
                 data-testid="table-cell"
@@ -267,7 +311,7 @@ function sameJson(a: unknown, b: unknown): boolean {
                 [attr.title]="cellMessage(row.id, column.key)"
                 [attr.aria-readonly]="!editable(row, column.definition)"
                 [class.ring-2]="!!cellStatus(row.id, column.key)"
-                [class.ring-danger]="
+                [class.ring-destructive]="
                   cellStatus(row.id, column.key) === 'error' ||
                   cellStatus(row.id, column.key) === 'conflict'
                 "
@@ -290,15 +334,21 @@ function sameJson(a: unknown, b: unknown): boolean {
         </cdk-virtual-scroll-viewport>
       }
 
-      <div class="flex items-center gap-3 border-t border-border px-3 py-2 text-xs text-muted">
+      <div
+        class="flex items-center gap-3 border-t border-border px-3 py-2 text-xs text-muted-foreground"
+      >
         <span data-testid="table-count">{{ rows().length }} geladen</span>
         @if (moreError(); as message) {
-          <span class="text-danger" role="alert" data-testid="table-more-error">{{ message }}</span>
+          <span class="text-destructive" role="alert" data-testid="table-more-error">{{
+            message
+          }}</span>
         }
         @if (hasMore()) {
           <button
             type="button"
-            class="rounded-md border border-border px-2 py-1 hover:bg-surface-hover disabled:opacity-60"
+            hlmBtn
+            variant="outline"
+            size="xs"
             data-testid="table-more"
             [disabled]="loadingMore()"
             (click)="loadMore.emit()"
@@ -322,7 +372,7 @@ function sameJson(a: unknown, b: unknown): boolean {
     >
       @if (editing(); as cell) {
         <div
-          class="w-72 rounded-md border border-border bg-surface p-2 shadow-lg"
+          class="w-72 rounded-md border bg-popover p-2 text-popover-foreground shadow-md"
           role="dialog"
           aria-label="Wert bearbeiten"
           tabindex="-1"
@@ -342,14 +392,14 @@ function sameJson(a: unknown, b: unknown): boolean {
           } @else {
             <input
               type="text"
-              class="w-full rounded-md border border-border bg-bg px-2 py-1"
+              hlmInput
               aria-label="Titel"
               data-testid="cell-title-input"
               [value]="draft() ?? ''"
               (input)="draft.set($any($event.target).value)"
             />
           }
-          <p class="mt-1 text-xs text-muted">
+          <p class="mt-1 text-xs text-muted-foreground">
             {{ multiline(cell) ? 'Strg+Enter' : 'Enter' }} speichert · Esc bricht ab
           </p>
         </div>
@@ -458,14 +508,14 @@ export class DataTableComponent {
     return isSortable(column.definition.type);
   }
 
-  protected sortIndicator(key: string): string {
+  protected sortDir(key: string): 'asc' | 'desc' | null {
+    return this.sorts().find((s) => s.prop === key)?.dir ?? null;
+  }
+
+  /** Position of the column in a multi-column sort (`null` for a single sort criterion). */
+  protected sortRank(key: string): number | null {
     const sorts = this.sorts();
-    const index = sorts.findIndex((s) => s.prop === key);
-    if (index < 0) {
-      return '';
-    }
-    const arrow = sorts[index].dir === 'asc' ? '↑' : '↓';
-    return sorts.length > 1 ? `${arrow}${index + 1}` : arrow;
+    return sorts.length > 1 ? sorts.findIndex((s) => s.prop === key) + 1 : null;
   }
 
   protected ariaSort(key: string): string | null {

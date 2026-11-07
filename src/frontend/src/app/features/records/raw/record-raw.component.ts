@@ -12,6 +12,11 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../../core/api/api-client';
 import type { components } from '../../../core/api/generated/schema';
@@ -62,11 +67,15 @@ function parseProperties(text: string): ParsedProperties {
   imports: [
     DatePipe,
     ConfirmDialogComponent,
+    HlmAlertImports,
+    HlmButton,
+    HlmSkeleton,
+    NgIcon,
     ConflictDialogComponent,
     RawViewComponent,
     RecordHeaderComponent,
   ],
-  providers: [RecordSaveService],
+  providers: [RecordSaveService, provideIcons({ lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:keydown)': 'onKeydown($event)',
@@ -75,7 +84,10 @@ function parseProperties(text: string): ParsedProperties {
   template: `
     <section class="mx-auto max-w-4xl p-6">
       @if (saver.loadError(); as message) {
-        <p class="text-sm text-danger" role="alert" data-testid="load-error">{{ message }}</p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
       } @else if (saver.record(); as record) {
         <ag-record-header
           [recordId]="recordId()"
@@ -85,7 +97,7 @@ function parseProperties(text: string): ParsedProperties {
         />
 
         <div
-          class="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted"
+          class="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground"
           data-testid="record-meta"
         >
           <span data-testid="record-revision">Revision {{ record.revision }}</span>
@@ -97,7 +109,7 @@ function parseProperties(text: string): ParsedProperties {
         </div>
 
         @if (readonly()) {
-          <p class="mt-3 text-sm text-muted" data-testid="readonly-notice">
+          <p class="mt-3 text-sm text-muted-foreground" data-testid="readonly-notice">
             {{
               record.archivedAt
                 ? 'Archiviert und schreibgeschützt.'
@@ -108,7 +120,7 @@ function parseProperties(text: string): ParsedProperties {
           <div class="mt-3">
             <button
               type="button"
-              class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg disabled:opacity-60"
+              hlmBtn
               data-testid="save"
               [disabled]="!canSave()"
               (click)="saveNow()"
@@ -119,40 +131,40 @@ function parseProperties(text: string): ParsedProperties {
         }
 
         @if (saver.saveError(); as message) {
-          <p
-            class="mt-3 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-            role="alert"
-            data-testid="save-error"
-          >
-            {{ message }}
+          <div hlmAlert variant="destructive" class="mt-3" data-testid="save-error">
+            <ng-icon name="lucideCircleAlert" />
+            <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
             @if (saver.bodyStale() !== null) {
               <button
                 type="button"
-                class="ml-2 rounded-md border border-danger px-2 py-0.5"
+                hlmAlertAction
+                hlmBtn
+                variant="outline"
+                size="xs"
                 data-testid="reload-stale"
                 (click)="reload()"
               >
                 Neu laden
               </button>
             }
-          </p>
+          </div>
         }
 
         @if (ready()) {
           @for (message of generalErrors(); track $index) {
-            <p class="mt-3 text-sm text-danger" role="alert" data-testid="general-error">
+            <p class="mt-3 text-sm text-destructive" role="alert" data-testid="general-error">
               {{ message }}
             </p>
           }
           <h2 class="mt-6 text-sm font-semibold">Properties (JSON)</h2>
           @if (errorList().length > 0) {
-            <ul class="mt-2 text-sm text-danger" role="alert" data-testid="json-errors">
+            <ul class="mt-2 text-sm text-destructive" role="alert" data-testid="json-errors">
               @for (error of errorList(); track $index) {
                 <li data-testid="json-error">
                   <span class="font-mono">{{ error.key }}</span
                   >: {{ error.message }}
                   @if (error.line !== null) {
-                    <span class="text-muted"> (Zeile {{ error.line }})</span>
+                    <span class="text-muted-foreground"> (Zeile {{ error.line }})</span>
                   }
                 </li>
               }
@@ -160,7 +172,7 @@ function parseProperties(text: string): ParsedProperties {
           }
           @if (parsed(); as p) {
             @if (!p.ok && !jsonSyntaxError()) {
-              <p class="mt-2 text-sm text-danger" role="alert" data-testid="json-shape-error">
+              <p class="mt-2 text-sm text-destructive" role="alert" data-testid="json-shape-error">
                 {{ p.error }}
               </p>
             }
@@ -191,7 +203,9 @@ function parseProperties(text: string): ParsedProperties {
           <div class="mt-6 flex items-center justify-between">
             <h2 class="text-sm font-semibold">
               Markdown mit Frontmatter
-              <span class="font-normal text-muted">(gespeicherter Stand, nur lesen)</span>
+              <span class="font-normal text-muted-foreground"
+                >(gespeicherter Stand, nur lesen)</span
+              >
             </h2>
             <div class="flex items-center gap-2 text-sm">
               @if (copied()) {
@@ -199,7 +213,9 @@ function parseProperties(text: string): ParsedProperties {
               }
               <button
                 type="button"
-                class="rounded-md border border-border px-3 py-1 hover:bg-surface-hover disabled:opacity-60"
+                hlmBtn
+                variant="outline"
+                size="sm"
                 data-testid="copy-markdown"
                 [disabled]="frontmatter() === ''"
                 (click)="copyMarkdown()"
@@ -209,7 +225,7 @@ function parseProperties(text: string): ParsedProperties {
             </div>
           </div>
           @if (frontmatterError(); as message) {
-            <p class="mt-2 text-sm text-danger" role="alert" data-testid="frontmatter-error">
+            <p class="mt-2 text-sm text-destructive" role="alert" data-testid="frontmatter-error">
               {{ message }}
             </p>
           }
@@ -218,7 +234,10 @@ function parseProperties(text: string): ParsedProperties {
           </div>
         }
       } @else {
-        <p class="text-sm text-muted">Wird geladen …</p>
+        <div class="flex flex-col gap-3" data-testid="record-loading">
+          <hlm-skeleton class="h-6 w-48" />
+          <hlm-skeleton class="h-64 w-full" />
+        </div>
       }
     </section>
 

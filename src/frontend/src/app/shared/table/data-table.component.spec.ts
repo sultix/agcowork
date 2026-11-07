@@ -1,16 +1,21 @@
 import { CdkDropList } from '@angular/cdk/drag-drop';
-import { Component, signal } from '@angular/core';
+import { Component, Provider, signal } from '@angular/core';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import {
+  API,
+  COLLECTION_ID,
   RECORD_ID,
   STATUS_DEFINITION,
   pageProviders,
   propertyDefinition,
   recordDto,
+  respond,
   settle,
   typeInto,
 } from '../../core/testing/test-utils';
+import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import type { SortSpec } from '../filter/filter-dsl';
 import { DataTableComponent, TableColumn } from './data-table.component';
 import { CellEditor, CellState, TableRecord } from './inline-edit';
@@ -85,8 +90,13 @@ describe('DataTableComponent', () => {
     recordDto({ id: 'r2', title: 'Zweiter', revision: 1, properties: { status: 'done' } as never }),
   ];
 
-  async function render(setup: (h: HostComponent) => void = () => undefined): Promise<void> {
-    TestBed.configureTestingModule({ providers: pageProviders({ routes: [] }) });
+  async function render(
+    setup: (h: HostComponent) => void = () => undefined,
+    extraProviders: Provider[] = [],
+  ): Promise<void> {
+    TestBed.configureTestingModule({
+      providers: [...pageProviders({ routes: [] }), ...extraProviders],
+    });
     fixture = TestBed.createComponent(HostComponent);
     host = fixture.componentInstance;
     host.rows.set(ROWS);
@@ -154,9 +164,12 @@ describe('DataTableComponent', () => {
       { prop: 'status', multi: false },
       { prop: 'title', multi: true },
     ]);
-    expect(text(root().querySelector('[data-key="estimate"] [data-testid="sort-indicator"]'))).toBe(
-      '↓',
-    );
+    expect(
+      root()
+        .querySelector('[data-key="estimate"] [data-testid="sort-indicator"]')!
+        .getAttribute('data-dir'),
+    ).toBe('desc');
+
     expect(root().querySelector('[data-key="estimate"]')!.getAttribute('aria-sort')).toBe(
       'descending',
     );
@@ -267,6 +280,84 @@ describe('DataTableComponent', () => {
 
       expect(editor()).toBeNull();
       expect(saves()).toEqual([]);
+    });
+
+    it('edit_SelectWithKeyboardThenEscape_ClosesWithoutSaving', async () => {
+      await render();
+
+      const pane = await openEditor(0, 'status');
+      const select = pane.querySelector<HTMLSelectElement>('[data-testid="editor-select"]')!;
+      key(select, 'ArrowDown');
+      typeInto(select, 'done');
+      key(select, 'Escape');
+      await settle(fixture);
+
+      expect(editor()).toBeNull();
+      expect(saves()).toEqual([]);
+    });
+
+    describe('relation editor with its suggestion list', () => {
+      const RELATION = propertyDefinition({
+        key: 'parent',
+        name: 'Eltern',
+        type: 'relation',
+        targetCollectionId: COLLECTION_ID,
+      });
+      const candidates = {
+        items: [
+          recordDto({ id: 'c1', title: 'Login bauen' }),
+          recordDto({ id: 'c2', title: 'Logout bauen' }),
+        ],
+        nextCursor: null,
+      };
+
+      async function openRelation(): Promise<{ pane: HTMLElement; search: HTMLInputElement }> {
+        // with a workspace slug the members store loads: answer it, or the app never settles
+        const rendering = render(
+          (h) => h.columns.set([{ key: RELATION.key, definition: RELATION }]),
+          [{ provide: WorkspaceContext, useValue: { slug: () => 'demo' } }],
+        );
+        const http = TestBed.inject(HttpTestingController);
+        await respond(http, 'GET', `${API}/members`, []);
+        await rendering;
+        // the editor loads the candidates: the request keeps the app unstable until it is answered
+        cell(0, 'parent').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        await respond(
+          http,
+          'GET',
+          `${API}/records?collectionId=${COLLECTION_ID}&limit=200`,
+          candidates,
+        );
+        await settle(fixture);
+        const pane = editor()!;
+        const search = pane.querySelector<HTMLInputElement>('[data-testid="relation-search"]')!;
+        typeInto(search, 'logo');
+        await settle(fixture);
+        pane.querySelector<HTMLElement>('[data-testid="relation-suggestion"]')!.click();
+        await settle(fixture);
+        return { pane, search };
+      }
+
+      it('edit_RelationPickedFromSuggestions_EnterSaves', async () => {
+        const { search } = await openRelation();
+        expect(editor()).not.toBeNull(); // picking a suggestion alone does not save
+
+        key(search, 'Enter');
+        await settle(fixture);
+
+        expect(editor()).toBeNull();
+        expect(saves()).toEqual([{ id: RECORD_ID, key: 'parent', value: 'c2', revision: 3 }]);
+      });
+
+      it('edit_RelationPickedFromSuggestions_EscapeDiscards', async () => {
+        const { search } = await openRelation();
+
+        key(search, 'Escape');
+        await settle(fixture);
+
+        expect(editor()).toBeNull();
+        expect(saves()).toEqual([]);
+      });
     });
 
     it('edit_UnchangedValue_SavesNothing', async () => {

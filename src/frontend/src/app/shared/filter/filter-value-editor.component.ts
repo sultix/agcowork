@@ -7,6 +7,7 @@ import {
   linkedSignal,
   output,
 } from '@angular/core';
+import { HlmInput } from '@spartan-ng/helm/input';
 import { MembersStore } from '../../core/workspace/members.store';
 import { PropertyEditorComponent } from '../properties/property-editor.component';
 import type { PropertyDefinition, PropertyType } from '../properties/property-types';
@@ -31,13 +32,14 @@ type ValueEditor =
  */
 @Component({
   selector: 'ag-filter-value-editor',
-  imports: [PropertyEditorComponent],
+  imports: [HlmInput, PropertyEditorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @switch (editor().kind) {
       @case ('boolean') {
         <select
-          class="rounded-md border border-border bg-bg px-2 py-1 text-sm"
+          hlmInput
+          class="w-auto"
           data-testid="filter-value-boolean"
           aria-label="Wert"
           [disabled]="readonly()"
@@ -51,7 +53,7 @@ type ValueEditor =
       @case ('list') {
         <input
           type="text"
-          class="w-full rounded-md border border-border bg-bg px-2 py-1 text-sm"
+          hlmInput
           data-testid="filter-value-list"
           aria-label="Werte, durch Komma getrennt"
           placeholder="Wert 1, Wert 2"

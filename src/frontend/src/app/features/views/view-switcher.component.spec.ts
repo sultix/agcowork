@@ -124,6 +124,9 @@ describe('ViewSwitcherComponent and view page', () => {
     document.body.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   const all = (id: string) =>
     Array.from(root().querySelectorAll<HTMLElement>(`[data-testid="${id}"]`));
+  /** Whether each view tab carries the default-view mark (the star icon). */
+  const defaultMarks = () =>
+    all('view-tab').map((tab) => tab.querySelector('[data-testid="view-default-mark"]') !== null);
   const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
   /** Clicks and lets the click take effect; does not wait for stability (requests may follow). */
@@ -138,9 +141,13 @@ describe('ViewSwitcherComponent and view page', () => {
     await render();
 
     expect(router().url).toBe(`${BASE}/${CUSTOM_ID}`);
-    expect(all('view-tab').map(text)).toEqual(['▦ Tabelle', '▦ Offene ★']);
-    expect(q('view-tab')!.getAttribute('aria-selected')).toBe('false');
-    expect(all('view-tab')[1].getAttribute('aria-selected')).toBe('true');
+    expect(all('view-tab').map(text)).toEqual(['Tabelle', 'Offene (Standard)']);
+    expect(defaultMarks()).toEqual([false, true]);
+    expect(
+      all('view-tab').map((tab) => tab.querySelector('ng-icon')!.getAttribute('data-icon')),
+    ).toEqual(['lucideTable', 'lucideTable']);
+    expect(q('view-tab')!.getAttribute('aria-current')).toBeNull();
+    expect(all('view-tab')[1].getAttribute('aria-current')).toBe('page');
     expect(all('table-row')).toHaveLength(1);
   });
 
@@ -177,7 +184,10 @@ describe('ViewSwitcherComponent and view page', () => {
     });
     query.flush(queryPage([recordDto()]));
     await settle(harness.fixture);
-    expect(all('sort-chip').map(text)).toEqual(['Schätzung ↑ ×']);
+    expect(all('sort-chip').map((chip) => text(chip).replace('Schätzung', 'Schätzung '))).toEqual([
+      'Schätzung aufsteigend',
+    ]);
+    expect(all('sort-chip-dir').map((d) => d.dataset['dir'])).toEqual(['asc']);
     expect(q('view-modified')).not.toBeNull();
 
     await click(q('view-save'));
@@ -285,7 +295,8 @@ describe('ViewSwitcherComponent and view page', () => {
     });
     await settle(harness.fixture);
 
-    expect(all('view-tab').map(text)).toEqual(['▦ Tabelle ★', '▦ Offene']);
+    expect(all('view-tab').map(text)).toEqual(['Tabelle (Standard)', 'Offene']);
+    expect(defaultMarks()).toEqual([true, false]);
     expect(q('view-make-default')).toBeNull();
   });
 

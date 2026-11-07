@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | UI |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-019: `features/auth/login.component.ts` (Formular), `features/workspaces/` (Liste, Dropdown), `features/workspace-shell/` (Layout, Icons), `shared/ui/confirm-dialog.component.ts` (Alert-Dialog); Mapping-Tabelle und Faustregeln in `docs/02-ARCHITEKTUR.md` §6 „UI-Bausteine“ |
@@ -56,3 +56,9 @@ Dokument-, Tabellen-, Board-, Raw- und Historien-Ansicht samt Filter-Leiste und 
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-sonnet übergeben (parallel zu AP-020) |
+| 2026-11-07 | Bericht: Dialoge (Konflikt, Anlage, Markdown) als Helm-(Alert-)Dialog, Lucide statt Unicode-Glyphen, Data-Table nur optisch angeglichen; bewusste Abweichungen: native `<select hlmInput>` und Checkboxen in Tabelle/Editoren/Filter, kein Brain-Popover im Zellen-Editor (Relation-Liste inline), Routen-Tabs als Links |
+| 2026-11-07 | Review: **Blockiert** – Konflikt-Dialog fokussierte „Neu laden“ (Brain-Default `first-tabbable`), Enter/Leertaste nach asynchronem 409 hätte ungespeicherte Änderungen verworfen; dazu sr-only-Texte für Icons, Dark-Tabs, Backdrop am Anlage-Dialog |
+| 2026-11-07 | Nacharbeit: `autoFocus="first-heading"` mit Test (ohne Fix rot, vom Orchestrator geprüft), sr-only-Texte, `nav`+`aria-current` statt `role="tab"`, `closeOnOutsidePointerEvents=false`, `hlm-checkbox` in Historie/Spalten-Panel |
+| 2026-11-07 | Orchestrator: Übergangs-Aliase aus `styles.css` entfernt (keine alte Klasse mehr im Code), Browser-Rauchtest im Compose-Stack (hell/dunkel, Dokument, Raw/Monaco, Tabelle, Anlage-Dialog, Mitglieder, Cmd+B) |
+| 2026-11-07 | abgeschlossen |

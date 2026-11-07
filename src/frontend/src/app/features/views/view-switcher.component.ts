@@ -1,5 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideBraces,
+  lucideCircleAlert,
+  lucideFileText,
+  lucideKanban,
+  lucideLayoutGrid,
+  lucideList,
+  lucidePlus,
+  lucideStar,
+  lucideTable,
+} from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { describeError } from '../../shared/ui/api-error-text';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
@@ -19,30 +36,59 @@ type Panel = 'none' | 'create' | 'rename';
  */
 @Component({
   selector: 'ag-view-switcher',
-  imports: [ConfirmDialogComponent, RouterLink],
+  imports: [
+    ConfirmDialogComponent,
+    HlmAlertImports,
+    HlmButton,
+    HlmInput,
+    HlmLabel,
+    NgClass,
+    NgIcon,
+    RouterLink,
+  ],
+  providers: [
+    provideIcons({
+      lucideCircleAlert,
+      lucidePlus,
+      lucideStar,
+      lucideTable,
+      lucideKanban,
+      lucideList,
+      lucideLayoutGrid,
+      lucideBraces,
+      lucideFileText,
+    }),
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex flex-wrap items-end gap-1 border-b border-border" data-testid="view-switcher">
-      <nav class="flex flex-wrap gap-1" role="tablist" aria-label="Views">
+    <div class="flex flex-wrap items-center gap-2" data-testid="view-switcher">
+      <nav
+        class="inline-flex w-fit flex-wrap items-center gap-1 rounded-lg bg-muted p-[3px] text-muted-foreground"
+        aria-label="Views"
+      >
         @for (view of store.views(); track view.id) {
           <a
-            role="tab"
-            class="-mb-px flex items-center gap-1 rounded-t-md border border-transparent px-3 py-1.5 text-sm hover:bg-surface-hover"
+            class="inline-flex h-8 items-center gap-1.5 rounded-md border border-transparent px-2.5 text-sm font-medium whitespace-nowrap outline-none transition-all hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             data-testid="view-tab"
             [attr.data-id]="view.id"
-            [attr.aria-selected]="view.id === activeId()"
-            [class.border-border]="view.id === activeId()"
-            [class.border-b-bg]="view.id === activeId()"
-            [class.bg-bg]="view.id === activeId()"
-            [class.font-medium]="view.id === activeId()"
+            [attr.aria-current]="view.id === activeId() ? 'page' : null"
+            [ngClass]="
+              view.id === activeId()
+                ? 'bg-background text-foreground shadow-sm dark:border-input dark:bg-input/30'
+                : ''
+            "
             [routerLink]="link(view)"
           >
-            <span aria-hidden="true" class="text-muted">{{ icon(view) }}</span>
+            <ng-icon aria-hidden="true" [name]="icon(view)" [attr.data-icon]="icon(view)" />
             {{ view.name }}
             @if (view.isDefault) {
-              <span class="text-xs text-muted" data-testid="view-default-mark" title="Standard-View"
-                >★</span
-              >
+              <ng-icon
+                name="lucideStar"
+                class="text-xs"
+                data-testid="view-default-mark"
+                title="Standard-View"
+              />
+              <span class="sr-only">(Standard)</span>
             }
           </a>
         }
@@ -50,17 +96,22 @@ type Panel = 'none' | 'create' | 'rename';
       @if (store.canWrite()) {
         <button
           type="button"
-          class="mb-1 ml-1 rounded-md px-2 py-1 text-sm text-accent hover:bg-surface-hover"
+          hlmBtn
+          variant="ghost"
+          size="sm"
           data-testid="view-new"
           (click)="openCreate()"
         >
-          + Neue View
+          <ng-icon name="lucidePlus" />
+          Neue View
         </button>
         @if (active(); as view) {
-          <div class="mb-1 ml-auto flex gap-2 text-sm">
+          <div class="ml-auto flex gap-1">
             <button
               type="button"
-              class="text-muted hover:text-fg"
+              hlmBtn
+              variant="ghost"
+              size="sm"
               data-testid="view-rename"
               (click)="openRename(view)"
             >
@@ -69,7 +120,9 @@ type Panel = 'none' | 'create' | 'rename';
             @if (!view.isDefault) {
               <button
                 type="button"
-                class="text-muted hover:text-fg"
+                hlmBtn
+                variant="ghost"
+                size="sm"
                 data-testid="view-make-default"
                 [disabled]="busy()"
                 (click)="makeDefault(view)"
@@ -79,7 +132,10 @@ type Panel = 'none' | 'create' | 'rename';
             }
             <button
               type="button"
-              class="text-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+              hlmBtn
+              variant="ghost"
+              size="sm"
+              class="hover:text-destructive"
               data-testid="view-delete"
               [disabled]="view.isSystem || busy()"
               [attr.title]="view.isSystem ? 'System-Views können nicht gelöscht werden.' : null"
@@ -94,14 +150,15 @@ type Panel = 'none' | 'create' | 'rename';
 
     @if (panel() === 'create') {
       <form
-        class="mt-2 flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface p-3 text-sm"
+        class="mt-2 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3 text-sm text-card-foreground"
         data-testid="view-create-form"
         (submit)="$event.preventDefault(); create()"
       >
-        <label class="flex flex-col gap-1">
-          <span class="text-muted">Name</span>
+        <label hlmLabel class="flex-col items-start gap-2">
+          Name
           <input
-            class="rounded-md border border-border bg-bg px-2 py-1"
+            hlmInput
+            class="w-48"
             data-testid="view-create-name"
             required
             maxlength="100"
@@ -109,10 +166,11 @@ type Panel = 'none' | 'create' | 'rename';
             (input)="name.set($any($event.target).value)"
           />
         </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-muted">Typ</span>
+        <label hlmLabel class="flex-col items-start gap-2">
+          Typ
           <select
-            class="rounded-md border border-border bg-bg px-2 py-1"
+            hlmInput
+            class="w-auto"
             data-testid="view-create-type"
             (change)="type.set($any($event.target).value)"
           >
@@ -122,10 +180,11 @@ type Panel = 'none' | 'create' | 'rename';
           </select>
         </label>
         @if (type() === 'board') {
-          <label class="flex flex-col gap-1">
-            <span class="text-muted">Gruppieren nach</span>
+          <label hlmLabel class="flex-col items-start gap-2">
+            Gruppieren nach
             <select
-              class="rounded-md border border-border bg-bg px-2 py-1"
+              hlmInput
+              class="w-auto"
               data-testid="view-create-group"
               (change)="groupBy.set($any($event.target).value)"
             >
@@ -138,37 +197,34 @@ type Panel = 'none' | 'create' | 'rename';
           </label>
         }
         @if (type() === 'list' || type() === 'gallery') {
-          <p class="w-full text-xs text-muted">
+          <p class="w-full text-xs text-muted-foreground">
             {{ typeLabel(type()) }} wird vorerst als Tabelle dargestellt.
           </p>
         }
         <button
           type="submit"
-          class="rounded-md bg-accent px-3 py-1.5 font-medium text-accent-fg disabled:opacity-60"
+          hlmBtn
           data-testid="view-create-submit"
           [disabled]="busy() || name().trim() === '' || (type() === 'board' && !groupBy())"
         >
           Anlegen
         </button>
-        <button
-          type="button"
-          class="rounded-md border border-border px-3 py-1.5 hover:bg-surface-hover"
-          (click)="panel.set('none')"
-        >
+        <button type="button" hlmBtn variant="outline" (click)="panel.set('none')">
           Abbrechen
         </button>
       </form>
     }
     @if (panel() === 'rename') {
       <form
-        class="mt-2 flex items-end gap-2 rounded-md border border-border bg-surface p-3 text-sm"
+        class="mt-2 flex items-end gap-3 rounded-xl border bg-card p-3 text-sm text-card-foreground"
         data-testid="view-rename-form"
         (submit)="$event.preventDefault(); rename()"
       >
-        <label class="flex flex-col gap-1">
-          <span class="text-muted">Neuer Name</span>
+        <label hlmLabel class="flex-col items-start gap-2">
+          Neuer Name
           <input
-            class="rounded-md border border-border bg-bg px-2 py-1"
+            hlmInput
+            class="w-48"
             data-testid="view-rename-name"
             required
             maxlength="100"
@@ -178,25 +234,22 @@ type Panel = 'none' | 'create' | 'rename';
         </label>
         <button
           type="submit"
-          class="rounded-md bg-accent px-3 py-1.5 font-medium text-accent-fg disabled:opacity-60"
+          hlmBtn
           data-testid="view-rename-submit"
           [disabled]="busy() || name().trim() === ''"
         >
           Umbenennen
         </button>
-        <button
-          type="button"
-          class="rounded-md border border-border px-3 py-1.5 hover:bg-surface-hover"
-          (click)="panel.set('none')"
-        >
+        <button type="button" hlmBtn variant="outline" (click)="panel.set('none')">
           Abbrechen
         </button>
       </form>
     }
     @if (error(); as message) {
-      <p class="mt-2 text-sm text-danger" role="alert" data-testid="view-action-error">
-        {{ message }}
-      </p>
+      <div hlmAlert variant="destructive" class="mt-2" data-testid="view-action-error">
+        <ng-icon name="lucideCircleAlert" />
+        <p hlmAlertDescription>{{ message }}</p>
+      </div>
     }
 
     <ag-confirm-dialog
@@ -239,7 +292,7 @@ export class ViewSwitcherComponent {
   }
 
   protected icon(view: ViewDto): string {
-    return VIEW_TYPE_ICONS[view.type] ?? '▦';
+    return VIEW_TYPE_ICONS[view.type] ?? 'lucideTable';
   }
 
   protected typeLabel(type: string): string {
