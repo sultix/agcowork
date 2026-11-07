@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-006: Collections-Use-Cases, `PropertyValueValidator`, Endpunkte und Isolationstests; AP-005: `RequireWritable`/`RequireScope`, `LockWorkspaceAsync`; AP-004: Fehler-Muster, `SaveChangesOrConflictAsync` |
@@ -97,3 +97,4 @@ Actor. Updates können eine erwartete Revision mitgeben, damit sich zwei Agenten
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |
