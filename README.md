@@ -37,6 +37,61 @@ cd src/Agcowork.Web && npm run lint
 
 CI (`.github/workflows/ci.yml`) führt Build, Lint und Tests für Backend und Frontend aus.
 
+## Agenten anbinden
+
+agcowork ist ein MCP-Server (Streamable HTTP, stateless). Jeder Workspace hat einen eigenen Endpunkt
+`/w/{slug}/mcp` mit den Inhalts-Tools (`workspace_overview`, `collection_describe`, `records_query`, `record_get`,
+`record_create`, `record_update`, `record_append`, …) und den Resources `agcowork://record/{id}`,
+`agcowork://collection/{id}/schema` und `agcowork://space/{id}/overview`. Der Endpunkt `/mcp` bietet die
+Instanz-Tools (`me`, `workspaces_list`, `templates_list`, `workspace_create`, `workspace_add_member`).
+
+1. **API-Key erzeugen:** in der Admin-UI unter Akteure einen Agenten anlegen und ihm einen Key ausstellen (der Key
+   `agck_…` wird nur einmal angezeigt). Den Agenten im gewünschten Workspace als Mitglied hinzufügen. Ein Key kann auf
+   einen Workspace und auf Scopes (z. B. nur `read`) eingeschränkt werden.
+2. **Claude Code konfigurieren** (`.mcp.json` im Projekt oder `claude mcp add --transport http …`):
+
+   ```json
+   {
+     "mcpServers": {
+       "agcowork-projekt-alpha": {
+         "type": "http",
+         "url": "https://agcowork.local/w/projekt-alpha/mcp",
+         "headers": { "Authorization": "Bearer agck_…" }
+       }
+     }
+   }
+   ```
+
+   Für mehrere Workspaces je einen Eintrag anlegen. Lokal mit Aspire ist die URL die der API (siehe Aspire-Dashboard),
+   z. B. `http://localhost:5xxx/w/<slug>/mcp`.
+3. **Erster Aufruf:** Der Agent sollte mit `workspace_overview` beginnen (Spaces, Collections, Beschreibungen) und vor dem
+   Schreiben `collection_describe` aufrufen. Fehler kommen strukturiert zurück (`code`, `errors[]` mit `allowed`,
+   `currentRevision` bei `revision_mismatch`), damit der Agent sich selbst korrigieren kann.
+
+Nur API-Keys werden akzeptiert; Session-Cookies erhalten 401. Ein Workspace, in dem der Key-Inhaber kein Mitglied ist,
+antwortet mit 404.
+
+**Clients ohne HTTP-Transport (nur stdio):** `src/Agcowork.Mcp.Stdio` ist eine kleine Brücke stdio ↔ Streamable HTTP:
+
+```json
+{
+  "mcpServers": {
+    "agcowork-projekt-alpha": {
+      "command": "dotnet",
+      "args": ["run", "--project", "src/Agcowork.Mcp.Stdio", "--", "--url", "https://agcowork.local/w/projekt-alpha/mcp"],
+      "env": { "AGCOWORK_API_KEY": "agck_…" }
+    }
+  }
+}
+```
+
+Den Key immer über die Umgebungsvariable `AGCOWORK_API_KEY` übergeben, nicht mit `--key` (das landet in Prozesslisten
+und der Shell-History). Lehnt der Server ab, meldet der Proxy auf stderr knapp den Grund (401: Key ungültig;
+404: Slug falsch, keine Mitgliedschaft oder Key auf einen anderen Workspace eingeschränkt).
+
+Als dotnet-Tool: `dotnet pack src/Agcowork.Mcp.Stdio` und `dotnet tool install --global --add-source <nupkg-Ordner>
+Agcowork.Mcp.Stdio`, danach `AGCOWORK_API_KEY=agck_… agcowork-mcp-stdio --url …`.
+
 ## Dokumentation
 
 - [Planung](docs/01-PLANUNG.md)

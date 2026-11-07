@@ -33,7 +33,8 @@ internal static class QueryEndpoints
         }.Select(row => $"{row.Types}: {string.Join(", ", OperatorMatrix.WireNamesFor(row.Type))}"))
         + "; json: not filterable";
 
-    private static readonly string DslDescription =
+    /// <summary>The filter DSL as text; also part of the MCP tool descriptions (records_query, view_create).</summary>
+    public static readonly string DslDescription =
         "Filter DSL: a node is { \"and\": [ … ] }, { \"or\": [ … ] }, { \"not\": { … } } or a condition { \"prop\", \"op\", \"value\" }; nest freely "
         + $"(max. {QueryParser.MaxFilterDepth} levels, {QueryParser.MaxConditions} conditions). 'prop' is a property key of the collection or a pseudo-field "
         + "(title, created_at, updated_at, created_by, updated_by; a schema property with the same key wins). Operators per type: "

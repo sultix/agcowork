@@ -312,7 +312,7 @@ Regeln:
 | Tool | Zweck |
 |---|---|
 | `workspace_overview()` | Spaces, Collections, Beschreibungen, Record-Zahlen – Einstieg für jeden Agenten |
-| `collection_describe(collectionId)` | Schema, JSON Schema, Vorlagen, Beispiel-Records, vorhandene Views |
+| `collection_describe(collectionId)` | Schema, JSON Schema, Vorlagen, Beispielwerte, vorhandene Views (umgesetzt AP-011) |
 | `collection_create(spaceId, name, description, schema)` | Neue Sammlung anlegen |
 | `collection_update_schema(collectionId, changes)` | Felder hinzufügen/ändern (additiv bevorzugt) |
 | `records_query(collectionId, filter?, sort?, fields?, limit?, cursor?)` | Abfrage mit Filter-DSL |
@@ -323,7 +323,7 @@ Regeln:
 | `record_archive(recordId)` | Soft-Delete |
 | `search(query, spaceId?, collectionId?, mode: fulltext | semantic)` | Suche über Titel, Properties, Body |
 | `comment_add(recordId, markdown, parentCommentId?)` | Kommentieren |
-| `history_get(recordId, limit?)` | Revisionen + Activity |
+| `history_get(recordId, limit?)` | Revisionen (Activity je Record über `activity_recent`, Phase 2 filterbar nach Record) |
 | `view_create(collectionId, type, name, filter?, sorts?, groupBy?, visibleProperties?)` | Ansicht für Menschen anlegen |
 | `activity_recent(spaceId?, since?, actorId?)` | „Was ist seit gestern passiert?“ |
 

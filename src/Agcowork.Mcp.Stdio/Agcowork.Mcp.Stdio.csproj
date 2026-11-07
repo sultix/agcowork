@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- stdio <-> Streamable HTTP bridge for MCP clients that cannot speak HTTP (architecture §4.2). Packed as dotnet tool. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>agcowork-mcp-stdio</ToolCommandName>
+    <PackageId>Agcowork.Mcp.Stdio</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+  </ItemGroup>
+
+</Project>

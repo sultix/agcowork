@@ -18,6 +18,11 @@
     <!-- Only for PasswordHasher<T>; ASP.NET Core Identity itself is not used. -->
     <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="10.0.14" />
   </ItemGroup>
+  <ItemGroup Label="MCP">
+    <!-- MCP server (Streamable HTTP, stateless) on /w/{workspaceSlug}/mcp and /mcp; the client is used by the tests. -->
+    <PackageVersion Include="ModelContextProtocol" Version="2.4.0" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
+  </ItemGroup>
   <ItemGroup Label="Data">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />

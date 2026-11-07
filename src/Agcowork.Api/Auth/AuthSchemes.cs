@@ -13,10 +13,13 @@ public static class AuthSchemes
     public const string Cookie = "Cookie";
 }
 
-/// <summary>Authorization policy names, shared by REST and (later) MCP and SignalR.</summary>
+/// <summary>Authorization policy names, shared by REST, MCP and (later) SignalR.</summary>
 public static class AuthPolicies
 {
     public const string Authenticated = "Authenticated";
     public const string InstanceAdmin = "InstanceAdmin";
     public const string WorkspacesCreate = "WorkspacesCreate";
+
+    /// <summary>API keys only, no session cookie: the MCP endpoints are for agents (AP-011).</summary>
+    public const string Agent = "Agent";
 }

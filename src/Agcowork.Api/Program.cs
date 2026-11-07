@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Agcowork.Api.Auth;
 using Agcowork.Api.Endpoints;
 using Agcowork.Api.Http;
+using Agcowork.Api.Mcp;
 using Agcowork.Api.Tenancy;
 using Agcowork.Application;
 using Agcowork.Infrastructure;
@@ -50,6 +51,7 @@ builder.Services.AddOpenApi(options => options
     .AddSchemaTransformer<ProblemDetailsSchemaTransformer>()
     .AddOperationTransformer<WorkspaceSlugOpenApiTransformer>());
 builder.Services.AddAgcoworkAuthentication(builder.Environment);
+builder.Services.AddAgcoworkMcp();
 
 var app = builder.Build();
 
@@ -74,6 +76,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapDefaultEndpoints();
 app.MapApiV1();
+app.MapAgcoworkMcp();
 
 // Build-time OpenAPI generation (Microsoft.Extensions.ApiDescription.Server) starts the host
 // via GetDocument.Insider without a database; skip migrations and bootstrap there.

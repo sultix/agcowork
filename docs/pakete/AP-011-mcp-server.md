@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Alle Use-Cases aus AP-004–AP-010 (MCP ist ein dünner Adapter darüber); `TenantResolutionMiddleware` + `TenantEndpointMetadata` (AP-005); `ProblemDetailsMapping` (Fehlerformat); `TenancyFixture` |
@@ -87,3 +87,9 @@ Produkts („agent-first“) eingelöst.
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Unterbrechung durch Nutzungslimit, danach fortgesetzt |
+| 2026-11-07 | Bericht: 956 Tests grün (61 MCP). SDK 2.4.0, stateless, Tool-Sets pro Endpunkt via `McpCatalog`, Policy `Agent` (nur ApiKey), `McpToolPipeline` (strukturierte Fehler inkl. Binding, Spans `mcp.tool <name>`), Instanz-Tools in eigenem DI-Scope, Resources mit Templates, stdio-Proxy als dotnet-Tool, README-Abschnitt. Neuer Use-Case `GetWorkspaceOverview`. Abweichungen: `history_get` nur Revisionen; `collection_describe` mit Views; `workspace_add_member` per workspaceId. MCP-Endpunkte aus OpenAPI ausgeschlossen |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; Tenancy/Auth/Stateless/Parität/Telemetrie/Proxy ohne Befund. Wichtig: interne Exceptions (ArgumentException etc. aus Agcowork.*) als Eingabefehler mit Message gemeldet (bricht Parität, leitet Agenten fehl); Robustheitspfade ohne Tests (internal_error, falscher JSON-Typ, Regex auf SDK-Wortlaut). Hinweise: Feldname `Idempotency-Key`, JSON Schema nur in structuredContent, mögliches Leak der Tool-Collections, Orchestrierung im Adapter, hart codierte Listen, `--key` in Prozessliste, Stacktrace bei Upstream-404 |
+| 2026-11-07 | Nacharbeit an implementer-opus (8 Punkte) |
+| 2026-11-07 | Nacharbeit fertig: 965 Tests grün (70 MCP). Interne Exceptions per Stacktrace-Prüfung → `internal_error` ohne Details (REST-Parität getestet); eigene Argumentprüfung gegen Input-Schema (required/invalid_value mit Parameter, verschachtelt mit JSON-Pfad); `McpDescriptions` mit Registry-Platzhaltern; `TenantScopes` (RunIsolated/RunInWorkspace); JSON Schema im describe-Text; Changed-Leak per Test ausgeschlossen; Proxy-Fehlermeldungen. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |

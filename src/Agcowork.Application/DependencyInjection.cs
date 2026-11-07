@@ -26,6 +26,7 @@ public static class DependencyInjection
         // Tenant of the current scope: set by the tenancy middleware, read by use cases and the DbContext filter.
         services.TryAddScoped<ITenantContextAccessor, TenantContextAccessor>();
         services.TryAddScoped<ITenantContext, CurrentTenantContext>();
+        services.TryAddSingleton<TenantScopes>();
 
         // Property values (AP-006); relation targets are records of the target collection (AP-007).
         services.TryAddScoped<PropertyValueValidator>();

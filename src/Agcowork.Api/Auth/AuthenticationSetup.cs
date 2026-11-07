@@ -60,6 +60,10 @@ internal static class AuthenticationSetup
 
         services.AddAuthorizationBuilder()
             .AddPolicy(AuthPolicies.Authenticated, policy => policy.RequireAuthenticatedUser().RequireClaim(ActorClaims.ActorId))
+            // Only the API key scheme is evaluated, so a session cookie never authenticates here (401).
+            .AddPolicy(AuthPolicies.Agent, policy => policy
+                .AddAuthenticationSchemes(AuthSchemes.ApiKey)
+                .RequireAuthenticatedUser().RequireClaim(ActorClaims.ActorId))
             .AddPolicy(AuthPolicies.InstanceAdmin, policy => policy
                 .RequireAuthenticatedUser().RequireClaim(ActorClaims.ActorId)
                 .AddRequirements(new InstanceScopeRequirement(InstanceScope.Admin)))

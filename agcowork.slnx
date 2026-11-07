@@ -5,6 +5,7 @@
     <Project Path="src/Agcowork.Application/Agcowork.Application.csproj" />
     <Project Path="src/Agcowork.Domain/Agcowork.Domain.csproj" />
     <Project Path="src/Agcowork.Infrastructure/Agcowork.Infrastructure.csproj" />
+    <Project Path="src/Agcowork.Mcp.Stdio/Agcowork.Mcp.Stdio.csproj" />
     <Project Path="src/Agcowork.ServiceDefaults/Agcowork.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
