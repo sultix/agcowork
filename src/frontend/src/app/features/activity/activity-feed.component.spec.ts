@@ -57,7 +57,8 @@ describe('ActivityFeedComponent', () => {
   const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
   async function choose(id: string, value: string): Promise<void> {
-    const select = q<HTMLSelectElement>(id)!;
+    // The Helm native select wraps the <select>; the test id sits on the wrapper.
+    const select = q(id)!.querySelector('select')!;
     select.value = value;
     select.dispatchEvent(new Event('change', { bubbles: true }));
     harness.fixture.detectChanges();
@@ -170,22 +171,38 @@ describe('ActivityFeedComponent', () => {
   it('filter_Types_SendsRepeatedTypesParameter', async () => {
     await render({ items: [], nextCursor: null });
 
-    const boxes = Array.from(
-      root().querySelectorAll<HTMLInputElement>('[data-testid="filter-types"] input'),
-    );
-    boxes.find((b) => b.value === 'record.created')!.click();
+    q('filter-types-summary')!.click();
+    await harness.fixture.whenStable();
+    // The popover renders into the CDK overlay container in <body>.
+    const box = (type: string) =>
+      document.body.querySelector<HTMLElement>(`[data-testid="filter-type-${type}"] button`)!;
+    box('record.created').click();
     harness.fixture.detectChanges();
     await respond(http, 'GET', `${API}/activity?types=record.created&limit=30`, {
       items: [],
       nextCursor: null,
     });
-    boxes.find((b) => b.value === 'member.added')!.click();
+    box('member.added').click();
     harness.fixture.detectChanges();
     await respond(http, 'GET', `${API}/activity?types=record.created&types=member.added&limit=30`, {
       items: [],
       nextCursor: null,
     });
     await settle(harness.fixture);
+  });
+
+  it('filter_TypesPopover_DialogHasAccessibleName', async () => {
+    await render({ items: [], nextCursor: null });
+
+    q('filter-types-summary')!.click();
+    await harness.fixture.whenStable();
+
+    // Brain sets role="dialog" on the overlay element and offers no label hook, so the content
+    // inside carries the accessible name.
+    const dialog = document.body.querySelector('[role="dialog"]');
+    const group = dialog?.querySelector('[data-testid="filter-types"]');
+    expect(group?.getAttribute('role')).toBe('group');
+    expect(group?.getAttribute('aria-label')).toBe('Typen filtern');
   });
 
   it('filter_Space_OffersOnlyCollectionsOfThatSpace', async () => {
@@ -241,7 +258,7 @@ describe('ActivityFeedComponent', () => {
     await settle(harness.fixture);
 
     expect(q('filter-reset')).toBeNull();
-    expect(q<HTMLSelectElement>('filter-actor')!.value).toBe('');
+    expect(q('filter-actor')!.querySelector('select')!.value).toBe('');
   });
 
   it('render_LoadError_ShowsMessage', async () => {

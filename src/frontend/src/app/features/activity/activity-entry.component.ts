@@ -1,6 +1,10 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideChevronDown, lucideChevronUp } from '@ng-icons/lucide';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmTableImports } from '@spartan-ng/helm/table';
 import type { components } from '../../core/api/generated/schema';
 import { MembersStore } from '../../core/workspace/members.store';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
@@ -44,7 +48,8 @@ export const ACTIVITY_TYPE_LABELS: Readonly<Record<string, string>> = Object.fro
  */
 @Component({
   selector: 'ag-activity-entry',
-  imports: [DatePipe, RouterLink, ActorLabelComponent],
+  imports: [DatePipe, RouterLink, NgIcon, HlmButton, HlmTableImports, ActorLabelComponent],
+  providers: [provideIcons({ lucideChevronDown, lucideChevronUp })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block px-4 py-2 text-sm', 'data-testid': 'activity-item' },
   template: `
@@ -53,28 +58,34 @@ export const ACTIVITY_TYPE_LABELS: Readonly<Record<string, string>> = Object.fro
         <ag-actor-label [actorId]="event().actorId" />
         <span data-testid="entry-text">{{ text() }}</span>
         @if (name(); as name) {
-          <span class="text-muted" data-testid="entry-name">„{{ name }}“</span>
+          <span class="text-muted-foreground" data-testid="entry-name">„{{ name }}“</span>
         }
         @if (link(); as link) {
-          <a [routerLink]="link" class="text-accent hover:underline" data-testid="activity-link"
+          <a
+            [routerLink]="link"
+            class="font-medium underline underline-offset-4"
+            data-testid="activity-link"
             >Öffnen</a
           >
         }
         @if (diff().affectedRecords !== null) {
-          <span class="text-muted" data-testid="entry-affected"
+          <span class="text-muted-foreground" data-testid="entry-affected"
             >({{ diff().affectedRecords }} Records bereinigt)</span
           >
         }
       </span>
-      <span class="flex shrink-0 items-baseline gap-3 text-muted">
+      <span class="flex shrink-0 items-center gap-3 text-muted-foreground">
         @if (expandable()) {
           <button
+            hlmBtn
             type="button"
-            class="hover:text-fg"
+            variant="ghost"
+            size="xs"
             data-testid="entry-toggle"
             [attr.aria-expanded]="open()"
             (click)="open.set(!open())"
           >
+            <ng-icon [name]="open() ? 'lucideChevronUp' : 'lucideChevronDown'" />
             {{ open() ? 'Details ausblenden' : 'Details' }}
           </button>
         }
@@ -82,24 +93,24 @@ export const ACTIVITY_TYPE_LABELS: Readonly<Record<string, string>> = Object.fro
       </span>
     </div>
     @if (open() && expandable()) {
-      <div class="mt-2 rounded-md border border-border bg-surface p-3" data-testid="entry-diff">
+      <div class="mt-2 rounded-lg border bg-muted/30 p-3" data-testid="entry-diff">
         @if (diff().changes.length > 0) {
-          <table class="w-full text-left text-xs">
-            <thead class="text-muted">
-              <tr>
-                <th class="w-1/4 py-0.5 font-normal">Feld</th>
-                <th class="w-3/8 py-0.5 font-normal">Alt</th>
-                <th class="w-3/8 py-0.5 font-normal">Neu</th>
+          <table hlmTable class="text-xs">
+            <thead hlmTHead>
+              <tr hlmTr>
+                <th hlmTh class="h-8 w-1/4 px-2">Feld</th>
+                <th hlmTh class="h-8 w-3/8 px-2">Alt</th>
+                <th hlmTh class="h-8 w-3/8 px-2">Neu</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody hlmTBody>
               @for (change of diff().changes; track change.key) {
-                <tr class="border-t border-border" data-testid="entry-change">
-                  <td class="py-0.5 pr-2 font-mono">{{ change.key }}</td>
-                  <td class="py-0.5 pr-2 break-all text-danger" data-testid="change-old">
+                <tr hlmTr data-testid="entry-change">
+                  <td hlmTd class="p-2 font-mono">{{ change.key }}</td>
+                  <td hlmTd class="p-2 break-all text-destructive" data-testid="change-old">
                     {{ format(change.old) }}
                   </td>
-                  <td class="py-0.5 break-all text-success" data-testid="change-new">
+                  <td hlmTd class="p-2 break-all text-success" data-testid="change-new">
                     {{ format(change.new) }}
                   </td>
                 </tr>
@@ -111,7 +122,7 @@ export const ACTIVITY_TYPE_LABELS: Readonly<Record<string, string>> = Object.fro
           <p class="mt-1 text-xs" data-testid="entry-body">
             Body geändert:
             <span class="text-success">+{{ body.added }}</span>
-            <span class="text-danger"> −{{ body.removed }}</span> Zeichen
+            <span class="text-destructive"> −{{ body.removed }}</span> Zeichen
           </p>
         }
         @for (extra of diff().extras; track extra.key) {

@@ -611,7 +611,8 @@ entfernt. Neue Templates verwenden nur die rechte Spalte.
 | `text-accent-fg` | `text-primary-foreground` |  |
 | `text-accent` an Links (`<a>`) und linkartigen Buttons, samt `hover:underline`/`underline` | `underline underline-offset-4` (Gruppe ganz ersetzen) | Pflicht: Links sind immer unterstrichen und erben die Textfarbe; `text-primary` allein wäre im hellen Theme fast schwarz und nicht als Link erkennbar. In Tabellen und Karten zusätzlich `font-medium` |
 | `text-accent` an echten Aktions-Buttons (z. B. „+ Ansicht“) | `hlmBtn variant="ghost" size="sm"` |  |
-| `border-accent` | `border-primary` |  |
+| Navigations-CTA (Link, der wie eine Aktion wirkt, z. B. „Mitglieder verwalten“) | `<a hlmBtn variant="outline">` | Ausnahme zur Link-Regel |
+| `border-accent` | `border-primary`; an `hlmCard` stattdessen `ring-2 ring-primary` | `hlmCard` zeichnet seinen Rand als `ring-1 ring-foreground/10`, `border-*`-Farben wirken dort nicht (gilt ebenso für `border-danger` → `ring-destructive/50`) |
 | `focus:ring-2 focus:ring-accent focus:ring-inset` | `focus:ring-2 focus:ring-ring focus:ring-inset` | ganze Gruppe ersetzen, Variante `focus:` beibehalten (aktive Tabellenzelle soll auch nach Mausklick markiert sein); nicht mit `focus-visible:` mischen. Helm-Bausteine bringen ihren Fokusring selbst mit |
 | `hover:bg-accent/40` | `hover:bg-primary/40` |  |
 | `border-border`, `divide-border`, `focus:border-border` | **unverändert lassen** | gültige shadcn-Klassen (`--color-border`); Breiten-/Seitenklassen (`border`, `border-b`, `border-t`, `divide-y`, `border-dashed`) ebenfalls unverändert |
@@ -645,11 +646,16 @@ items-start justify-between gap-4`). Seitenrahmen `mx-auto flex max-w-… flex-c
   `font-medium`, eine Erklärung `text-sm text-muted-foreground`, ggf. die passende Aktion.
 - *Laden*: `hlm-skeleton` in der Form des erwarteten Inhalts statt „Wird geladen …“-Text.
 - *Fehleranzeige*: Lade- und Aktionsfehler als `hlmAlert variant="destructive"` mit `lucideCircleAlert`,
-  Text über `describeError`, ggf. `hlmAlertAction` mit „Erneut laden“; Hinweise als `hlmAlert` (Default).
+  Text über `describeError`, ggf. `hlmAlertAction` mit „Erneut laden“; Hinweise als `hlmAlert` (Default) mit `role="status"`;
+  `role="alert"` (Helm-Default) nur für Fehler, sonst liest der Screenreader statische Hinweise sofort vor.
 - _Destruktive Aktionen_ immer über `ag-confirm-dialog` (Alert-Dialog); Auslöser `hlmBtn
 variant="destructive"` bzw. Dropdown-Eintrag `variant="destructive"`.
 - _Aktionsmenüs_ je Zeile/Objekt als Dropdown-Menu (`hlmDropdownMenuItem` mit `(triggered)`), nicht
-  als Reihe einzelner Buttons.
+  als Reihe einzelner Buttons. Trigger mit unterscheidbarem Label (`'Aktionen für ' + name`).
+  Popover-Inhalte (`role="dialog"`) brauchen einen zugänglichen Namen (`aria-label`).
+- _Native Elemente_ sind erlaubt, wo Helm-Wrapper Virtual Scroll, Inline-Edit oder Escape/Enter-
+  Verhalten gefährden: `<select hlmInput>` und `<input type="checkbox" class="size-4 accent-primary">`
+  (AP-021: Tabelle, Property-Editoren, Filter). Routen-Tabs als `<a role="tab">` mit Helm-Tabs-Klassen.
 - _Icons_ nur Lucide: `provideIcons({ lucideX })` in der Komponente, `<ng-icon name="lucideX" />`.
   Keine Unicode-Pfeile oder Emoji als Bedien-Icons (Daten wie Space-Icons ausgenommen).
 - _Overlays_ (Dialog, Alert-Dialog, Dropdown, Popover, Tooltip, Select) rendern in den CDK-Overlay-

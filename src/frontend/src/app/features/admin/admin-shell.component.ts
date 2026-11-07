@@ -1,31 +1,49 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideArrowLeft } from '@ng-icons/lucide';
+import { HlmButton } from '@spartan-ng/helm/button';
 import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
+import { ThemeToggleComponent } from '../../shared/ui/theme-toggle.component';
 
 /** Layout of `/admin/*`: header with navigation between the administration pages. */
 @Component({
   selector: 'ag-admin-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, SessionMenuComponent],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    NgIcon,
+    HlmButton,
+    SessionMenuComponent,
+    ThemeToggleComponent,
+  ],
+  providers: [provideIcons({ lucideArrowLeft })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="flex items-center justify-between border-b border-border px-6 py-3">
-      <nav class="flex items-center gap-4 text-sm">
-        <a routerLink="/workspaces" class="text-muted hover:text-fg">‹ Workspaces</a>
-        <span class="font-semibold">Administration</span>
+    <header class="flex h-14 items-center gap-2 border-b px-4 sm:px-6">
+      <nav class="flex items-center gap-1 text-sm">
+        <a hlmBtn variant="ghost" size="sm" routerLink="/workspaces">
+          <ng-icon name="lucideArrowLeft" />
+          Workspaces
+        </a>
+        <span class="px-2 font-semibold tracking-tight">Administration</span>
         <a
+          hlmBtn
+          variant="ghost"
+          size="sm"
           routerLink="/admin/workspaces"
-          routerLinkActive="bg-surface-hover text-fg"
-          class="rounded-md px-2 py-1 text-muted hover:bg-surface-hover"
+          routerLinkActive="bg-muted"
           >Workspaces</a
         >
-        <a
-          routerLink="/admin/actors"
-          routerLinkActive="bg-surface-hover text-fg"
-          class="rounded-md px-2 py-1 text-muted hover:bg-surface-hover"
+        <a hlmBtn variant="ghost" size="sm" routerLink="/admin/actors" routerLinkActive="bg-muted"
           >Actors</a
         >
       </nav>
-      <ag-session-menu />
+      <div class="ml-auto flex items-center gap-1">
+        <ag-theme-toggle />
+        <ag-session-menu />
+      </div>
     </header>
     <router-outlet />
   `,

@@ -53,7 +53,10 @@ describe('ActorsComponent', () => {
   afterEach(() => http.verify());
 
   const root = () => harness.routeNativeElement as HTMLElement;
-  const q = (id: string) => root().querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  // Menus render into the CDK overlay container in <body>.
+  const q = (id: string) =>
+    root().querySelector<HTMLElement>(`[data-testid="${id}"]`) ??
+    document.body.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   const rows = () => Array.from(root().querySelectorAll('[data-testid="actor-row"]'));
   const text = (el: Element) => el.textContent!.replace(/\s+/g, ' ').trim();
 
@@ -64,6 +67,15 @@ describe('ActorsComponent', () => {
     el.dispatchEvent(new Event('change'));
     await harness.fixture.whenStable();
   }
+
+  /** Opens the row action menu (overlay in <body>) of the given row. */
+  async function openActions(row: number): Promise<void> {
+    rows()[row].querySelector<HTMLElement>('[data-testid="actor-actions"]')!.click();
+    await harness.fixture.whenStable();
+  }
+
+  /** The Helm checkbox renders a `button[role=checkbox]` inside the element carrying the test id. */
+  const box = (id: string) => q(id)!.querySelector<HTMLElement>('button[role="checkbox"]')!;
 
   async function openCreate(): Promise<void> {
     q('new-actor')!.click();
@@ -89,10 +101,45 @@ describe('ActorsComponent', () => {
     ]);
     expect(cells(rows()[1]).slice(0, 2)).toEqual(['Coder', 'Agent']);
     expect(cells(rows()[1])[5]).toBe('inaktiv');
-    expect(rows()[0].querySelector('[data-testid="actor-keys"]')).toBeNull();
-    expect(rows()[1].querySelector('[data-testid="actor-keys"]')!.getAttribute('href')).toBe(
-      `/admin/actors/${AGENT.id}/keys`,
+  });
+
+  it('actions_Agent_OffersKeysLinkAndEdit', async () => {
+    await render();
+
+    await openActions(1);
+
+    expect(q('actor-menu')!.getAttribute('role')).toBe('menu');
+    expect(q('actor-keys')!.getAttribute('href')).toBe(`/admin/actors/${AGENT.id}/keys`);
+    expect(q('actor-edit')!.getAttribute('role')).toBe('menuitem');
+  });
+
+  it('actions_Human_OffersNoKeysLink', async () => {
+    await render();
+
+    await openActions(0);
+
+    expect(q('actor-menu')).not.toBeNull();
+    expect(q('actor-keys')).toBeNull();
+  });
+
+  it('actions_Trigger_LabelContainsActorName', async () => {
+    await render();
+
+    const labels = rows().map((r) =>
+      r.querySelector('[data-testid="actor-actions"]')?.getAttribute('aria-label'),
     );
+    expect(labels).toEqual(['Aktionen für Admin', 'Aktionen für Coder']);
+  });
+
+  it('actions_EditItem_SwitchesRowToEditMode', async () => {
+    await render();
+
+    await openActions(1);
+    q('actor-edit')!.click();
+    await harness.fixture.whenStable();
+
+    expect(q('edit-save')).not.toBeNull();
+    expect(q('edit-name')).not.toBeNull();
   });
 
   it('create_Agent_PostsNameAndRoleWithoutEmailOrPassword', async () => {
@@ -127,7 +174,7 @@ describe('ActorsComponent', () => {
     await fill('actor-name', 'Mia');
     await fill('actor-email', 'mia@example.com');
     await fill('actor-password', 'correct horse battery');
-    q('create-scope-workspaces:create')!.click();
+    box('create-scope-workspaces:create').click();
     await harness.fixture.whenStable();
 
     q('create-form')!.dispatchEvent(new Event('submit', { cancelable: true }));
@@ -201,13 +248,14 @@ describe('ActorsComponent', () => {
   it('edit_Save_PatchesAllEditableFields', async () => {
     await render();
 
-    rows()[1].querySelector<HTMLElement>('[data-testid="actor-edit"]')!.click();
+    await openActions(1);
+    q('actor-edit')!.click();
     await harness.fixture.whenStable();
     const name = q('edit-name') as HTMLInputElement;
     name.value = 'Coder 2';
     name.dispatchEvent(new Event('input'));
-    q('edit-scope-workspaces:create')!.click();
-    q('edit-active')!.click();
+    box('edit-scope-workspaces:create').click();
+    box('edit-active').click();
     await harness.fixture.whenStable();
     q('edit-save')!.click();
     const request = await expectRequest(http, 'PATCH', `/api/v1/actors/${AGENT.id}`);
@@ -231,9 +279,10 @@ describe('ActorsComponent', () => {
   it('edit_SelfLockout_ShowsMessage', async () => {
     await render();
 
-    rows()[0].querySelector<HTMLElement>('[data-testid="actor-edit"]')!.click();
+    await openActions(0);
+    q('actor-edit')!.click();
     await harness.fixture.whenStable();
-    q('edit-active')!.click();
+    box('edit-active').click();
     await harness.fixture.whenStable();
     q('edit-save')!.click();
     (await expectRequest(http, 'PATCH', `/api/v1/actors/${ADMIN.id}`)).flush(
@@ -253,7 +302,8 @@ describe('ActorsComponent', () => {
   it('edit_EmptyName_ShowsGermanFieldMessage', async () => {
     await render();
 
-    rows()[1].querySelector<HTMLElement>('[data-testid="actor-edit"]')!.click();
+    await openActions(1);
+    q('actor-edit')!.click();
     await harness.fixture.whenStable();
     const name = q('edit-name') as HTMLInputElement;
     name.value = '';

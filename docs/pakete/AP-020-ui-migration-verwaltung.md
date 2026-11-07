@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | UI |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-019: `features/auth/login.component.ts` (Formular), `features/workspaces/` (Liste, Formular, Dropdown), `features/workspace-shell/` (Layout, Icons), `shared/ui/confirm-dialog.component.ts` (Alert-Dialog); Mapping-Tabelle und Faustregeln in `docs/02-ARCHITEKTUR.md` §6 „UI-Bausteine“ |
@@ -53,3 +53,8 @@ Die Verwaltungs- und Übersichtsseiten nutzen die Helm-Bausteine und shadcn-Klas
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-sonnet übergeben (parallel zu AP-021) |
+| 2026-11-07 | Bericht: Helm-Tables für Mitglieder/Actors/Keys, Zeilen-Aktionsmenüs, Typfilter als Popover, Admin-Shell mit Theme-Umschalter; Key-Anzeige bewusst inline (kein Modal); `<details>` in collection-page mangels Helm-Collapsible |
+| 2026-11-07 | Review: Freigabe mit Hinweisen – `border-*` an `hlmCard` wirkungslos, Menü-Trigger ohne unterscheidbares Label, Popover ohne Namen, statische Hinweise mit `role="alert"` |
+| 2026-11-07 | Nacharbeit: `ring-*` an Cards, Labels mit Namen, `role="status"`; Popover-Name als `role="group"` im Dialog (Brain setzt `role="dialog"` ohne Label-Input) → Backlog |
+| 2026-11-07 | abgeschlossen |

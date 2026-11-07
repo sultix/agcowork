@@ -8,6 +8,21 @@ import {
 } from '@angular/core';
 import { FormField, disabled, form, maxLength, required, submit } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideArchive,
+  lucideCheck,
+  lucideCircleAlert,
+  lucideInfo,
+  lucideUsers,
+} from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
+import { HlmTextarea } from '@spartan-ng/helm/textarea';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
@@ -25,124 +40,159 @@ interface SettingsModel {
 /** `/w/:slug/settings`: name, description, own role and scopes, archiving. */
 @Component({
   selector: 'ag-workspace-settings',
-  imports: [FormField, RouterLink, BadgeComponent, ConfirmDialogComponent, FieldErrorsComponent],
+  imports: [
+    FormField,
+    RouterLink,
+    NgIcon,
+    HlmAlertImports,
+    HlmButton,
+    HlmCardImports,
+    HlmFieldImports,
+    HlmInput,
+    HlmSkeleton,
+    HlmTextarea,
+    BadgeComponent,
+    ConfirmDialogComponent,
+    FieldErrorsComponent,
+  ],
+  providers: [
+    provideIcons({ lucideArchive, lucideCheck, lucideCircleAlert, lucideInfo, lucideUsers }),
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mx-auto max-w-2xl p-6">
-      <h1 class="text-xl font-semibold">Einstellungen</h1>
+    <section class="mx-auto flex max-w-2xl flex-col gap-6 p-6">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
+        @if (workspace(); as ws) {
+          <p class="text-sm text-muted-foreground">
+            Deine Rolle: <ag-badge tone="accent">{{ ws.role }}</ag-badge> · Scopes:
+            <span data-testid="scopes">{{ ws.scopes.join(', ') }}</span>
+          </p>
+        }
+      </div>
 
       @if (workspace(); as ws) {
-        <p class="mt-1 text-sm text-muted">
-          Deine Rolle: <ag-badge tone="accent">{{ ws.role }}</ag-badge> · Scopes:
-          <span data-testid="scopes">{{ ws.scopes.join(', ') }}</span>
-        </p>
         @if (ws.archivedAt) {
-          <p
-            class="mt-4 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-            data-testid="archived-notice"
-          >
-            Dieser Workspace ist archiviert und schreibgeschützt.
-          </p>
+          <div hlmAlert variant="destructive" data-testid="archived-notice">
+            <ng-icon name="lucideCircleAlert" />
+            <p hlmAlertDescription class="whitespace-pre-line">
+              Dieser Workspace ist archiviert und schreibgeschützt.
+            </p>
+          </div>
         }
         @if (!canEdit() && !ws.archivedAt) {
-          <p class="mt-4 text-sm text-muted" data-testid="readonly-notice">
-            Nur Admins und Owner können die Einstellungen ändern.
-          </p>
+          <div hlmAlert role="status" data-testid="readonly-notice">
+            <ng-icon name="lucideInfo" />
+            <p hlmAlertDescription>Nur Admins und Owner können die Einstellungen ändern.</p>
+          </div>
         }
 
-        <form
-          class="mt-6 rounded-lg border border-border bg-surface p-6"
-          novalidate
-          (submit)="onSubmit($event)"
-        >
-          @if (formError(); as message) {
-            <p
-              class="mb-4 rounded-md border border-danger px-3 py-2 text-sm text-danger"
-              role="alert"
-              data-testid="form-error"
-            >
-              {{ message }}
-            </p>
-          }
-          @if (saved()) {
-            <p class="mb-4 text-sm text-success" data-testid="saved">Gespeichert.</p>
-          }
+        <form hlmCard novalidate (submit)="onSubmit($event)">
+          <div hlmCardContent>
+            <div hlmFieldGroup class="gap-5">
+              @if (formError(); as message) {
+                <div hlmAlert variant="destructive" data-testid="form-error">
+                  <ng-icon name="lucideCircleAlert" />
+                  <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+                </div>
+              }
+              @if (saved()) {
+                <div hlmAlert role="status" data-testid="saved">
+                  <ng-icon name="lucideCheck" />
+                  <p hlmAlertDescription>Gespeichert.</p>
+                </div>
+              }
 
-          <span class="block text-sm font-medium">Slug</span>
-          <p class="mt-1 font-mono text-sm text-muted">{{ ws.slug }}</p>
+              <div hlmField class="gap-2">
+                <span hlmFieldLabel>Slug</span>
+                <p class="font-mono text-sm text-muted-foreground">{{ ws.slug }}</p>
+              </div>
 
-          <label for="set-name" class="mt-4 block text-sm font-medium">Name</label>
-          <input
-            id="set-name"
-            type="text"
-            class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm disabled:opacity-60"
-            [formField]="form.name"
-          />
-          <div data-testid="name-errors">
-            @if (form.name().touched() && form.name().invalid()) {
-              <ag-field-errors [errors]="form.name().errors()" />
-            }
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="set-name">Name</label>
+                <input hlmInput id="set-name" type="text" [formField]="form.name" />
+                <div data-testid="name-errors">
+                  @if (form.name().touched() && form.name().invalid()) {
+                    <ag-field-errors [errors]="form.name().errors()" />
+                  }
+                </div>
+              </div>
+
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="set-description">Beschreibung</label>
+                <textarea
+                  hlmTextarea
+                  id="set-description"
+                  rows="3"
+                  [formField]="form.description"
+                ></textarea>
+                <div data-testid="description-errors">
+                  @if (form.description().touched() && form.description().invalid()) {
+                    <ag-field-errors [errors]="form.description().errors()" />
+                  }
+                </div>
+              </div>
+
+              @if (canEdit()) {
+                <div class="flex justify-end">
+                  <button hlmBtn type="submit" data-testid="save" [disabled]="form().submitting()">
+                    Speichern
+                  </button>
+                </div>
+              }
+            </div>
           </div>
-
-          <label for="set-description" class="mt-4 block text-sm font-medium">Beschreibung</label>
-          <textarea
-            id="set-description"
-            rows="3"
-            class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm disabled:opacity-60"
-            [formField]="form.description"
-          ></textarea>
-          <div data-testid="description-errors">
-            @if (form.description().touched() && form.description().invalid()) {
-              <ag-field-errors [errors]="form.description().errors()" />
-            }
-          </div>
-
-          @if (canEdit()) {
-            <button
-              type="submit"
-              class="mt-6 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
-              data-testid="save"
-              [disabled]="form().submitting()"
-            >
-              Speichern
-            </button>
-          }
         </form>
 
-        <p class="mt-6 text-sm">
-          <a routerLink="members" class="text-accent underline">Mitglieder verwalten</a>
-        </p>
+        <div>
+          <a hlmBtn variant="outline" routerLink="members">
+            <ng-icon name="lucideUsers" />
+            Mitglieder verwalten
+          </a>
+        </div>
 
         @if (canArchive()) {
-          <div class="mt-8 rounded-lg border border-danger p-6">
-            <h2 class="font-semibold text-danger">Workspace archivieren</h2>
-            <p class="mt-1 text-sm text-muted">
-              Danach ist der Workspace schreibgeschützt. Das lässt sich über die API derzeit nicht
-              rückgängig machen.
-            </p>
-            @if (archiveError(); as message) {
-              <p class="mt-2 text-sm text-danger" role="alert" data-testid="archive-error">
-                {{ message }}
+          <section hlmCard class="ring-destructive/50">
+            <header hlmCardHeader>
+              <h2 hlmCardTitle class="text-destructive">Workspace archivieren</h2>
+              <p hlmCardDescription>
+                Danach ist der Workspace schreibgeschützt. Das lässt sich über die API derzeit nicht
+                rückgängig machen.
               </p>
-            }
-            <button
-              type="button"
-              class="mt-4 rounded-md border border-danger px-3 py-1.5 text-sm text-danger hover:bg-surface-hover"
-              data-testid="archive"
-              (click)="confirming.set(true)"
-            >
-              Archivieren …
-            </button>
-          </div>
+            </header>
+            <div hlmCardContent class="flex flex-col gap-4">
+              @if (archiveError(); as message) {
+                <div hlmAlert variant="destructive" data-testid="archive-error">
+                  <ng-icon name="lucideCircleAlert" />
+                  <p hlmAlertDescription>{{ message }}</p>
+                </div>
+              }
+              <div>
+                <button
+                  hlmBtn
+                  type="button"
+                  variant="destructive"
+                  data-testid="archive"
+                  (click)="confirming.set(true)"
+                >
+                  <ng-icon name="lucideArchive" />
+                  Archivieren …
+                </button>
+              </div>
+            </div>
+          </section>
         }
       } @else if (store.error(); as error) {
-        <p class="mt-4 text-sm text-danger" role="alert" data-testid="load-error">
-          {{ describe(error) }}
-        </p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ describe(error) }}</p>
+        </div>
       } @else if (store.isLoading()) {
-        <p class="mt-4 text-sm text-muted">Workspace wird geladen …</p>
+        <div class="flex flex-col gap-3" aria-busy="true" aria-label="Wird geladen">
+          <hlm-skeleton class="h-48 rounded-xl" />
+        </div>
       } @else {
-        <p class="mt-4 text-sm text-muted" data-testid="not-found">
+        <p class="text-sm text-muted-foreground" data-testid="not-found">
           Workspace nicht gefunden oder keine Mitgliedschaft.
         </p>
       }

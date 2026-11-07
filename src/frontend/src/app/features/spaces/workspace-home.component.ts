@@ -1,5 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import { MembersStore } from '../../core/workspace/members.store';
@@ -11,56 +16,84 @@ import { WorkspaceTreeStore } from './workspace-tree.store';
 /** `/w/:slug`: the spaces as cards and the ten most recent record changes. */
 @Component({
   selector: 'ag-workspace-home',
-  imports: [ActivityEntryComponent, RouterLink],
+  imports: [
+    ActivityEntryComponent,
+    RouterLink,
+    NgIcon,
+    HlmAlertImports,
+    HlmCardImports,
+    HlmSkeleton,
+  ],
+  providers: [provideIcons({ lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mx-auto max-w-5xl p-6">
-      <h1 class="text-xl font-semibold">Spaces</h1>
+    <section class="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-semibold tracking-tight">Spaces</h1>
+        <p class="text-sm text-muted-foreground">Die Bereiche dieses Workspaces.</p>
+      </div>
       @if (tree.error()) {
-        <p class="mt-3 text-sm text-danger" role="alert" data-testid="load-error">
-          Spaces konnten nicht geladen werden.
-        </p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>Spaces konnten nicht geladen werden.</p>
+        </div>
       }
-      <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="space-cards">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="space-cards">
         @for (space of tree.spaces(); track space.id) {
           <a
+            hlmCard
             [routerLink]="['/w', context.slug(), 'spaces', space.id]"
-            class="rounded-lg border border-border bg-surface p-4 hover:bg-surface-hover"
+            class="outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
             data-testid="space-card"
           >
-            <h2 class="font-semibold">
-              @if (space.icon) {
-                <span aria-hidden="true">{{ space.icon }} </span>
+            <div hlmCardHeader>
+              <h2 hlmCardTitle>
+                @if (space.icon) {
+                  <span aria-hidden="true">{{ space.icon }} </span>
+                }
+                {{ space.name }}
+              </h2>
+              @if (space.description) {
+                <p hlmCardDescription class="line-clamp-2">{{ space.description }}</p>
               }
-              {{ space.name }}
-            </h2>
-            @if (space.description) {
-              <p class="mt-1 text-sm text-muted">{{ space.description }}</p>
-            }
+            </div>
           </a>
-        } @empty {
-          @if (!tree.isLoading() && !tree.error()) {
-            <p class="text-sm text-muted">Dieser Workspace hat noch keine Spaces.</p>
-          }
         }
       </div>
-
-      <h2 class="mt-10 text-lg font-semibold">Zuletzt geändert</h2>
-      @if (activityError(); as message) {
-        <p class="mt-3 text-sm text-danger" role="alert" data-testid="activity-error">
-          {{ message }}
-        </p>
+      @if (tree.spaces().length === 0) {
+        @if (tree.isLoading()) {
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+            <hlm-skeleton class="h-24 rounded-xl" />
+            <hlm-skeleton class="h-24 rounded-xl" />
+            <hlm-skeleton class="hidden h-24 rounded-xl lg:block" />
+          </div>
+        } @else if (!tree.error()) {
+          <div
+            class="flex flex-col items-center gap-1 rounded-xl border border-dashed p-10 text-center"
+            data-testid="spaces-empty"
+          >
+            <p class="font-medium">Noch keine Spaces</p>
+            <p class="text-sm text-muted-foreground">Dieser Workspace hat noch keine Spaces.</p>
+          </div>
+        }
       }
-      <ul
-        class="mt-3 divide-y divide-border rounded-lg border border-border"
-        data-testid="recent-activity"
-      >
+
+      <h2 class="text-lg font-semibold tracking-tight">Zuletzt geändert</h2>
+      @if (activityError(); as message) {
+        <div hlmAlert variant="destructive" data-testid="activity-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
+      }
+      <ul class="divide-y rounded-xl border" data-testid="recent-activity">
         @for (event of events(); track event.id) {
           <li>
             <ag-activity-entry [event]="event" />
           </li>
         } @empty {
-          <li class="px-4 py-3 text-sm text-muted">Noch keine Änderungen.</li>
+          <li class="px-4 py-6 text-center text-sm text-muted-foreground">
+            Noch keine Änderungen.
+          </li>
         }
       </ul>
     </section>

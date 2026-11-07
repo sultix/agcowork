@@ -9,6 +9,11 @@ import {
   untracked,
 } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert, lucidePlus } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { BreadcrumbsComponent, Crumb } from '../../shared/ui/breadcrumbs.component';
@@ -26,48 +31,51 @@ import { ViewSwitcherComponent } from '../views/view-switcher.component';
 @Component({
   selector: 'ag-collection-page',
   imports: [
+    NgIcon,
+    HlmAlertImports,
+    HlmButton,
+    HlmSkeleton,
     BadgeComponent,
     BreadcrumbsComponent,
     RecordCreateDialogComponent,
     RouterOutlet,
     ViewSwitcherComponent,
   ],
-  providers: [CollectionStore],
+  providers: [CollectionStore, provideIcons({ lucideCircleAlert, lucidePlus })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="p-6">
+    <section class="flex flex-col gap-4 p-6">
       @if (store.loadError(); as message) {
-        <p class="text-sm text-danger" role="alert" data-testid="load-error">{{ message }}</p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
       } @else if (store.collection(); as collection) {
         <ag-breadcrumbs [crumbs]="crumbs()" />
-        <div class="mt-2 flex items-start justify-between gap-4">
-          <div>
-            <h1 class="text-xl font-semibold" data-testid="collection-title">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="flex flex-col gap-1">
+            <h1 class="text-2xl font-semibold tracking-tight" data-testid="collection-title">
               {{ collection.name }}
             </h1>
-            <p class="mt-1 text-sm text-muted" data-testid="collection-description">
+            <p class="text-sm text-muted-foreground" data-testid="collection-description">
               {{ collection.description }}
             </p>
             @if (store.recordCount() !== null) {
-              <p class="mt-1 text-xs text-muted" data-testid="record-count">
+              <p class="text-xs text-muted-foreground" data-testid="record-count">
                 {{ store.recordCount() }} Records
               </p>
             }
           </div>
           @if (store.canWrite()) {
-            <button
-              type="button"
-              class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg"
-              data-testid="record-new"
-              (click)="creating.set(true)"
-            >
+            <button hlmBtn type="button" data-testid="record-new" (click)="creating.set(true)">
+              <ng-icon name="lucidePlus" />
               Neuer Record
             </button>
           }
         </div>
 
-        <details class="mt-3 text-sm">
-          <summary class="cursor-pointer text-muted">Schema</summary>
+        <details class="text-sm">
+          <summary class="cursor-pointer text-muted-foreground">Schema</summary>
           <ul class="mt-2 flex flex-wrap gap-1" aria-label="Schema" data-testid="schema-chips">
             @for (def of collection.schema; track def.key) {
               <li>
@@ -77,12 +85,14 @@ import { ViewSwitcherComponent } from '../views/view-switcher.component';
           </ul>
         </details>
 
-        <div class="mt-4">
-          <ag-view-switcher [activeId]="store.activeViewId()" />
-        </div>
+        <ag-view-switcher [activeId]="store.activeViewId()" />
         <router-outlet />
       } @else {
-        <p class="text-sm text-muted">Wird geladen …</p>
+        <div class="flex flex-col gap-3" aria-busy="true" aria-label="Wird geladen">
+          <hlm-skeleton class="h-4 w-48" />
+          <hlm-skeleton class="h-8 w-72" />
+          <hlm-skeleton class="h-4 w-96 max-w-full" />
+        </div>
       }
     </section>
 

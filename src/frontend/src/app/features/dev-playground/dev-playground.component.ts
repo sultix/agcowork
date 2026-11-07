@@ -13,13 +13,13 @@ import { PLAYGROUND_JSON, PLAYGROUND_MARKDOWN } from './playground-samples';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="mx-auto flex max-w-7xl flex-col gap-4 p-6">
-      <header class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold">Editor-Spielwiese</h1>
-        <span class="text-sm text-muted">{{ markdown().length }} Zeichen Markdown</span>
+      <header class="flex flex-wrap items-start justify-between gap-4">
+        <h1 class="text-2xl font-semibold tracking-tight">Editor-Spielwiese</h1>
+        <span class="text-sm text-muted-foreground">{{ markdown().length }} Zeichen Markdown</span>
       </header>
       <div class="grid gap-4 lg:grid-cols-2">
         <section class="flex flex-col gap-2" aria-label="Markdown-Editor">
-          <h2 class="text-sm font-medium text-muted">WYSIWYG</h2>
+          <h2 class="text-sm font-medium text-muted-foreground">WYSIWYG</h2>
           <ag-markdown-editor
             class="min-h-[28rem]"
             placeholder="Schreib etwas …"
@@ -28,7 +28,7 @@ import { PLAYGROUND_JSON, PLAYGROUND_MARKDOWN } from './playground-samples';
           />
         </section>
         <section class="flex flex-col gap-2" aria-label="Markdown-Quelltext">
-          <h2 class="text-sm font-medium text-muted">Markdown (Raw)</h2>
+          <h2 class="text-sm font-medium text-muted-foreground">Markdown (Raw)</h2>
           <ag-raw-view
             class="h-[28rem]"
             language="markdown"
@@ -38,7 +38,7 @@ import { PLAYGROUND_JSON, PLAYGROUND_MARKDOWN } from './playground-samples';
         </section>
       </div>
       <section class="flex flex-col gap-2" aria-label="JSON-Quelltext">
-        <h2 class="text-sm font-medium text-muted">JSON (Raw)</h2>
+        <h2 class="text-sm font-medium text-muted-foreground">JSON (Raw)</h2>
         <ag-raw-view
           class="h-72"
           language="json"

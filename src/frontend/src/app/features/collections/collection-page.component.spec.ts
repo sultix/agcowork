@@ -141,7 +141,10 @@ describe('CollectionPageComponent', () => {
   });
 
   const root = () => harness.routeNativeElement as HTMLElement;
-  const q = (id: string) => root().querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  // The record create dialog renders into the CDK overlay container in <body>.
+  const q = (id: string) =>
+    root().querySelector<HTMLElement>(`[data-testid="${id}"]`) ??
+    document.body.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   const all = (id: string) =>
     Array.from(root().querySelectorAll<HTMLElement>(`[data-testid="${id}"]`));
   const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
@@ -157,7 +160,9 @@ describe('CollectionPageComponent', () => {
     expect(text(q('record-count'))).toBe('2 Records');
     expect(all('schema-chips')[0].querySelectorAll('li')).toHaveLength(3);
     expect(text(q('breadcrumbs'))).toBe('Produkt›Aufgaben');
-    expect(all('view-tab').map(text)).toEqual(['▦ Tabelle ★']);
+    expect(all('view-tab').map(text)).toEqual(['Tabelle']);
+    // the default view is marked with a star icon inside its tab
+    expect(all('view-tab')[0].querySelector('[data-testid="view-default-mark"]')).not.toBeNull();
     expect(all('table-row')).toHaveLength(2);
     expect(text(all('row-link')[0])).toBe('Login bauen');
     expect(all('row-link')[0].getAttribute('href')).toBe(`/w/demo/records/${RECORD_ID}`);

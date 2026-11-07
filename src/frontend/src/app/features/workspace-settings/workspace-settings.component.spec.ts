@@ -170,7 +170,8 @@ describe('WorkspaceSettingsComponent', () => {
     loading.set(true);
     await render(null);
 
-    expect(root().textContent).toContain('wird geladen');
+    // The loading state is a skeleton (aria-busy) instead of text.
+    expect(root().querySelector('[aria-busy="true"]')).not.toBeNull();
     expect(q('not-found')).toBeNull();
   });
 });

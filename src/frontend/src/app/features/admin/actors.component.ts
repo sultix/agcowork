@@ -9,6 +9,25 @@ import {
 } from '@angular/core';
 import { FieldTree, FormField, form, minLength, required, submit } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideCircleAlert,
+  lucideEllipsis,
+  lucideKeyRound,
+  lucidePencil,
+  lucidePlus,
+} from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
+import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
+import { HlmTableImports } from '@spartan-ng/helm/table';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import type { components } from '../../core/api/generated/schema';
@@ -41,279 +60,348 @@ interface Editing {
 /** `/admin/actors`: humans and agents of the installation; create, edit, link to agent keys. */
 @Component({
   selector: 'ag-actors',
-  imports: [NgTemplateOutlet, FormField, RouterLink, BadgeComponent, FieldErrorsComponent],
+  imports: [
+    NgTemplateOutlet,
+    FormField,
+    RouterLink,
+    NgIcon,
+    HlmAlertImports,
+    HlmButton,
+    HlmCardImports,
+    HlmCheckbox,
+    HlmDropdownMenuImports,
+    HlmFieldImports,
+    HlmInput,
+    HlmLabel,
+    HlmNativeSelectImports,
+    HlmSkeleton,
+    HlmTableImports,
+    BadgeComponent,
+    FieldErrorsComponent,
+  ],
+  providers: [
+    provideIcons({
+      lucideCircleAlert,
+      lucideEllipsis,
+      lucideKeyRound,
+      lucidePencil,
+      lucidePlus,
+    }),
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mx-auto max-w-5xl p-6">
-      <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold">Actors</h1>
-        <button
-          type="button"
-          class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg"
-          data-testid="new-actor"
-          (click)="creating.set(!creating())"
-        >
+    <section class="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="flex flex-col gap-1">
+          <h1 class="text-2xl font-semibold tracking-tight">Actors</h1>
+          <p class="text-sm text-muted-foreground">Menschen und Agenten dieser Installation.</p>
+        </div>
+        <button hlmBtn type="button" data-testid="new-actor" (click)="creating.set(!creating())">
+          <ng-icon name="lucidePlus" />
           Neuer Actor
         </button>
       </div>
 
       @if (actionError(); as message) {
-        <p
-          class="mt-4 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-          role="alert"
-          data-testid="action-error"
-        >
-          {{ message }}
-        </p>
+        <div hlmAlert variant="destructive" data-testid="action-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+        </div>
       }
 
       @if (creating()) {
-        <form
-          class="mt-4 rounded-lg border border-border bg-surface p-6"
-          novalidate
-          (submit)="onCreate($event)"
-          data-testid="create-form"
-        >
-          <h2 class="font-semibold">Neuer Actor</h2>
-          @if (formError(); as message) {
-            <p
-              class="mt-3 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-              role="alert"
-              data-testid="form-error"
-            >
-              {{ message }}
-            </p>
-          }
-
-          <label for="actor-kind" class="mt-4 block text-sm font-medium">Art</label>
-          <select
-            id="actor-kind"
-            class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-            [formField]="form.kind"
-          >
-            <option value="human">Mensch</option>
-            <option value="agent">Agent</option>
-          </select>
-
-          <label for="actor-name" class="mt-4 block text-sm font-medium">Name</label>
-          <input
-            id="actor-name"
-            type="text"
-            class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-            [formField]="form.name"
-          />
-          <div data-testid="name-errors">
-            @if (shown(form.name)) {
-              <ag-field-errors [errors]="form.name().errors()" />
-            }
-          </div>
-
-          <label for="actor-role" class="mt-4 block text-sm font-medium">Rolle (Freitext)</label>
-          <input
-            id="actor-role"
-            type="text"
-            placeholder="z. B. Tech-Lead"
-            class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-            [formField]="form.role"
-          />
-          <div data-testid="role-errors">
-            @if (shown(form.role)) {
-              <ag-field-errors [errors]="form.role().errors()" />
-            }
-          </div>
-
-          @if (model().kind === 'human') {
-            <label for="actor-email" class="mt-4 block text-sm font-medium">E-Mail</label>
-            <input
-              id="actor-email"
-              type="email"
-              autocomplete="off"
-              class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-              [formField]="form.email"
-            />
-            <div data-testid="email-errors">
-              @if (shown(form.email)) {
-                <ag-field-errors [errors]="form.email().errors()" />
+        <form hlmCard novalidate data-testid="create-form" (submit)="onCreate($event)">
+          <header hlmCardHeader>
+            <h2 hlmCardTitle>Neuer Actor</h2>
+          </header>
+          <div hlmCardContent>
+            <div hlmFieldGroup class="gap-5">
+              @if (formError(); as message) {
+                <div hlmAlert variant="destructive" data-testid="form-error">
+                  <ng-icon name="lucideCircleAlert" />
+                  <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+                </div>
               }
-            </div>
 
-            <label for="actor-password" class="mt-4 block text-sm font-medium"
-              >Initialpasswort (mind. {{ minPasswordLength }} Zeichen)</label
-            >
-            <input
-              id="actor-password"
-              type="password"
-              autocomplete="new-password"
-              class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-              [formField]="form.password"
-            />
-            <div data-testid="password-errors">
-              @if (shown(form.password)) {
-                <ag-field-errors [errors]="form.password().errors()" />
-              }
-            </div>
-          }
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="actor-kind">Art</label>
+                <hlm-native-select selectId="actor-kind" class="w-full" [formField]="form.kind">
+                  <option hlmNativeSelectOption value="human">Mensch</option>
+                  <option hlmNativeSelectOption value="agent">Agent</option>
+                </hlm-native-select>
+              </div>
 
-          <fieldset class="mt-4">
-            <legend class="text-sm font-medium">Instanz-Scopes</legend>
-            @for (scope of instanceScopes; track scope) {
-              <label class="mr-3 inline-flex items-center gap-1 text-sm">
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="actor-name">Name</label>
+                <input hlmInput id="actor-name" type="text" [formField]="form.name" />
+                <div data-testid="name-errors">
+                  @if (shown(form.name)) {
+                    <ag-field-errors [errors]="form.name().errors()" />
+                  }
+                </div>
+              </div>
+
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="actor-role">Rolle (Freitext)</label>
                 <input
-                  type="checkbox"
-                  [attr.data-testid]="'create-scope-' + scope"
-                  [checked]="createScopes().includes(scope)"
-                  (change)="toggleCreateScope(scope)"
-                />{{ scope }}
-              </label>
-            }
-          </fieldset>
+                  hlmInput
+                  id="actor-role"
+                  type="text"
+                  placeholder="z. B. Tech-Lead"
+                  [formField]="form.role"
+                />
+                <div data-testid="role-errors">
+                  @if (shown(form.role)) {
+                    <ag-field-errors [errors]="form.role().errors()" />
+                  }
+                </div>
+              </div>
 
-          <button
-            type="submit"
-            class="mt-6 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
-            data-testid="create-submit"
-            [disabled]="form().submitting()"
-          >
-            Anlegen
-          </button>
+              @if (model().kind === 'human') {
+                <div hlmField class="gap-2">
+                  <label hlmFieldLabel for="actor-email">E-Mail</label>
+                  <input
+                    hlmInput
+                    id="actor-email"
+                    type="email"
+                    autocomplete="off"
+                    [formField]="form.email"
+                  />
+                  <div data-testid="email-errors">
+                    @if (shown(form.email)) {
+                      <ag-field-errors [errors]="form.email().errors()" />
+                    }
+                  </div>
+                </div>
+
+                <div hlmField class="gap-2">
+                  <label hlmFieldLabel for="actor-password"
+                    >Initialpasswort (mind. {{ minPasswordLength }} Zeichen)</label
+                  >
+                  <input
+                    hlmInput
+                    id="actor-password"
+                    type="password"
+                    autocomplete="new-password"
+                    [formField]="form.password"
+                  />
+                  <div data-testid="password-errors">
+                    @if (shown(form.password)) {
+                      <ag-field-errors [errors]="form.password().errors()" />
+                    }
+                  </div>
+                </div>
+              }
+
+              <fieldset hlmFieldSet class="gap-2">
+                <legend hlmFieldLegend variant="label" class="mb-0">Instanz-Scopes</legend>
+                <div class="flex flex-wrap gap-x-4 gap-y-2">
+                  @for (scope of instanceScopes; track scope) {
+                    <div class="flex items-center gap-2">
+                      <hlm-checkbox
+                        [inputId]="'create-scope-' + scope"
+                        [attr.data-testid]="'create-scope-' + scope"
+                        [checked]="createScopes().includes(scope)"
+                        (checkedChange)="toggleCreateScope(scope)"
+                      />
+                      <label hlmLabel class="font-normal" [for]="'create-scope-' + scope">{{
+                        scope
+                      }}</label>
+                    </div>
+                  }
+                </div>
+              </fieldset>
+
+              <div class="flex justify-end">
+                <button
+                  hlmBtn
+                  type="submit"
+                  data-testid="create-submit"
+                  [disabled]="form().submitting()"
+                >
+                  Anlegen
+                </button>
+              </div>
+            </div>
+          </div>
         </form>
       }
 
       @if (loadError(); as message) {
-        <p class="mt-4 text-sm text-danger" role="alert" data-testid="load-error">{{ message }}</p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
+      } @else if (loading()) {
+        <div class="flex flex-col gap-2" aria-busy="true" aria-label="Wird geladen">
+          <hlm-skeleton class="h-10 rounded-lg" />
+          <hlm-skeleton class="h-10 rounded-lg" />
+          <hlm-skeleton class="h-10 rounded-lg" />
+        </div>
       } @else {
-        <table class="mt-4 w-full text-left text-sm" data-testid="actors-table">
-          <thead class="border-b border-border text-muted">
-            <tr>
-              <th class="py-2 pr-3 font-medium">Name</th>
-              <th class="py-2 pr-3 font-medium">Art</th>
-              <th class="py-2 pr-3 font-medium">Rolle</th>
-              <th class="py-2 pr-3 font-medium">E-Mail</th>
-              <th class="py-2 pr-3 font-medium">Instanz-Scopes</th>
-              <th class="py-2 pr-3 font-medium">Status</th>
-              <th class="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (actor of actors(); track actor.id) {
-              <tr class="border-b border-border" data-testid="actor-row">
-                @if (editing(); as edit) {
-                  @if (edit.actor.id === actor.id) {
-                    <td class="py-2 pr-3">
-                      <input
-                        type="text"
-                        class="w-full rounded-md border border-border bg-bg px-2 py-1"
-                        data-testid="edit-name"
-                        [value]="edit.name"
-                        (input)="patchEdit({ name: $any($event.target).value })"
-                      />
-                    </td>
-                    <td class="py-2 pr-3">
-                      <ag-badge>{{ kindLabel(actor.kind) }}</ag-badge>
-                    </td>
-                    <td class="py-2 pr-3">
-                      <input
-                        type="text"
-                        class="w-full rounded-md border border-border bg-bg px-2 py-1"
-                        data-testid="edit-role"
-                        [value]="edit.role"
-                        (input)="patchEdit({ role: $any($event.target).value })"
-                      />
-                    </td>
-                    <td class="py-2 pr-3">{{ actor.email }}</td>
-                    <td class="py-2 pr-3">
-                      @for (scope of instanceScopes; track scope) {
-                        <label class="mr-2 inline-flex items-center gap-1">
+        <div class="rounded-xl border">
+          <div hlmTableContainer>
+            <table hlmTable data-testid="actors-table">
+              <thead hlmTHead>
+                <tr hlmTr>
+                  <th hlmTh class="px-4">Name</th>
+                  <th hlmTh>Art</th>
+                  <th hlmTh>Rolle</th>
+                  <th hlmTh>E-Mail</th>
+                  <th hlmTh>Instanz-Scopes</th>
+                  <th hlmTh>Status</th>
+                  <th hlmTh class="w-12"><span class="sr-only">Aktionen</span></th>
+                </tr>
+              </thead>
+              <tbody hlmTBody>
+                @for (actor of actors(); track actor.id) {
+                  <tr hlmTr data-testid="actor-row">
+                    @if (editing(); as edit) {
+                      @if (edit.actor.id === actor.id) {
+                        <td hlmTd class="px-4">
                           <input
-                            type="checkbox"
-                            [attr.data-testid]="'edit-scope-' + scope"
-                            [checked]="edit.scopes.includes(scope)"
-                            (change)="toggleEditScope(scope)"
-                          />{{ scope }}
-                        </label>
+                            hlmInput
+                            type="text"
+                            aria-label="Name"
+                            data-testid="edit-name"
+                            [value]="edit.name"
+                            (input)="patchEdit({ name: $any($event.target).value })"
+                          />
+                        </td>
+                        <td hlmTd>
+                          <ag-badge>{{ kindLabel(actor.kind) }}</ag-badge>
+                        </td>
+                        <td hlmTd>
+                          <input
+                            hlmInput
+                            type="text"
+                            aria-label="Rolle"
+                            data-testid="edit-role"
+                            [value]="edit.role"
+                            (input)="patchEdit({ role: $any($event.target).value })"
+                          />
+                        </td>
+                        <td hlmTd>{{ actor.email }}</td>
+                        <td hlmTd>
+                          <div class="flex flex-col gap-1">
+                            @for (scope of instanceScopes; track scope) {
+                              <div class="flex items-center gap-2">
+                                <hlm-checkbox
+                                  [inputId]="'edit-scope-' + scope"
+                                  [attr.data-testid]="'edit-scope-' + scope"
+                                  [checked]="edit.scopes.includes(scope)"
+                                  (checkedChange)="toggleEditScope(scope)"
+                                />
+                                <label hlmLabel class="font-normal" [for]="'edit-scope-' + scope">{{
+                                  scope
+                                }}</label>
+                              </div>
+                            }
+                          </div>
+                        </td>
+                        <td hlmTd>
+                          <div class="flex items-center gap-2">
+                            <hlm-checkbox
+                              [inputId]="'edit-active'"
+                              data-testid="edit-active"
+                              [checked]="edit.isActive"
+                              (checkedChange)="patchEdit({ isActive: !edit.isActive })"
+                            />
+                            <label hlmLabel class="font-normal" [for]="'edit-active'">aktiv</label>
+                          </div>
+                        </td>
+                        <td hlmTd class="text-right whitespace-nowrap">
+                          <button
+                            hlmBtn
+                            type="button"
+                            size="sm"
+                            data-testid="edit-save"
+                            (click)="saveEdit()"
+                          >
+                            Speichern
+                          </button>
+                          <button
+                            hlmBtn
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            (click)="editing.set(null)"
+                          >
+                            Abbrechen
+                          </button>
+                        </td>
+                      } @else {
+                        <ng-container
+                          [ngTemplateOutlet]="readCells"
+                          [ngTemplateOutletContext]="{ $implicit: actor }"
+                        />
                       }
-                    </td>
-                    <td class="py-2 pr-3">
-                      <label class="inline-flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          data-testid="edit-active"
-                          [checked]="edit.isActive"
-                          (change)="patchEdit({ isActive: !edit.isActive })"
-                        />aktiv
-                      </label>
-                    </td>
-                    <td class="py-2 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        class="rounded-md bg-accent px-2 py-1 text-accent-fg"
-                        data-testid="edit-save"
-                        (click)="saveEdit()"
-                      >
-                        Speichern
-                      </button>
-                      <button
-                        type="button"
-                        class="ml-1 rounded-md border border-border px-2 py-1"
-                        (click)="editing.set(null)"
-                      >
-                        Abbrechen
-                      </button>
-                    </td>
-                  } @else {
-                    <ng-container
-                      [ngTemplateOutlet]="readCells"
-                      [ngTemplateOutletContext]="{ $implicit: actor }"
-                    />
-                  }
-                } @else {
-                  <ng-container
-                    [ngTemplateOutlet]="readCells"
-                    [ngTemplateOutletContext]="{ $implicit: actor }"
-                  />
+                    } @else {
+                      <ng-container
+                        [ngTemplateOutlet]="readCells"
+                        [ngTemplateOutletContext]="{ $implicit: actor }"
+                      />
+                    }
+                  </tr>
+                } @empty {
+                  <tr hlmTr>
+                    <td hlmTd colspan="7" class="px-4 text-muted-foreground">Keine Actors.</td>
+                  </tr>
                 }
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="7" class="py-3 text-muted">Keine Actors.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
+        </div>
       }
     </section>
 
     <ng-template #readCells let-actor>
-      <td class="py-2 pr-3">{{ actor.name }}</td>
-      <td class="py-2 pr-3">
+      <td hlmTd class="px-4 font-medium">{{ actor.name }}</td>
+      <td hlmTd>
         <ag-badge>{{ kindLabel(actor.kind) }}</ag-badge>
       </td>
-      <td class="py-2 pr-3">{{ actor.role }}</td>
-      <td class="py-2 pr-3">{{ actor.email }}</td>
-      <td class="py-2 pr-3 text-muted">{{ actor.instanceScopes.join(', ') }}</td>
-      <td class="py-2 pr-3">
+      <td hlmTd>{{ actor.role }}</td>
+      <td hlmTd>{{ actor.email }}</td>
+      <td hlmTd class="text-muted-foreground">{{ actor.instanceScopes.join(', ') }}</td>
+      <td hlmTd>
         <ag-badge [tone]="actor.isActive ? 'success' : 'danger'">{{
           actor.isActive ? 'aktiv' : 'inaktiv'
         }}</ag-badge>
       </td>
-      <td class="py-2 text-right whitespace-nowrap">
-        @if (actor.kind === 'agent') {
-          <a
-            [routerLink]="['/admin/actors', actor.id, 'keys']"
-            class="rounded-md border border-border px-2 py-1 hover:bg-surface-hover"
-            data-testid="actor-keys"
-            >Keys</a
-          >
-        }
+      <td hlmTd class="text-right">
         <button
+          hlmBtn
           type="button"
-          class="ml-1 rounded-md border border-border px-2 py-1 hover:bg-surface-hover"
-          data-testid="actor-edit"
-          (click)="startEdit(actor)"
+          variant="ghost"
+          size="icon-sm"
+          data-testid="actor-actions"
+          [attr.aria-label]="'Aktionen für ' + actor.name"
+          [hlmDropdownMenuTrigger]="actionMenu"
+          [hlmDropdownMenuTriggerData]="{ actor }"
+          align="end"
         >
-          Bearbeiten
+          <ng-icon name="lucideEllipsis" />
         </button>
       </td>
+    </ng-template>
+
+    <ng-template #actionMenu let-actor="actor">
+      <hlm-dropdown-menu class="w-44" data-testid="actor-menu">
+        @if (actor.kind === 'agent') {
+          <a
+            hlmDropdownMenuItem
+            [routerLink]="['/admin/actors', actor.id, 'keys']"
+            data-testid="actor-keys"
+          >
+            <ng-icon name="lucideKeyRound" />
+            Keys
+          </a>
+        }
+        <button hlmDropdownMenuItem data-testid="actor-edit" (triggered)="startEdit(actor)">
+          <ng-icon name="lucidePencil" />
+          Bearbeiten
+        </button>
+      </hlm-dropdown-menu>
     </ng-template>
   `,
 })
@@ -329,6 +417,9 @@ export class ActorsComponent {
   });
   protected readonly actors = computed(() =>
     this.actorsResource.hasValue() ? this.actorsResource.value() : [],
+  );
+  protected readonly loading = computed(
+    () => this.actorsResource.isLoading() && !this.actorsResource.hasValue(),
   );
   protected readonly loadError = computed(() =>
     this.actorsResource.error() ? describeError(this.actorsResource.error()) : null,

@@ -75,6 +75,9 @@ describe('ActorKeysComponent', () => {
   const rows = () => Array.from(root().querySelectorAll('[data-testid="key-row"]'));
   const text = (el: Element) => el.textContent!.replace(/\s+/g, ' ').trim();
 
+  /** The Helm checkbox renders a `button[role=checkbox]` inside the element carrying the test id. */
+  const box = (id: string) => q(id)!.querySelector<HTMLElement>('button[role="checkbox"]')!;
+
   /** Creates a key and answers with the plain-text key plus the refreshed list. */
   async function createKey(listAfter: ApiKey[]): Promise<void> {
     q('create-form')!.dispatchEvent(new Event('submit', { cancelable: true }));
@@ -112,7 +115,7 @@ describe('ActorKeysComponent', () => {
 
   it('create_Key_ShowsPlainTextOnceAndListHasNoSecret', async () => {
     await render([]);
-    q('key-scope-read')!.click();
+    box('key-scope-read').click();
     await harness.fixture.whenStable();
 
     q('create-form')!.dispatchEvent(new Event('submit', { cancelable: true }));
@@ -157,7 +160,8 @@ describe('ActorKeysComponent', () => {
 
   it('create_WithWorkspaceAndExpiry_SendsBoth', async () => {
     await render([]);
-    const select = q('key-workspace') as HTMLSelectElement;
+    // The Helm native select wraps the <select>; the test id sits on the wrapper.
+    const select = q('key-workspace')!.querySelector('select')!;
     select.value = 'ws-1';
     select.dispatchEvent(new Event('change'));
     const expires = q('key-expires') as HTMLInputElement;

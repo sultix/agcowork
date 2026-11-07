@@ -8,6 +8,19 @@ import {
   signal,
 } from '@angular/core';
 import { FormField, form, required, submit } from '@angular/forms/signals';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert, lucideEllipsis, lucidePencil, lucideTrash2 } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
+import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
+import { HlmTableImports } from '@spartan-ng/helm/table';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import type { components } from '../../core/api/generated/schema';
@@ -48,236 +61,290 @@ function sameSet(a: readonly string[], b: readonly string[]): boolean {
     DatePipe,
     NgTemplateOutlet,
     FormField,
+    NgIcon,
+    HlmAlertImports,
+    HlmButton,
+    HlmCardImports,
+    HlmCheckbox,
+    HlmDropdownMenuImports,
+    HlmFieldImports,
+    HlmInput,
+    HlmLabel,
+    HlmNativeSelectImports,
+    HlmSkeleton,
+    HlmTableImports,
     BadgeComponent,
     ConfirmDialogComponent,
     FieldErrorsComponent,
   ],
+  providers: [provideIcons({ lucideCircleAlert, lucideEllipsis, lucidePencil, lucideTrash2 })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mx-auto max-w-4xl p-6">
-      <h1 class="text-xl font-semibold">Mitglieder</h1>
-
-      @if (!canManage()) {
-        <p class="mt-1 text-sm text-muted" data-testid="readonly-notice">
-          Nur Admins und Owner können Mitglieder verwalten.
-        </p>
-      }
+    <section class="mx-auto flex max-w-4xl flex-col gap-6 p-6">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-semibold tracking-tight">Mitglieder</h1>
+        @if (!canManage()) {
+          <p class="text-sm text-muted-foreground" data-testid="readonly-notice">
+            Nur Admins und Owner können Mitglieder verwalten.
+          </p>
+        }
+      </div>
       @if (actionError(); as message) {
-        <p
-          class="mt-4 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-          role="alert"
-          data-testid="action-error"
-        >
-          {{ message }}
-        </p>
+        <div hlmAlert variant="destructive" data-testid="action-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+        </div>
       }
 
       @if (loadError(); as message) {
-        <p class="mt-4 text-sm text-danger" role="alert" data-testid="load-error">{{ message }}</p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
+      } @else if (loading()) {
+        <div class="flex flex-col gap-2" aria-busy="true" aria-label="Wird geladen">
+          <hlm-skeleton class="h-10 rounded-lg" />
+          <hlm-skeleton class="h-10 rounded-lg" />
+          <hlm-skeleton class="h-10 rounded-lg" />
+        </div>
       } @else {
-        <table class="mt-4 w-full text-left text-sm" data-testid="members-table">
-          <thead class="border-b border-border text-muted">
-            <tr>
-              <th class="py-2 pr-3 font-medium">Name</th>
-              <th class="py-2 pr-3 font-medium">Art</th>
-              <th class="py-2 pr-3 font-medium">Rolle</th>
-              <th class="py-2 pr-3 font-medium">Scopes</th>
-              <th class="py-2 pr-3 font-medium">Seit</th>
-              <th class="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (member of members(); track member.actorId) {
-              <tr class="border-b border-border" data-testid="member-row">
-                <td class="py-2 pr-3">
-                  {{ member.name }}
-                  @if (member.actorId === myId()) {
-                    <span class="text-muted">(du)</span>
-                  }
-                </td>
-                <td class="py-2 pr-3">
-                  <ag-badge>{{ kindLabel(member.kind) }}</ag-badge>
-                </td>
-                @if (editing(); as edit) {
-                  @if (edit.member.actorId === member.actorId) {
-                    <td class="py-2 pr-3">
-                      <select
-                        class="rounded-md border border-border bg-bg px-2 py-1"
-                        data-testid="edit-role"
-                        [value]="edit.role"
-                        (change)="setEditRole($any($event.target).value)"
-                      >
-                        @for (role of assignableRoles(); track role) {
-                          <option [value]="role" [selected]="role === edit.role">{{ role }}</option>
-                        }
-                      </select>
-                    </td>
-                    <td class="py-2 pr-3">
-                      @for (scope of scopes; track scope) {
-                        <label class="mr-2 inline-flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            [attr.data-testid]="'edit-scope-' + scope"
-                            [checked]="edit.scopes.includes(scope)"
-                            (change)="toggleEditScope(scope)"
-                          />{{ scope }}
-                        </label>
+        <div class="rounded-xl border">
+          <div hlmTableContainer>
+            <table hlmTable data-testid="members-table">
+              <thead hlmTHead>
+                <tr hlmTr>
+                  <th hlmTh class="px-4">Name</th>
+                  <th hlmTh>Art</th>
+                  <th hlmTh>Rolle</th>
+                  <th hlmTh>Scopes</th>
+                  <th hlmTh>Seit</th>
+                  <th hlmTh class="w-12"><span class="sr-only">Aktionen</span></th>
+                </tr>
+              </thead>
+              <tbody hlmTBody>
+                @for (member of members(); track member.actorId) {
+                  <tr hlmTr data-testid="member-row">
+                    <td hlmTd class="px-4 font-medium">
+                      {{ member.name }}
+                      @if (member.actorId === myId()) {
+                        <span class="font-normal text-muted-foreground">(du)</span>
                       }
                     </td>
-                    <td class="py-2 pr-3">{{ member.createdAt | date: 'dd.MM.yyyy' }}</td>
-                    <td class="py-2 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        class="rounded-md bg-accent px-2 py-1 text-accent-fg"
-                        data-testid="edit-save"
-                        (click)="saveEdit()"
-                      >
-                        Speichern
-                      </button>
-                      <button
-                        type="button"
-                        class="ml-1 rounded-md border border-border px-2 py-1"
-                        (click)="editing.set(null)"
-                      >
-                        Abbrechen
-                      </button>
+                    <td hlmTd>
+                      <ag-badge>{{ kindLabel(member.kind) }}</ag-badge>
                     </td>
-                  } @else {
-                    <ng-container
-                      [ngTemplateOutlet]="readCells"
-                      [ngTemplateOutletContext]="{ $implicit: member }"
-                    />
-                  }
-                } @else {
-                  <ng-container
-                    [ngTemplateOutlet]="readCells"
-                    [ngTemplateOutletContext]="{ $implicit: member }"
-                  />
+                    @if (editing(); as edit) {
+                      @if (edit.member.actorId === member.actorId) {
+                        <td hlmTd>
+                          <hlm-native-select
+                            size="sm"
+                            data-testid="edit-role"
+                            [value]="edit.role"
+                            (valueChange)="setEditRole($any($event))"
+                          >
+                            @for (role of assignableRoles(); track role) {
+                              <option hlmNativeSelectOption [value]="role">{{ role }}</option>
+                            }
+                          </hlm-native-select>
+                        </td>
+                        <td hlmTd>
+                          <div class="flex flex-wrap gap-x-3 gap-y-1">
+                            @for (scope of scopes; track scope) {
+                              <div class="flex items-center gap-2">
+                                <hlm-checkbox
+                                  [inputId]="'edit-scope-' + scope"
+                                  [attr.data-testid]="'edit-scope-' + scope"
+                                  [checked]="edit.scopes.includes(scope)"
+                                  (checkedChange)="toggleEditScope(scope)"
+                                />
+                                <label hlmLabel class="font-normal" [for]="'edit-scope-' + scope">{{
+                                  scope
+                                }}</label>
+                              </div>
+                            }
+                          </div>
+                        </td>
+                        <td hlmTd>{{ member.createdAt | date: 'dd.MM.yyyy' }}</td>
+                        <td hlmTd class="text-right whitespace-nowrap">
+                          <button
+                            hlmBtn
+                            type="button"
+                            size="sm"
+                            data-testid="edit-save"
+                            (click)="saveEdit()"
+                          >
+                            Speichern
+                          </button>
+                          <button
+                            hlmBtn
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            (click)="editing.set(null)"
+                          >
+                            Abbrechen
+                          </button>
+                        </td>
+                      } @else {
+                        <ng-container
+                          [ngTemplateOutlet]="readCells"
+                          [ngTemplateOutletContext]="{ $implicit: member }"
+                        />
+                      }
+                    } @else {
+                      <ng-container
+                        [ngTemplateOutlet]="readCells"
+                        [ngTemplateOutletContext]="{ $implicit: member }"
+                      />
+                    }
+                  </tr>
+                } @empty {
+                  <tr hlmTr>
+                    <td hlmTd colspan="6" class="px-4 text-muted-foreground">Keine Mitglieder.</td>
+                  </tr>
                 }
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="6" class="py-3 text-muted">Keine Mitglieder.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
+        </div>
       }
 
       @if (canManage()) {
-        <form
-          class="mt-8 rounded-lg border border-border bg-surface p-6"
-          novalidate
-          (submit)="onAdd($event)"
-          data-testid="add-form"
-        >
-          <h2 class="font-semibold">Mitglied hinzufügen</h2>
-          @if (formError(); as message) {
-            <p
-              class="mt-3 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-              role="alert"
-              data-testid="form-error"
-            >
-              {{ message }}
-            </p>
-          }
-
-          <label for="add-actor" class="mt-4 block text-sm font-medium">Actor</label>
-          @if (actors(); as list) {
-            <select
-              id="add-actor"
-              class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-              [formField]="form.actorId"
-            >
-              <option value="">Bitte wählen …</option>
-              @for (actor of list; track actor.id) {
-                <option [value]="actor.id">{{ actor.name }} ({{ kindLabel(actor.kind) }})</option>
+        <form hlmCard novalidate data-testid="add-form" (submit)="onAdd($event)">
+          <header hlmCardHeader>
+            <h2 hlmCardTitle>Mitglied hinzufügen</h2>
+          </header>
+          <div hlmCardContent>
+            <div hlmFieldGroup class="gap-5">
+              @if (formError(); as message) {
+                <div hlmAlert variant="destructive" data-testid="form-error">
+                  <ng-icon name="lucideCircleAlert" />
+                  <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+                </div>
               }
-            </select>
-          } @else {
-            <input
-              id="add-actor"
-              type="text"
-              placeholder="Actor-ID (UUID)"
-              autocomplete="off"
-              class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 font-mono text-sm"
-              [formField]="form.actorId"
-            />
-          }
-          <div data-testid="actorId-errors">
-            @if (form.actorId().touched() && form.actorId().invalid()) {
-              <ag-field-errors [errors]="form.actorId().errors()" />
-            }
+
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="add-actor">Actor</label>
+                @if (actors(); as list) {
+                  <hlm-native-select selectId="add-actor" class="w-full" [formField]="form.actorId">
+                    <option hlmNativeSelectOption value="">Bitte wählen …</option>
+                    @for (actor of list; track actor.id) {
+                      <option hlmNativeSelectOption [value]="actor.id">
+                        {{ actor.name }} ({{ kindLabel(actor.kind) }})
+                      </option>
+                    }
+                  </hlm-native-select>
+                } @else {
+                  <input
+                    hlmInput
+                    id="add-actor"
+                    type="text"
+                    placeholder="Actor-ID (UUID)"
+                    autocomplete="off"
+                    class="font-mono"
+                    [formField]="form.actorId"
+                  />
+                }
+                <div data-testid="actorId-errors">
+                  @if (form.actorId().touched() && form.actorId().invalid()) {
+                    <ag-field-errors [errors]="form.actorId().errors()" />
+                  }
+                </div>
+              </div>
+
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="add-role">Rolle</label>
+                <hlm-native-select selectId="add-role" class="w-full" [formField]="form.role">
+                  @for (role of assignableRoles(); track role) {
+                    <option hlmNativeSelectOption [value]="role">{{ role }}</option>
+                  }
+                </hlm-native-select>
+                <div data-testid="role-errors">
+                  @if (form.role().touched() && form.role().invalid()) {
+                    <ag-field-errors [errors]="form.role().errors()" />
+                  }
+                </div>
+              </div>
+
+              <fieldset hlmFieldSet class="gap-2">
+                <legend hlmFieldLegend variant="label" class="mb-0">
+                  Scopes (optional, leer = Rechte der Rolle)
+                </legend>
+                <div class="flex flex-wrap gap-x-4 gap-y-2">
+                  @for (scope of scopes; track scope) {
+                    <div class="flex items-center gap-2">
+                      <hlm-checkbox
+                        [inputId]="'add-scope-' + scope"
+                        [attr.data-testid]="'add-scope-' + scope"
+                        [checked]="addScopes().includes(scope)"
+                        (checkedChange)="toggleAddScope(scope)"
+                      />
+                      <label hlmLabel class="font-normal" [for]="'add-scope-' + scope">{{
+                        scope
+                      }}</label>
+                    </div>
+                  }
+                </div>
+              </fieldset>
+
+              <div class="flex justify-end">
+                <button
+                  hlmBtn
+                  type="submit"
+                  data-testid="add-submit"
+                  [disabled]="form().submitting()"
+                >
+                  Hinzufügen
+                </button>
+              </div>
+            </div>
           </div>
-
-          <label for="add-role" class="mt-4 block text-sm font-medium">Rolle</label>
-          <select
-            id="add-role"
-            class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-            [formField]="form.role"
-          >
-            @for (role of assignableRoles(); track role) {
-              <option [value]="role">{{ role }}</option>
-            }
-          </select>
-          <div data-testid="role-errors">
-            @if (form.role().touched() && form.role().invalid()) {
-              <ag-field-errors [errors]="form.role().errors()" />
-            }
-          </div>
-
-          <fieldset class="mt-4">
-            <legend class="text-sm font-medium">Scopes (optional, leer = Rechte der Rolle)</legend>
-            @for (scope of scopes; track scope) {
-              <label class="mr-3 inline-flex items-center gap-1 text-sm">
-                <input
-                  type="checkbox"
-                  [attr.data-testid]="'add-scope-' + scope"
-                  [checked]="addScopes().includes(scope)"
-                  (change)="toggleAddScope(scope)"
-                />{{ scope }}
-              </label>
-            }
-          </fieldset>
-
-          <button
-            type="submit"
-            class="mt-6 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
-            data-testid="add-submit"
-            [disabled]="form().submitting()"
-          >
-            Hinzufügen
-          </button>
         </form>
       }
     </section>
 
     <ng-template #readCells let-member>
-      <td class="py-2 pr-3">
+      <td hlmTd>
         <ag-badge tone="accent">{{ member.role }}</ag-badge>
       </td>
-      <td class="py-2 pr-3 text-muted">{{ member.scopes.join(', ') }}</td>
-      <td class="py-2 pr-3">{{ member.createdAt | date: 'dd.MM.yyyy' }}</td>
-      <td class="py-2 text-right whitespace-nowrap">
+      <td hlmTd class="text-muted-foreground">{{ member.scopes.join(', ') }}</td>
+      <td hlmTd>{{ member.createdAt | date: 'dd.MM.yyyy' }}</td>
+      <td hlmTd class="text-right">
         @if (canChange(member)) {
           <button
+            hlmBtn
             type="button"
-            class="rounded-md border border-border px-2 py-1 hover:bg-surface-hover"
-            data-testid="member-edit"
-            (click)="startEdit(member)"
+            variant="ghost"
+            size="icon-sm"
+            data-testid="member-actions"
+            [attr.aria-label]="'Aktionen für ' + member.name"
+            [hlmDropdownMenuTrigger]="actionMenu"
+            [hlmDropdownMenuTriggerData]="{ member }"
+            align="end"
           >
-            Ändern
-          </button>
-          <button
-            type="button"
-            class="ml-1 rounded-md border border-danger px-2 py-1 text-danger hover:bg-surface-hover"
-            data-testid="member-remove"
-            (click)="removing.set(member)"
-          >
-            Entfernen
+            <ng-icon name="lucideEllipsis" />
           </button>
         }
       </td>
+    </ng-template>
+
+    <ng-template #actionMenu let-member="member">
+      <hlm-dropdown-menu class="w-40" data-testid="member-menu">
+        <button hlmDropdownMenuItem data-testid="member-edit" (triggered)="startEdit(member)">
+          <ng-icon name="lucidePencil" />
+          Ändern
+        </button>
+        <hlm-dropdown-menu-separator />
+        <button
+          hlmDropdownMenuItem
+          variant="destructive"
+          data-testid="member-remove"
+          (triggered)="removing.set(member)"
+        >
+          <ng-icon name="lucideTrash2" />
+          Entfernen
+        </button>
+      </hlm-dropdown-menu>
     </ng-template>
 
     <ag-confirm-dialog
@@ -322,6 +389,9 @@ export class MembersComponent {
   });
   protected readonly members = computed(() =>
     this.membersResource.hasValue() ? this.membersResource.value() : [],
+  );
+  protected readonly loading = computed(
+    () => this.membersResource.isLoading() && !this.membersResource.hasValue(),
   );
   protected readonly loadError = computed(() =>
     this.membersResource.error() ? describeError(this.membersResource.error()) : null,

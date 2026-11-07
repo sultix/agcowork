@@ -104,6 +104,15 @@ describe('MembersComponent', () => {
   const rows = () => Array.from(root().querySelectorAll('[data-testid="member-row"]'));
   const text = (el: Element) => el.textContent!.replace(/\s+/g, ' ').trim();
 
+  /** Opens the row action menu (overlay in <body>) of the given row. */
+  async function openActions(row: number): Promise<void> {
+    rows()[row].querySelector<HTMLElement>('[data-testid="member-actions"]')!.click();
+    await harness.fixture.whenStable();
+  }
+
+  /** The Helm checkbox renders a `button[role=checkbox]` inside the element carrying the test id. */
+  const box = (id: string) => q(id)!.querySelector<HTMLElement>('button[role="checkbox"]')!;
+
   async function pick(selector: string, value: string): Promise<void> {
     const select = root().querySelector<HTMLSelectElement | HTMLInputElement>(selector)!;
     select.value = value;
@@ -147,7 +156,7 @@ describe('MembersComponent', () => {
     await render({ members: [OWNER] });
 
     await pick('#add-actor', NEW_ACTOR.id);
-    q('add-scope-read')!.click();
+    box('add-scope-read').click();
     await harness.fixture.whenStable();
     q('add-form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     const request = await expectRequest(http, 'POST', MEMBERS_URL);
@@ -198,9 +207,10 @@ describe('MembersComponent', () => {
   it('edit_RoleToViewer_PatchesOnlyRole', async () => {
     await render({});
 
-    rows()[1].querySelector<HTMLElement>('[data-testid="member-edit"]')!.click();
+    await openActions(1);
+    q('member-edit')!.click();
     await harness.fixture.whenStable();
-    await pick('[data-testid="edit-role"]', 'viewer');
+    await pick('[data-testid="edit-role"] select', 'viewer');
     q('edit-save')!.click();
     const request = await expectRequest(http, 'PATCH', `${MEMBERS_URL}/${AGENT.actorId}`);
     expect(request.request.body).toEqual({ role: 'viewer', scopes: null });
@@ -217,9 +227,10 @@ describe('MembersComponent', () => {
   it('edit_ScopesChanged_PatchesScopes', async () => {
     await render({});
 
-    rows()[1].querySelector<HTMLElement>('[data-testid="member-edit"]')!.click();
+    await openActions(1);
+    q('member-edit')!.click();
     await harness.fixture.whenStable();
-    q('edit-scope-write')!.click();
+    box('edit-scope-write').click();
     await harness.fixture.whenStable();
     q('edit-save')!.click();
     const request = await expectRequest(http, 'PATCH', `${MEMBERS_URL}/${AGENT.actorId}`);
@@ -233,9 +244,10 @@ describe('MembersComponent', () => {
   it('edit_SelfEscalation_ShowsMessage', async () => {
     await render({});
 
-    rows()[0].querySelector<HTMLElement>('[data-testid="member-edit"]')!.click();
+    await openActions(0);
+    q('member-edit')!.click();
     await harness.fixture.whenStable();
-    await pick('[data-testid="edit-role"]', 'viewer');
+    await pick('[data-testid="edit-role"] select', 'viewer');
     q('edit-save')!.click();
     (await expectRequest(http, 'PATCH', `${MEMBERS_URL}/${OWNER.actorId}`)).flush(
       { status: 409, code: 'self_escalation' },
@@ -249,7 +261,8 @@ describe('MembersComponent', () => {
   it('remove_Confirmed_DeletesAndReloads', async () => {
     await render({});
 
-    rows()[1].querySelector<HTMLElement>('[data-testid="member-remove"]')!.click();
+    await openActions(1);
+    q('member-remove')!.click();
     await harness.fixture.whenStable();
     expect(http.match(() => true)).toHaveLength(0);
     q('confirm-ok')!.click();
@@ -267,7 +280,8 @@ describe('MembersComponent', () => {
   it('remove_Cancelled_SendsNothing', async () => {
     await render({});
 
-    rows()[1].querySelector<HTMLElement>('[data-testid="member-remove"]')!.click();
+    await openActions(1);
+    q('member-remove')!.click();
     await harness.fixture.whenStable();
     q('confirm-cancel')!.click();
     await harness.fixture.whenStable();
@@ -279,7 +293,8 @@ describe('MembersComponent', () => {
   it('remove_LastOwner_ShowsLastOwnerMessage', async () => {
     await render({});
 
-    rows()[0].querySelector<HTMLElement>('[data-testid="member-remove"]')!.click();
+    await openActions(0);
+    q('member-remove')!.click();
     await harness.fixture.whenStable();
     q('confirm-ok')!.click();
     (await expectRequest(http, 'DELETE', `${MEMBERS_URL}/${OWNER.actorId}`)).flush(
@@ -296,17 +311,58 @@ describe('MembersComponent', () => {
     await render({ me: MEMBER_ME, ws: workspace({ role: 'viewer', scopes: ['read'] }) });
 
     expect(q('add-form')).toBeNull();
-    expect(root().querySelector('[data-testid="member-edit"]')).toBeNull();
-    expect(root().querySelector('[data-testid="member-remove"]')).toBeNull();
+    expect(root().querySelector('[data-testid="member-actions"]')).toBeNull();
     expect(q('readonly-notice')).not.toBeNull();
   });
 
   it('render_AdminRole_CannotChangeOwners', async () => {
     await render({ me: MEMBER_ME, ws: workspace({ role: 'admin' }) });
 
-    expect(rows()[0].querySelector('[data-testid="member-edit"]')).toBeNull();
-    expect(rows()[1].querySelector('[data-testid="member-edit"]')).not.toBeNull();
+    expect(rows()[0].querySelector('[data-testid="member-actions"]')).toBeNull();
+    expect(rows()[1].querySelector('[data-testid="member-actions"]')).not.toBeNull();
     const roles = Array.from(root().querySelectorAll('#add-role option')).map((o) => o.textContent);
     expect(roles).not.toContain('owner');
+  });
+
+  it('actions_Open_ShowsEditAndRemoveMenuItems', async () => {
+    await render({});
+
+    expect(q('member-menu')).toBeNull();
+    await openActions(1);
+
+    const menu = q('member-menu')!;
+    expect(menu.getAttribute('role')).toBe('menu');
+    expect(q('member-edit')!.getAttribute('role')).toBe('menuitem');
+    expect(q('member-remove')!.getAttribute('role')).toBe('menuitem');
+  });
+
+  it('actions_Trigger_LabelContainsMemberName', async () => {
+    await render({});
+
+    const labels = rows().map((r) =>
+      r.querySelector('[data-testid="member-actions"]')?.getAttribute('aria-label'),
+    );
+    expect(labels).toEqual(['Aktionen für Admin', 'Aktionen für Coder']);
+  });
+
+  it('actions_EditItem_SwitchesRowToEditMode', async () => {
+    await render({});
+
+    await openActions(1);
+    q('member-edit')!.click();
+    await harness.fixture.whenStable();
+
+    expect(q('edit-save')).not.toBeNull();
+    expect(q('edit-role')).not.toBeNull();
+  });
+
+  it('actions_RemoveItem_OpensConfirmDialogForThatMember', async () => {
+    await render({});
+
+    await openActions(1);
+    q('member-remove')!.click();
+    await harness.fixture.whenStable();
+
+    expect(q('confirm-dialog')!.textContent).toContain('Coder');
   });
 });

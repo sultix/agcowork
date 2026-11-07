@@ -7,6 +7,17 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideChevronDown, lucideCircleAlert, lucideX } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmLabel } from '@spartan-ng/helm/label';
+import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
+import { HlmPopoverImports } from '@spartan-ng/helm/popover';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { ApiClient } from '../../core/api/api-client';
 import { MembersStore } from '../../core/workspace/members.store';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
@@ -32,142 +43,181 @@ interface ActivityQuery {
 /** `/w/:slug/activity`: what happened in the workspace, newest first, filterable. */
 @Component({
   selector: 'ag-activity-feed',
-  imports: [ActivityEntryComponent],
+  imports: [
+    NgIcon,
+    HlmAlertImports,
+    HlmButton,
+    HlmCheckbox,
+    HlmFieldImports,
+    HlmInput,
+    HlmLabel,
+    HlmNativeSelectImports,
+    HlmPopoverImports,
+    HlmSkeleton,
+    ActivityEntryComponent,
+  ],
+  providers: [provideIcons({ lucideChevronDown, lucideCircleAlert, lucideX })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mx-auto max-w-5xl p-6">
-      <h1 class="text-xl font-semibold">Aktivität</h1>
+    <section class="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-semibold tracking-tight">Aktivität</h1>
+        <p class="text-sm text-muted-foreground">Was im Workspace passiert ist, neueste zuerst.</p>
+      </div>
 
       <form
-        class="mt-4 flex flex-wrap items-end gap-3 text-sm"
+        class="flex flex-wrap items-end gap-4"
         data-testid="activity-filters"
         (submit)="$event.preventDefault()"
       >
-        <label class="flex flex-col gap-1">
-          <span class="text-muted">Space</span>
-          <select
-            class="rounded-md border border-border bg-surface px-2 py-1"
+        <div hlmField class="w-44 gap-2">
+          <label hlmFieldLabel for="filter-space">Space</label>
+          <hlm-native-select
+            selectId="filter-space"
+            class="w-full"
             data-testid="filter-space"
-            (change)="setSpace($any($event.target).value)"
+            [value]="spaceId()"
+            (valueChange)="setSpace($any($event))"
           >
-            <option value="">Alle</option>
+            <option hlmNativeSelectOption value="">Alle</option>
             @for (space of tree.spaces(); track space.id) {
-              <option [value]="space.id" [selected]="space.id === spaceId()">
-                {{ space.name }}
-              </option>
+              <option hlmNativeSelectOption [value]="space.id">{{ space.name }}</option>
             }
-          </select>
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-muted">Collection</span>
-          <select
-            class="rounded-md border border-border bg-surface px-2 py-1"
+          </hlm-native-select>
+        </div>
+        <div hlmField class="w-44 gap-2">
+          <label hlmFieldLabel for="filter-collection">Collection</label>
+          <hlm-native-select
+            selectId="filter-collection"
+            class="w-full"
             data-testid="filter-collection"
-            (change)="collectionId.set($any($event.target).value)"
+            [value]="collectionId()"
+            (valueChange)="collectionId.set($any($event))"
           >
-            <option value="">Alle</option>
+            <option hlmNativeSelectOption value="">Alle</option>
             @for (collection of collections(); track collection.id) {
-              <option [value]="collection.id" [selected]="collection.id === collectionId()">
-                {{ collection.name }}
-              </option>
+              <option hlmNativeSelectOption [value]="collection.id">{{ collection.name }}</option>
             }
-          </select>
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-muted">Actor</span>
-          <select
-            class="rounded-md border border-border bg-surface px-2 py-1"
+          </hlm-native-select>
+        </div>
+        <div hlmField class="w-48 gap-2">
+          <label hlmFieldLabel for="filter-actor">Actor</label>
+          <hlm-native-select
+            selectId="filter-actor"
+            class="w-full"
             data-testid="filter-actor"
-            (change)="actorId.set($any($event.target).value)"
+            [value]="actorId()"
+            (valueChange)="actorId.set($any($event))"
           >
-            <option value="">Alle</option>
+            <option hlmNativeSelectOption value="">Alle</option>
             @for (member of members.members(); track member.actorId) {
-              <option [value]="member.actorId" [selected]="member.actorId === actorId()">
+              <option hlmNativeSelectOption [value]="member.actorId">
                 {{ member.name }} ({{ member.kind === 'agent' ? 'Agent' : 'Mensch' }})
               </option>
             }
-          </select>
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-muted">Seit</span>
+          </hlm-native-select>
+        </div>
+        <div hlmField class="w-40 gap-2">
+          <label hlmFieldLabel for="filter-since">Seit</label>
           <input
+            hlmInput
+            id="filter-since"
             type="date"
-            class="rounded-md border border-border bg-surface px-2 py-1"
             data-testid="filter-since"
             [value]="since()"
             (change)="since.set($any($event.target).value)"
           />
-        </label>
-        <details class="relative">
-          <summary
-            class="cursor-pointer rounded-md border border-border bg-surface px-2 py-1"
+        </div>
+        <hlm-popover align="start">
+          <button
+            hlmBtn
+            hlmPopoverTrigger
+            type="button"
+            variant="outline"
             data-testid="filter-types-summary"
           >
             Typen
             @if (types().length > 0) {
               ({{ types().length }})
             }
-          </summary>
+            <ng-icon name="lucideChevronDown" />
+          </button>
           <div
-            class="absolute z-10 mt-1 w-64 rounded-md border border-border bg-surface p-2 shadow"
+            hlmPopoverContent
+            *hlmPopoverPortal="let ctx"
+            class="w-72"
+            role="group"
+            aria-label="Typen filtern"
             data-testid="filter-types"
           >
-            @for (type of typeOptions; track type.value) {
-              <label class="flex items-center gap-2 py-0.5">
-                <input
-                  type="checkbox"
-                  [value]="type.value"
-                  [checked]="types().includes(type.value)"
-                  (change)="toggleType(type.value)"
-                />
-                {{ type.label }}
-              </label>
-            }
+            <div class="flex max-h-80 flex-col gap-2 overflow-y-auto">
+              @for (type of typeOptions; track type.value) {
+                <div class="flex items-center gap-2">
+                  <hlm-checkbox
+                    [inputId]="'filter-type-' + type.value"
+                    [attr.data-testid]="'filter-type-' + type.value"
+                    [checked]="types().includes(type.value)"
+                    (checkedChange)="toggleType(type.value)"
+                  />
+                  <label hlmLabel class="font-normal" [for]="'filter-type-' + type.value">{{
+                    type.label
+                  }}</label>
+                </div>
+              }
+            </div>
           </div>
-        </details>
+        </hlm-popover>
         @if (filtered()) {
-          <button
-            type="button"
-            class="rounded-md border border-border px-2 py-1 hover:bg-surface-hover"
-            data-testid="filter-reset"
-            (click)="reset()"
-          >
+          <button hlmBtn type="button" variant="ghost" data-testid="filter-reset" (click)="reset()">
+            <ng-icon name="lucideX" />
             Zurücksetzen
           </button>
         }
       </form>
 
       @if (error(); as message) {
-        <p class="mt-3 text-sm text-danger" role="alert" data-testid="activity-error">
-          {{ message }}
-        </p>
+        <div hlmAlert variant="destructive" data-testid="activity-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ message }}</p>
+        </div>
       }
-      <ul
-        class="mt-4 divide-y divide-border rounded-lg border border-border"
-        data-testid="activity-list"
-      >
-        @for (event of events(); track event.id) {
-          <li>
-            <ag-activity-entry [event]="event" />
-          </li>
-        } @empty {
-          @if (!loading() && !error()) {
-            <li class="px-4 py-3 text-sm text-muted" data-testid="activity-empty">
-              Keine Ereignisse.
+      @if (events().length > 0) {
+        <ul class="divide-y rounded-xl border" data-testid="activity-list">
+          @for (event of events(); track event.id) {
+            <li>
+              <ag-activity-entry [event]="event" />
             </li>
           }
-        }
-      </ul>
-      @if (nextCursor()) {
-        <button
-          type="button"
-          class="mt-3 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-hover disabled:opacity-60"
-          data-testid="load-more"
-          [disabled]="loading()"
-          (click)="loadMore()"
+        </ul>
+      } @else if (loading()) {
+        <div class="flex flex-col gap-2" aria-busy="true" aria-label="Wird geladen">
+          <hlm-skeleton class="h-10 rounded-lg" />
+          <hlm-skeleton class="h-10 rounded-lg" />
+          <hlm-skeleton class="h-10 rounded-lg" />
+        </div>
+      } @else if (!error()) {
+        <div
+          class="flex flex-col items-center gap-1 rounded-xl border border-dashed p-10 text-center"
         >
-          Mehr laden
-        </button>
+          <p class="font-medium" data-testid="activity-empty">Keine Ereignisse.</p>
+          <p class="text-sm text-muted-foreground">
+            Für diese Auswahl gibt es noch keine Aktivität.
+          </p>
+        </div>
+      }
+      @if (nextCursor()) {
+        <div>
+          <button
+            hlmBtn
+            type="button"
+            variant="outline"
+            data-testid="load-more"
+            [disabled]="loading()"
+            (click)="loadMore()"
+          >
+            Mehr laden
+          </button>
+        </div>
       }
     </section>
   `,
