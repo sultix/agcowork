@@ -358,6 +358,9 @@ Templates), `Records`, `Views`, `Query` (Filter-DSL), `Activity` (Revisions, Eve
 - **Auth-Pipeline**: Bearer-Key → Actor als ClaimsPrincipal; Cookie-Login für Menschen;
   danach Tenancy-Middleware → Membership → Scopes. Gleiche Authorization-Policies für alle
   Adapter (`CanRead(space)`, `CanWrite(space)`, `WorkspaceAdmin`, `InstanceAdmin`).
+- **Keine Retry-Execution-Strategy** (`DisableRetry = true` bei `EnrichNpgsqlDbContext`). Use-Cases dürfen `BeginTransactionAsync` direkt verwenden, z. B. für Revision + Record in einer Transaktion. Transiente Verbindungsfehler fängt der AppHost (`WaitFor`) bzw. später der Betrieb ab; sollte Retry doch nötig werden, gilt verbindlich `CreateExecutionStrategy().ExecuteAsync(...)` um jede Transaktion.
+- **Reihenfolge nie über die Id**: UUIDv7 ist innerhalb derselben Millisekunde nicht monoton. Wer Reihenfolge braucht (Revisionen, Activity), sortiert nach `CreatedAt` plus laufender Nummer.
+- **Persistenz-Muster** (aus AP-001, für alle weiteren Pakete): Provider-Konfiguration an genau einer Stelle (`AgcoworkDbContextOptions.Configure`), gemeinsam für Laufzeit und Design-Time; Connection-String lazy auflösen, damit Tests den Container ohne Service-Override einhängen; Unique-Tests prüfen SqlState und Constraint-Namen.
 - **Tenancy in EF Core**: Interface `ITenantEntity { WorkspaceId }`, ein Global Query Filter
   per Konvention für alle Implementierungen, `SaveChanges`-Interceptor setzt `WorkspaceId`
   und verweigert Änderungen an fremden Entitäten.
@@ -413,6 +416,8 @@ SignalR-Gruppe gewechselt.
 - Rate-Limiting pro Key, Request-Größenlimits (Body-Markdown z. B. 2 MB).
 - HTTPS verpflichtend außer `localhost`; CORS nur für die eigene UI.
 - Markdown-Rendering sanitisiert (kein rohes HTML aus Agenten-Inhalten).
+- `/health`, `/health/ready` und `/openapi/v1.json` sind in allen Umgebungen ohne Auth erreichbar (Health ohne Details). `/health/ready` öffnet eine DB-Verbindung. Bei öffentlicher Erreichbarkeit: Reverse-Proxy oder Rate-Limit davor, OpenAPI ggf. nur mit Auth.
+- Slug-Validierung mit `\z` statt `$` (`$` matcht in .NET vor einem abschließenden Zeilenumbruch).
 
 ## 8. Betrieb
 

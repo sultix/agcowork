@@ -1,0 +1,20 @@
+<Project Sdk="Aspire.AppHost.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Use DCP and dashboard from NuGet (SDK default); the Aspire CLI is not a prerequisite. ASPIRE010 only reports that choice. -->
+    <AspireUseCliBundle>false</AspireUseCliBundle>
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);ASPIRE010</MSBuildWarningsAsMessages>
+    <UserSecretsId>agcowork-apphost-8a1d4c7e-2b3f-4e6a-9d0c-5f7b1e3a2c64</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Agcowork.Api\Agcowork.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+  </ItemGroup>
+
+</Project>

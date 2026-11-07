@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 0 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten) |
@@ -70,3 +70,9 @@ Postgres und die API startet. Jedes spätere Backend-Paket baut auf dieser Struk
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: slnx, EF Core 10 + Npgsql, Migration InitialCreate, Aspire 13.6 AppHost, 18 Tests grün (13 Domain, 5 Api mit Testcontainers), AppHost-Start verifiziert. Abweichungen: Aspire-SDK-Version in global.json (NU1009), Microsoft.Testing.Platform statt VSTest, Health in allen Umgebungen. Hinweise: Schlüsselbund-Dialog beim ersten Aspire-Start, Port 5000/AirPlay, Retry-Strategie bei Transaktionen |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen. Wichtig: Slug-Regex `$` lässt „acme\n“ durch (→ `\z`); Aspire-Retry-Strategie aktiv, Entscheidung nötig. Hinweise: AK6 formal nicht erfüllt (Aspire-SDK-Version in global.json, akzeptiert wegen NU1009); Health/OpenAPI in Production offen; Port 5000; UUIDv7 nicht innerhalb einer ms monoton |
+| 2026-11-07 | Entscheidungen: AK6-Abweichung akzeptiert. Retry-Strategie wird deaktiviert (`DisableRetry = true`), Architektur §5 ergänzt; Einzeiler folgt nach AP-003. Nacharbeit an implementer-opus: Slug-Regex + Tests |
+| 2026-11-07 | Nacharbeit fertig: `\z`-Regex, 20 Tests grün. Commit folgt nach AP-003, weil AP-003 AppHost.cs und launchSettings.json bereits verändert hat (diese zwei Dateien tragen im AP-001-Commit schon AP-003-Stand) |
+| 2026-11-07 | Orchestrator: `DisableRetry = true` gesetzt, Build und 20 Tests selbst verifiziert; abgeschlossen, Commit siehe Backlog |

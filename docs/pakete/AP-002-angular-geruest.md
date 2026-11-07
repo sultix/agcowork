@@ -72,4 +72,4 @@ grünen Unit-Tests. Jedes spätere Frontend-Paket legt Features in diese Struktu
 | 2026-11-07 | Review: Freigabe mit Hinweisen. Wichtig: keine Verhaltenstests für Shell-Links und Wildcard-Redirect; Proxy-Port 5000 (AirPlay) → AP-003. Hinweise: Health lädt nur einmal, 2xx = ok zu grob, localStorage ohne try/catch, ThemeService ohne Test, Dark-Tokens doppelt |
 | 2026-11-07 | Nacharbeit an implementer-opus: Tests für Shell-Links und Wildcard-Verhalten, localStorage absichern + ThemeService-Test, Kommentar an Dark-Tokens |
 | 2026-11-07 | Nacharbeit fertig: 20 Tests grün, Lint/Build grün; vom Orchestrator verifiziert |
-| 2026-11-07 | abgeschlossen, Commit `babf915` |
+| 2026-11-07 | abgeschlossen, Commit `926ec91` |

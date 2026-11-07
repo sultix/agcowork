@@ -1,0 +1,3 @@
+# EF Core migrations are tool-generated; exclude them from style analysis.
+[*.cs]
+generated_code = true
