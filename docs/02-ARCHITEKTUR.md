@@ -416,22 +416,22 @@ liefert `text/markdown`. Rückweg (Frontmatter → Properties) gibt es nicht; Ag
 ## 5. Backend-Struktur (.NET 10)
 
 ```
-agcowork.sln
+agcowork.slnx
 ├─ src/
-│  ├─ Agcowork.Domain/           Entitäten, Value Objects, Domain-Events, Property-Typsystem
-│  ├─ Agcowork.Application/      Use-Cases (Vertical Slices), Validierung, Filter-DSL → Spezifikation,
-│  │                             Schema→JSON-Schema, Markdown-Frontmatter, Berechtigungen, Tenant-Kontext
-│  ├─ Agcowork.Infrastructure/   EF Core + Npgsql, Migrationen, Volltext, (pgvector), Blob-Storage,
-│  │                             API-Key-Hashing, Outbox → SignalR
-│  ├─ Agcowork.Api/              Host: Minimal APIs, MCP-Endpoint, SignalR, Auth, OpenAPI, Health
-│  ├─ Agcowork.Mcp.Stdio/        Optionaler stdio→HTTP-Proxy als dotnet tool
-│  ├─ Agcowork.AppHost/          .NET Aspire: Postgres, Api, Angular-Dev-Server
-│  └─ Agcowork.Web/              Angular 22
+│  ├─ backend/
+│  │  ├─ Agcowork.Domain/           Entitäten, Value Objects, Property-Typsystem, Invarianten
+│  │  ├─ Agcowork.Application/      Use-Cases (Vertical Slices), Validierung, Filter-DSL, JSON Schema,
+│  │  │                             Markdown-Frontmatter, Tenant-Kontext, Hooks
+│  │  ├─ Agcowork.Infrastructure/   EF Core + Npgsql, Migrationen, Tenant-Filter/-Interceptor, Query-Übersetzer
+│  │  ├─ Agcowork.Api/              Host: Minimal APIs, MCP-Endpunkte, Auth, OpenAPI, Health
+│  │  ├─ Agcowork.Mcp.Stdio/        stdio→HTTP-Proxy als dotnet tool
+│  │  ├─ Agcowork.ServiceDefaults/  Aspire-Standard (OpenTelemetry, Health, Resilience)
+│  │  └─ Agcowork.AppHost/          .NET Aspire: Postgres, Api, Angular-Dev-Server
+│  └─ frontend/                     Angular 22 (package.json liegt direkt hier)
 ├─ tests/
 │  ├─ Agcowork.Domain.Tests/
-│  ├─ Agcowork.Application.Tests/
-│  ├─ Agcowork.Api.Tests/        Integration mit Testcontainers (REST + MCP end-to-end)
-│  └─ Agcowork.Web.E2E/          Playwright
+│  ├─ Agcowork.Application.Tests/   gegen Testcontainers-Postgres
+│  └─ Agcowork.Api.Tests/           Integration mit Testcontainers (REST + MCP end-to-end)
 └─ docs/
 ```
 
@@ -558,7 +558,7 @@ SignalR-Gruppe gewechselt.
 
 ## 8. Betrieb
 
-- **Lokal**: `dotnet run --project src/Agcowork.AppHost` startet alles (Aspire). Alternativ `docker compose up`.
+- **Lokal**: `dotnet run --project src/backend/Agcowork.AppHost` startet alles (Aspire). Alternativ `docker compose up`.
 - **Daten**: ein Postgres-Volume; Backup = `pg_dump`; zusätzlich täglicher Markdown-Export pro Workspace (git-freundlich, ein Ordner je Workspace).
 - **Workspace-Lebenszyklus**: Anlegen durch Instanz-Admin (optional aus Vorlage), Archivieren (read-only), Löschen nur nach Export.
 - **Migrationen**: EF Core, beim Start angewendet (Single-Instance).

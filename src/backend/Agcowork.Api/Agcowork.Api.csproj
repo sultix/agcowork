@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <!-- The OpenAPI document is generated on every build and checked in: it is the contract the Angular
-       client is generated from (src/Agcowork.Web, npm run api:generate). CI fails when it is stale.
+       client is generated from (src/frontend, npm run api:generate). CI fails when it is stale.
        The generator starts the host up to app.Run(), so Program.cs must skip migrations and bootstrap
        when the entry assembly is GetDocument.Insider. -->
   <PropertyGroup>

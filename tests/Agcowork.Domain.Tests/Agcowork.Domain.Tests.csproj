@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Agcowork.Domain\Agcowork.Domain.csproj" />
+    <ProjectReference Include="..\..\src\backend\Agcowork.Domain\Agcowork.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

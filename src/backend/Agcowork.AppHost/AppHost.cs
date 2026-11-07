@@ -15,7 +15,7 @@ var api = builder.AddProject<Projects.Agcowork_Api>("api")
 
 // Angular dev server. WithReference(api) injects the dynamic API endpoint as services__api__http__0,
 // which proxy.conf.js reads. Aspire assigns the port; it is forwarded to `ng serve` via --port.
-builder.AddJavaScriptApp("web", "../Agcowork.Web", "start")
+builder.AddJavaScriptApp("web", "../../frontend", "start")
     .WithNpm(install: true)
     .WithReference(api)
     .WaitFor(api)

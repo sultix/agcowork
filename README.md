@@ -12,15 +12,15 @@ Backend .NET 10 (Minimal APIs, EF Core, PostgreSQL), Frontend Angular 22.
 ## Start mit Aspire
 
 ```
-dotnet run --project src/Agcowork.AppHost
+dotnet run --project src/backend/Agcowork.AppHost
 ```
 
 Startet PostgreSQL, die API und den Angular-Dev-Server (inklusive `npm install`).
 Das Aspire-Dashboard läuft auf http://localhost:15180; dort stehen die URLs der Ressourcen.
-Die Angular-App erreicht die API über den Dev-Server-Proxy (`src/Agcowork.Web/proxy.conf.js`).
+Die Angular-App erreicht die API über den Dev-Server-Proxy (`src/frontend/proxy.conf.js`).
 
-Ohne Aspire: API mit `dotnet run --project src/Agcowork.Api` (Port 5180) und
-`cd src/Agcowork.Web && npm start`. Die Datenbank muss dann selbst bereitstehen; die API liest den Connection String `ConnectionStrings__agcowork`.
+Ohne Aspire: API mit `dotnet run --project src/backend/Agcowork.Api` (Port 5180) und
+`cd src/frontend && npm start`. Die Datenbank muss dann selbst bereitstehen; die API liest den Connection String `ConnectionStrings__agcowork`.
 
 **macOS, erster Start:** Der Schlüsselbund fragt nach Zugriff auf das Dev-Zertifikat.
 Den Dialog einmal mit „Immer erlauben“ bestätigen, sonst hängt der Start.
@@ -31,8 +31,8 @@ Notlösung: `ASPIRE_DCP_USE_DEVELOPER_CERTIFICATE=false` in der Shell setzen.
 ```
 dotnet build
 dotnet test                       # Integrationstests brauchen Docker
-cd src/Agcowork.Web && npm test   # Frontend-Units
-cd src/Agcowork.Web && npm run lint
+cd src/frontend && npm test   # Frontend-Units
+cd src/frontend && npm run lint
 ```
 
 CI (`.github/workflows/ci.yml`) führt Build, Lint und Tests für Backend und Frontend aus.
@@ -71,14 +71,14 @@ Instanz-Tools (`me`, `workspaces_list`, `templates_list`, `workspace_create`, `w
 Nur API-Keys werden akzeptiert; Session-Cookies erhalten 401. Ein Workspace, in dem der Key-Inhaber kein Mitglied ist,
 antwortet mit 404.
 
-**Clients ohne HTTP-Transport (nur stdio):** `src/Agcowork.Mcp.Stdio` ist eine kleine Brücke stdio ↔ Streamable HTTP:
+**Clients ohne HTTP-Transport (nur stdio):** `src/backend/Agcowork.Mcp.Stdio` ist eine kleine Brücke stdio ↔ Streamable HTTP:
 
 ```json
 {
   "mcpServers": {
     "agcowork-projekt-alpha": {
       "command": "dotnet",
-      "args": ["run", "--project", "src/Agcowork.Mcp.Stdio", "--", "--url", "https://agcowork.local/w/projekt-alpha/mcp"],
+      "args": ["run", "--project", "src/backend/Agcowork.Mcp.Stdio", "--", "--url", "https://agcowork.local/w/projekt-alpha/mcp"],
       "env": { "AGCOWORK_API_KEY": "agck_…" }
     }
   }
@@ -89,7 +89,7 @@ Den Key immer über die Umgebungsvariable `AGCOWORK_API_KEY` übergeben, nicht m
 und der Shell-History). Lehnt der Server ab, meldet der Proxy auf stderr knapp den Grund (401: Key ungültig;
 404: Slug falsch, keine Mitgliedschaft oder Key auf einen anderen Workspace eingeschränkt).
 
-Als dotnet-Tool: `dotnet pack src/Agcowork.Mcp.Stdio` und `dotnet tool install --global --add-source <nupkg-Ordner>
+Als dotnet-Tool: `dotnet pack src/backend/Agcowork.Mcp.Stdio` und `dotnet tool install --global --add-source <nupkg-Ordner>
 Agcowork.Mcp.Stdio`, danach `AGCOWORK_API_KEY=agck_… agcowork-mcp-stdio --url …`.
 
 ## Dokumentation

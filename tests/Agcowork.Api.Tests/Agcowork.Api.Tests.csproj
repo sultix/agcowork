@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Agcowork.Api\Agcowork.Api.csproj" />
-    <ProjectReference Include="..\..\src\Agcowork.Mcp.Stdio\Agcowork.Mcp.Stdio.csproj" />
+    <ProjectReference Include="..\..\src\backend\Agcowork.Api\Agcowork.Api.csproj" />
+    <ProjectReference Include="..\..\src\backend\Agcowork.Mcp.Stdio\Agcowork.Mcp.Stdio.csproj" />
   </ItemGroup>
 
   <ItemGroup>

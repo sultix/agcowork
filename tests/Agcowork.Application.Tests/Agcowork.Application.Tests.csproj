@@ -6,9 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Agcowork.Application\Agcowork.Application.csproj" />
+    <ProjectReference Include="..\..\src\backend\Agcowork.Application\Agcowork.Application.csproj" />
     <!-- For the real AgcoworkDbContext (on PostgreSQL), password hasher and key generator. -->
-    <ProjectReference Include="..\..\src\Agcowork.Infrastructure\Agcowork.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\backend\Agcowork.Infrastructure\Agcowork.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

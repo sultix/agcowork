@@ -21,8 +21,8 @@ jobs:
       # The build writes the OpenAPI document; the checked-in copy is the contract of the Angular client.
       - name: Check OpenAPI document is up to date
         run: |
-          if ! git diff --exit-code -- src/Agcowork.Api/openapi/ || [ -n "$(git ls-files --others --exclude-standard -- src/Agcowork.Api/openapi/)" ]; then
-            echo "::error::src/Agcowork.Api/openapi/v1.json is stale: run 'dotnet build src/Agcowork.Api', then commit openapi/v1.json (and regenerate the client with 'npm run api:generate' in src/Agcowork.Web)."
+          if ! git diff --exit-code -- src/backend/Agcowork.Api/openapi/ || [ -n "$(git ls-files --others --exclude-standard -- src/backend/Agcowork.Api/openapi/)" ]; then
+            echo "::error::src/backend/Agcowork.Api/openapi/v1.json is stale: run 'dotnet build src/backend/Agcowork.Api', then commit openapi/v1.json (and regenerate the client with 'npm run api:generate' in src/frontend)."
             exit 1
           fi
       # Integration tests use Testcontainers (Postgres) via the runner's Docker.
@@ -33,14 +33,14 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: src/Agcowork.Web
+        working-directory: src/frontend
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: src/Agcowork.Web/package-lock.json
+          cache-dependency-path: src/frontend/package-lock.json
       - run: npm ci
       # Types are generated from the checked-in OpenAPI document; a diff means they were not regenerated.
       - name: Check generated API types are up to date
@@ -50,7 +50,7 @@ jobs:
           if [ -n "$(git status --porcelain -- src/app/core/api/generated/)" ]; then
             git status --porcelain -- src/app/core/api/generated/
             git diff -- src/app/core/api/generated/
-            echo "::error::Generated API types are stale: run 'npm run api:generate' in src/Agcowork.Web and commit."
+            echo "::error::Generated API types are stale: run 'npm run api:generate' in src/frontend and commit."
             exit 1
           fi
       - run: npm run lint

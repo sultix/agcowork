@@ -46,6 +46,7 @@ Zwei Implementierer gleichzeitig nur auf disjunkten Dateien; sonst nacheinander.
 
 ### .NET
 - .NET 10, C# aktuell, `Nullable` und `ImplicitUsings` an, file-scoped Namespaces, `record` für Werte und DTOs.
+- Ablage: alle C#-Projekte unter `src/backend/`, das Angular-Projekt direkt in `src/frontend/`, Tests unter `tests/`.
 - Struktur: `Agcowork.Domain` → `Agcowork.Application` (Vertical Slices pro Modul) → `Agcowork.Infrastructure` → `Agcowork.Api`. Abhängigkeiten nur nach innen.
 - Minimal APIs mit typisierten Results, OpenAPI generiert. EF Core mit Npgsql, Migrationen im Infrastructure-Projekt.
 - IDs: UUIDv7 (`Guid.CreateVersion7()`). Zeit: `DateTimeOffset` UTC, `TimeProvider` injizieren.
@@ -61,8 +62,8 @@ Zwei Implementierer gleichzeitig nur auf disjunkten Dateien; sonst nacheinander.
 ```
 dotnet build                                   # Solution
 dotnet test                                    # alle Tests
-dotnet run --project src/Agcowork.AppHost      # Aspire: Postgres + API + Angular
-cd src/Agcowork.Web && npm test                # Frontend-Units
+dotnet run --project src/backend/Agcowork.AppHost      # Aspire: Postgres + API + Angular
+cd src/frontend && npm test                # Frontend-Units
 ```
 
 ### Git

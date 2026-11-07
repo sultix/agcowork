@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "api:generate": "openapi-typescript ../Agcowork.Api/openapi/v1.json --output src/app/core/api/generated/schema.d.ts",
+    "api:generate": "openapi-typescript ../backend/Agcowork.Api/openapi/v1.json --output src/app/core/api/generated/schema.d.ts",
     "prestart": "npm run api:generate",
     "start": "ng serve",
     "prebuild": "npm run api:generate",

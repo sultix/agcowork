@@ -6,7 +6,7 @@ using ModelContextProtocol.Server;
 
 namespace Agcowork.Api.Tests.Mcp;
 
-/// <summary>The stdio bridge (src/Agcowork.Mcp.Stdio) forwards tools and resources to the HTTP endpoint unchanged.</summary>
+/// <summary>The stdio bridge (src/backend/Agcowork.Mcp.Stdio) forwards tools and resources to the HTTP endpoint unchanged.</summary>
 [Collection(ApiTestGroup.Name)]
 public sealed class StdioProxyTests(AgcoworkApiFactory factory)
 {
