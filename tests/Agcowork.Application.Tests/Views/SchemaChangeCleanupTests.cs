@@ -159,4 +159,38 @@ public sealed class SchemaChangeCleanupTests(PostgresFixture postgres) : ViewTes
         var changed = await Db.ActivityEvents.AsNoTracking().SingleAsync(e => e.Type == ActivityTypes.CollectionSchemaChanged, Ct);
         Assert.Equal(1, changed.Diff["affectedViews"]!.GetValue<int>());
     }
+    [Fact]
+    public async Task UpdateSchema_SelectBecomesMultiSelect_SortOnItIsRemoved()
+    {
+        var (seed, tenant, collection) = await ArrangeAsync();
+        var created = await CreateView(seed, tenant).HandleAsync(
+            new CreateViewRequest(collection.Id, "Sortiert", "table", Sorts: [new("priority", "asc"), new("due", "desc")]), Ct);
+        Assert.True(created.IsSuccess, created.Error?.ToString());
+
+        await UpdateSchemaAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("priority", Type: "multi_select")]));
+
+        var view = (await ListAsync(tenant, collection.Id)).Single(v => v.Id == created.Value.Id);
+        Assert.Equal("due", Assert.Single(view.Sorts).Prop);
+        var changed = await Db.ActivityEvents.AsNoTracking().SingleAsync(e => e.Type == ActivityTypes.CollectionSchemaChanged, Ct);
+        Assert.Equal(1, changed.Diff["affectedViews"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task UpdateSchema_RemovedOption_ContainsOnItIsRemovedLikeEq()
+    {
+        var (seed, tenant, collection) = await ArrangeAsync();
+        await UpdateSchemaAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("priority", Type: "multi_select")]));
+        var view = await NewViewAsync(
+            seed, tenant, collection.Id, "Tags", "list", filter: new ViewFilterNode { And = [Cond("priority", "contains", "low"), Cond("priority", "contains", "high")] });
+
+        var result = await UpdateSchemaAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("priority", Options: [new("high")])], ConfirmRemoval: true));
+
+        Assert.True(result.IsSuccess, result.Error?.ToString());
+        var remaining = (await ListAsync(tenant, collection.Id)).Single(v => v.Id == view.Id).Filter!.And!;
+        Assert.Equal("high", Assert.Single(remaining).Value!.Value.GetString());
+        var events = await Db.ActivityEvents.AsNoTracking().Where(e => e.Type == ActivityTypes.CollectionSchemaChanged).ToListAsync(Ct);
+        // The view exists only for the second change (option removal); that one affected it.
+        Assert.Equal(2, events.Count);
+        Assert.Equal(1, Assert.Single(events, e => e.Diff["affectedViews"] is not null).Diff["affectedViews"]!.GetValue<int>());
+    }
 }

@@ -7,7 +7,7 @@ namespace Agcowork.Application.Views;
 /// <param name="CollectionId">Collection the view belongs to.</param>
 /// <param name="Name">Display name, unique within the collection.</param>
 /// <param name="Type">table, board, gallery, list, document or raw.</param>
-/// <param name="Filter">Filter DSL (and/or groups of { prop, op, value } conditions); null = all records.</param>
+/// <param name="Filter">Filter DSL (and/or/not around { prop, op, value } conditions); null = all records.</param>
 /// <param name="Sorts">Sort criteria in order: { prop, dir (asc|desc) }.</param>
 /// <param name="GroupBy">Key of the select/status property that groups the records (board columns). Required for boards.</param>
 /// <param name="VisibleProperties">Keys of the properties shown; empty = all.</param>

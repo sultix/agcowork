@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Agcowork.Application.Collections;
 using Agcowork.Application.Common.Persistence;
+using Agcowork.Application.Query;
 using Agcowork.Domain.Collections;
 using Agcowork.Domain.Collections.Schema;
 using Agcowork.Domain.Views;
@@ -11,7 +12,8 @@ namespace Agcowork.Application.Views;
 /// <summary>
 /// Keeps views in line with a changed schema: removed properties disappear from visible properties, sorts, filter conditions
 /// (emptied groups vanish) and the cover; a lost <c>groupBy</c> becomes null (the view keeps its type, boards report
-/// <c>needsAttention</c>). A <c>groupBy</c> whose property is no longer select/status is treated the same way.
+/// <c>needsAttention</c>). A <c>groupBy</c> whose property is no longer select/status is treated the same way; sorts on a property
+/// that can no longer be sorted (select → multi_select) are removed.
 /// </summary>
 public sealed class ViewSchemaHook(IAgcoworkDbContext db) : ISchemaChangedHook
 {
@@ -28,9 +30,13 @@ public sealed class ViewSchemaHook(IAgcoworkDbContext db) : ISchemaChangedHook
         var cannotGroup = change.TypeChanges.Keys
             .Where(key => change.After.Find(key) is { Type: not (PropertyType.Select or PropertyType.Status) })
             .ToHashSet(StringComparer.Ordinal);
+        var cannotSort = change.TypeChanges.Keys
+            .Where(key => change.After.Find(key) is { } property && !OperatorMatrix.IsSortable(OperatorMatrix.ValueTypeOf(property.Type)))
+            .ToHashSet(StringComparer.Ordinal);
         var views = await db.Views.Where(v => v.CollectionId == collection.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var affected = views.Count(view =>
-            view.RemoveReferences(change.RemovedKeys.Contains, cannotGroup.Contains) | view.RewriteConditions(condition => AdjustCondition(change, condition)));
+            view.RemoveReferences(change.RemovedKeys.Contains, cannotGroup.Contains, cannotSort.Contains)
+            | view.RewriteConditions(condition => AdjustCondition(change, condition)));
         if (affected > 0)
         {
             change.Effects["affectedViews"] = affected;
@@ -39,7 +45,8 @@ public sealed class ViewSchemaHook(IAgcoworkDbContext db) : ISchemaChangedHook
 
     /// <summary>
     /// Keeps a condition meaningful after option or type changes: lost option values leave in/nin lists (an emptied list removes the
-    /// condition) and eq/neq conditions on a lost value are removed; select → multi_select turns eq into contains and drops neq.
+    /// condition) and eq/neq/contains conditions on a lost value are removed; select → multi_select turns eq into contains and drops neq.
+    /// Removing a condition below <c>not</c> narrows the filter (see <see cref="View.RemoveReferences"/>).
     /// </summary>
     private static ViewFilterNode? AdjustCondition(SchemaChange change, ViewFilterNode condition)
     {
@@ -64,7 +71,7 @@ public sealed class ViewSchemaHook(IAgcoworkDbContext db) : ISchemaChangedHook
                     }
 
                     break;
-                case ViewFilterOperators.Eq or ViewFilterOperators.Neq when node.Value is { ValueKind: JsonValueKind.String } single
+                case ViewFilterOperators.Eq or ViewFilterOperators.Neq or ViewFilterOperators.Contains when node.Value is { ValueKind: JsonValueKind.String } single
                     && lost.Contains(single.GetString()!, StringComparer.Ordinal):
                     return null;
             }

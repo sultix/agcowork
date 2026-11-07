@@ -103,6 +103,25 @@ public sealed class ViewTests
     }
 
     [Fact]
+    public void RemoveReferences_NegatedConditionGone_NotNodeGoes_KeptNotIsRewritten()
+    {
+        var view = Create(filter: new ViewFilterNode
+        {
+            And = [new ViewFilterNode { Not = Cond("owner") }, new ViewFilterNode { Not = new ViewFilterNode { Or = [Cond("owner"), Cond("due")] } }, Cond("status")],
+        });
+
+        Assert.True(view.RemoveReferences(key => key == "owner"));
+
+        Assert.Equal(2, view.Filter!.And!.Count);
+        Assert.Equal("due", Assert.Single(view.Filter.And[0].Not!.Or!).Prop);
+        Assert.Equal("status", view.Filter.And[1].Prop);
+    }
+
+    [Fact]
+    public void Configure_OnlyNot_IsNotEmpty() =>
+        Assert.False(new ViewFilterNode { Not = Cond("status") }.IsEmpty);
+
+    [Fact]
     public void RemoveReferences_GroupByGone_BoardKeepsTypeAndNeedsAttention()
     {
         var view = Create(ViewType.Board, groupBy: "status");

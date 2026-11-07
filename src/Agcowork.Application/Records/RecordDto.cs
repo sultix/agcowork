@@ -5,7 +5,7 @@ using Agcowork.Domain.Records;
 
 namespace Agcowork.Application.Records;
 
-/// <summary>A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoint (AP-009).</summary>
+/// <summary>A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoints (AP-009).</summary>
 /// <param name="Id">Record id.</param>
 /// <param name="SpaceId">Space of the record.</param>
 /// <param name="CollectionId">Collection of the record; null for a free page of the space.</param>
@@ -123,21 +123,61 @@ public static class RecordMapper
     public static IReadOnlyDictionary<string, JsonElement> WithComputed(Record record, IReadOnlyList<PropertyDefinition>? schema)
     {
         ArgumentNullException.ThrowIfNull(record);
+        return WithComputed(record.Properties, record.CreatedAt, record.UpdatedAt, record.CreatedBy, record.UpdatedBy, schema);
+    }
+
+    /// <summary>
+    /// A record read as a query row (<see cref="Query.RecordRow"/>): same shape as <see cref="ToDto(Record, IReadOnlyList{PropertyDefinition}?, bool, IReadOnlyList{RevisionSummaryDto}?)"/>,
+    /// properties reduced to <paramref name="fields"/> (null = all; the title is always there, <c>body</c> is not a property).
+    /// </summary>
+    public static RecordDto ToDto(Query.RecordRow row, IReadOnlyList<PropertyDefinition>? schema, IReadOnlyList<string>? fields)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        var properties = WithComputed(row.Properties, row.CreatedAt, row.UpdatedAt, row.CreatedBy, row.UpdatedBy, schema);
+        if (fields is not null)
+        {
+            properties = properties.Where(p => fields.Contains(p.Key, StringComparer.Ordinal)).ToDictionary(StringComparer.Ordinal);
+        }
+
+        return new RecordDto(
+            row.Id,
+            row.SpaceId,
+            row.CollectionId,
+            row.ParentRecordId,
+            row.Title,
+            Ordered(properties, schema),
+            row.Body,
+            row.RevisionNo,
+            row.CreatedBy,
+            row.CreatedAt,
+            row.UpdatedBy,
+            row.UpdatedAt,
+            row.ArchivedAt);
+    }
+
+    private static IReadOnlyDictionary<string, JsonElement> WithComputed(
+        IReadOnlyDictionary<string, JsonElement> stored,
+        DateTimeOffset createdAt,
+        DateTimeOffset updatedAt,
+        Guid createdBy,
+        Guid updatedBy,
+        IReadOnlyList<PropertyDefinition>? schema)
+    {
         var computed = (schema ?? []).Where(p => p.IsComputed).ToList();
         if (computed.Count == 0)
         {
-            return record.Properties;
+            return stored;
         }
 
-        var values = new Dictionary<string, JsonElement>(record.Properties, StringComparer.Ordinal);
+        var values = new Dictionary<string, JsonElement>(stored, StringComparer.Ordinal);
         foreach (var property in computed)
         {
             values[property.Key] = property.Type switch
             {
-                PropertyType.CreatedAt => JsonSerializer.SerializeToElement(Time(record.CreatedAt)),
-                PropertyType.UpdatedAt => JsonSerializer.SerializeToElement(Time(record.UpdatedAt)),
-                PropertyType.CreatedBy => JsonSerializer.SerializeToElement(record.CreatedBy.ToString("D")),
-                _ => JsonSerializer.SerializeToElement(record.UpdatedBy.ToString("D")),
+                PropertyType.CreatedAt => JsonSerializer.SerializeToElement(Time(createdAt)),
+                PropertyType.UpdatedAt => JsonSerializer.SerializeToElement(Time(updatedAt)),
+                PropertyType.CreatedBy => JsonSerializer.SerializeToElement(createdBy.ToString("D")),
+                _ => JsonSerializer.SerializeToElement(updatedBy.ToString("D")),
             };
         }
 

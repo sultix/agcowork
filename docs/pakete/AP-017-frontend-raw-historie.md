@@ -86,4 +86,4 @@ nachvollziehen, welcher Agent oder Mensch was wann geändert hat. Damit ist F6
 | 2026-11-07 | Nacharbeit an implementer-sonnet (B1, W1–W3, H1–H4, H6–H7); danach erneute Prüfung |
 | 2026-11-07 | Nacharbeit fertig: 465 Tests grün; `jsonLoaded`-Signal, `canRestore` mit Schema, Restore nur Schema-Keys mit Hinweis auf unbekannte, Reset bei Record-Wechsel, Body-Save trotz ungültigem JSON, gefilterte Fehlerliste, No-op-Hinweis, Feed-Texte, Filter-Reset bei Workspace-Wechsel. An reviewer zur erneuten Prüfung |
 | 2026-11-07 | Erneute Prüfung: Freigabe mit Hinweisen; B1, W1–W3 bestätigt. Zwei Hinweise: halbfertiges JSON nach Body-Save still ersetzt; alte Filter beim Workspace-Wechsel einmal mitgesendet. Letzte Nacharbeit an implementer-sonnet |
-| 2026-11-07 | Fertig: 466 Tests grün; JSON bleibt nach Body-Save erhalten (Auffüll-Effekt nur bei echtem Laden), Feed-Reset in einem Effekt. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |
+| 2026-11-07 | Fertig: 466 Tests grün; JSON bleibt nach Body-Save erhalten (Auffüll-Effekt nur bei echtem Laden), Feed-Reset in einem Effekt. Vom Orchestrator verifiziert. Abgeschlossen, Commit `7492762` |

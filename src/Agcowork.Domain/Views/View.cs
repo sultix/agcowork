@@ -164,7 +164,12 @@ public sealed class View : ITenantEntity
     /// </summary>
     /// <param name="isGone">true for keys that must no longer be referenced.</param>
     /// <param name="isInvalidGroupBy">true when a kept key can no longer group (type changed away from select/status).</param>
-    public bool RemoveReferences(Func<string, bool> isGone, Func<string, bool>? isInvalidGroupBy = null)
+    /// <param name="isUnsortable">true when a kept key can no longer be sorted (e.g. select → multi_select): its sorts go.</param>
+    /// <remarks>
+    /// Removing a condition below <c>not</c> makes the filter narrower, not wider: <c>not (a or b)</c> without <c>a</c> is <c>not b</c>,
+    /// which excludes more records. A view never shows records it would not have shown under its stated intent on the remaining keys.
+    /// </remarks>
+    public bool RemoveReferences(Func<string, bool> isGone, Func<string, bool>? isInvalidGroupBy = null, Func<string, bool>? isUnsortable = null)
     {
         ArgumentNullException.ThrowIfNull(isGone);
         var changed = false;
@@ -177,7 +182,7 @@ public sealed class View : ITenantEntity
             changed = true;
         }
 
-        var sorts = Sorts.Where(s => !isGone(s.Prop)).ToList();
+        var sorts = Sorts.Where(s => !isGone(s.Prop) && isUnsortable?.Invoke(s.Prop) != true).ToList();
         if (sorts.Count != Sorts.Count)
         {
             Sorts = sorts;
@@ -229,6 +234,13 @@ public sealed class View : ITenantEntity
         if (node.Prop is not null)
         {
             return rewrite(node);
+        }
+
+        if (node.Not is { } negated)
+        {
+            // A negation whose condition is gone goes too (as an emptied group does).
+            var child = PruneFilter(negated, rewrite);
+            return ReferenceEquals(child, negated) ? node : child is null ? null : node with { Not = child };
         }
 
         var (children, isAnd) = node.And is not null ? (node.And, true) : (node.Or ?? [], false);

@@ -63,13 +63,26 @@ public sealed class ViewDefinitionValidatorTests
     }
 
     [Fact]
-    public void Validate_UnknownOperator_AllowedListsOperators()
+    public void Validate_UnknownOperator_AllowedListsOperatorsOfTheType()
     {
         var errors = Run(Filter(new ViewFilterNode { And = [Cond("status", "like", "x")] }), out _);
 
         var error = Assert.Single(errors.Items);
-        Assert.Equal(("filter.and[0].op", "not_in_options"), (error.Field, error.Code));
-        Assert.Equal(ViewFilterOperators.All, error.Allowed);
+        Assert.Equal(("filter.and[0].op", "unknown_operator"), (error.Field, error.Code));
+        Assert.Equal(["eq", "neq", "in", "nin", "is_empty", "is_not_empty"], error.Allowed);
+    }
+
+    [Fact]
+    public void Validate_UsesTheQueryParser_OperatorMatrixAndOptionValues()
+    {
+        var errors = Run(Filter(new ViewFilterNode
+        {
+            And = [Cond("due", "contains", "2026"), Cond("priority", "eq", "mittel"), new ViewFilterNode { Not = Cond("status", "eq", "done") }],
+        }), out _);
+
+        Assert.Equal([("filter.and[0].op", "operator_not_applicable"), ("filter.and[1].value", "not_in_options")], errors.Items.Select(e => (e.Field, e.Code)));
+        Assert.Equal(["eq", "neq", "gt", "gte", "lt", "lte", "is_empty", "is_not_empty"], errors.Items[0].Allowed);
+        Assert.Equal(["high", "low"], errors.Items[1].Allowed);
     }
 
     [Fact]
@@ -79,7 +92,7 @@ public sealed class ViewDefinitionValidatorTests
 
         var error = Assert.Single(errors.Items);
         Assert.Equal(("filter.or[0].prop", "unknown_property"), (error.Field, error.Code));
-        Assert.Equal(["title", "status", "priority", "due"], error.Allowed);
+        Assert.Equal(["title", "status", "priority", "due", "created_at", "updated_at", "created_by", "updated_by"], error.Allowed);
     }
 
     [Fact]
@@ -99,7 +112,7 @@ public sealed class ViewDefinitionValidatorTests
         }), out _);
 
         Assert.Equal(
-            [("filter.and[0].value", "invalid_type"), ("filter.and[1].value", "required"), ("filter.and[2].value", "invalid_type"), ("filter.and[3].value", "not_allowed"), ("filter.and[4].value", "not_allowed")],
+            [("filter.and[0].value", "invalid_value"), ("filter.and[1].value", "required"), ("filter.and[2].value", "invalid_value"), ("filter.and[3].value", "not_allowed"), ("filter.and[4].value", "not_allowed")],
             errors.Items.Select(e => (e.Field, e.Code)));
     }
 
@@ -111,11 +124,11 @@ public sealed class ViewDefinitionValidatorTests
     {
         var errors = Run(Filter(new ViewFilterNode
         {
-            And = [Unknown("not"), new ViewFilterNode { Or = [Cond("status", "eq", "todo"), Unknown("all")] }],
+            And = [Unknown("nicht"), new ViewFilterNode { Or = [Cond("status", "eq", "todo"), Unknown("all")] }],
         }), out _);
 
-        Assert.Equal([("filter.and[0].not", "unknown_property"), ("filter.and[1].or[1].all", "unknown_property")], errors.Items.Select(e => (e.Field, e.Code)));
-        Assert.All(errors.Items, e => Assert.Equal(["and", "or", "prop", "op", "value"], e.Allowed));
+        Assert.Equal([("filter.and[0].nicht", "unknown_property"), ("filter.and[1].or[1].all", "unknown_property")], errors.Items.Select(e => (e.Field, e.Code)));
+        Assert.All(errors.Items, e => Assert.Equal(["and", "or", "not", "prop", "op", "value"], e.Allowed));
     }
 
     [Fact]

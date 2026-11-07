@@ -41,7 +41,7 @@ public sealed class DefaultViewsTests(PostgresFixture postgres) : ViewTestBase(p
         var (seed, tenant, collection) = await ArrangeAsync();
         var filter = new Domain.Views.ViewFilterNode
         {
-            And = [Cond("status", "in", StatusOnly), new Domain.Views.ViewFilterNode { Or = [Cond("priority"), Cond("due", "is_empty")] }],
+            And = [Cond("status", "in", StatusOnly), new Domain.Views.ViewFilterNode { Or = [Cond("priority", "eq", "high"), Cond("due", "is_empty")] }],
         };
 
         var view = await NewViewAsync(seed, tenant, collection.Id, "Board", "board", "status", filter);
@@ -164,7 +164,7 @@ public sealed class DefaultViewsTests(PostgresFixture postgres) : ViewTestBase(p
     public async Task UpdateView_ClearsAndReplaces_PartialUpdateKeepsRest()
     {
         var (seed, tenant, collection) = await ArrangeAsync();
-        var board = await NewViewAsync(seed, tenant, collection.Id, "Board", "board", "status", Cond("priority"));
+        var board = await NewViewAsync(seed, tenant, collection.Id, "Board", "board", "status", Cond("priority", "eq", "high"));
 
         var cleared = await UpdateView(tenant).HandleAsync(new UpdateViewRequest(board.Id, Filter: new Domain.Views.ViewFilterNode()), Ct);
         Db.ChangeTracker.Clear();

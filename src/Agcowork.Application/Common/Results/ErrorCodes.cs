@@ -29,4 +29,11 @@ public static class ErrorCodes
     public const string TypeChangeNotAllowed = Domain.Collections.Schema.SchemaViolationCodes.TypeChangeNotAllowed;
     public const string KeyImmutable = Domain.Collections.Schema.SchemaViolationCodes.KeyImmutable;
     public const string RemovalNotConfirmed = "removal_not_confirmed";
+
+    // Field codes of the filter DSL and queries (AP-009).
+    public const string UnknownOperator = "unknown_operator";
+    public const string OperatorNotApplicable = "operator_not_applicable";
+    public const string InvalidValue = "invalid_value";
+    public const string InvalidCursor = "invalid_cursor";
+    public const string NotSortable = "not_sortable";
 }

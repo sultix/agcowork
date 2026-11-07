@@ -10,7 +10,7 @@ namespace Agcowork.Api.Tests.Views;
 public sealed class ViewsEndpointsTests(AgcoworkApiFactory factory)
 {
     private static readonly string[] ViewTypes = ["table", "board", "gallery", "list", "document", "raw"];
-    private static readonly string[] Operators = ["eq", "neq", "in", "nin", "contains", "starts_with", "gt", "gte", "lt", "lte", "is_empty", "is_not_empty"];
+    private static readonly string[] StatusOperators = ["eq", "neq", "in", "nin", "is_empty", "is_not_empty"];
 
     private static readonly int[] One = [1];
     private static readonly string[] Todo = ["todo"];
@@ -100,14 +100,14 @@ public sealed class ViewsEndpointsTests(AgcoworkApiFactory factory)
         using var badOp = await owner.Client.PostAsJsonAsync(path, new { name = "A", type = "table", filter = new { and = new[] { new { prop = "status", op = "like", value = "x" } } } }, Ct);
         var problem = await ProblemAssert.IsProblemAsync(badOp, HttpStatusCode.BadRequest, "validation_failed");
         var op = ProblemAssert.Field(problem, "filter.and[0].op");
-        Assert.Equal("not_in_options", op.GetProperty("code").GetString());
-        Assert.Equal(Operators, op.GetProperty("allowed").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal("unknown_operator", op.GetProperty("code").GetString());
+        Assert.Equal(StatusOperators, op.GetProperty("allowed").EnumerateArray().Select(e => e.GetString()));
 
         using var badProp = await owner.Client.PostAsJsonAsync(path, new { name = "B", type = "table", filter = new { and = new[] { new { prop = "nope", op = "eq", value = "x" } } } }, Ct);
         problem = await ProblemAssert.IsProblemAsync(badProp, HttpStatusCode.BadRequest, "validation_failed");
         var prop = ProblemAssert.Field(problem, "filter.and[0].prop");
         Assert.Equal("unknown_property", prop.GetProperty("code").GetString());
-        Assert.Equal(["title", "status", "priority", "due"], prop.GetProperty("allowed").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal(["title", "status", "priority", "due", "created_at", "updated_at", "created_by", "updated_by"], prop.GetProperty("allowed").EnumerateArray().Select(e => e.GetString()));
 
         using var boardWithoutGroup = await owner.Client.PostAsJsonAsync(path, new { name = "C", type = "board" }, Ct);
         problem = await ProblemAssert.IsProblemAsync(boardWithoutGroup, HttpStatusCode.BadRequest, "validation_failed");
@@ -284,11 +284,14 @@ public sealed class ViewsEndpointsTests(AgcoworkApiFactory factory)
         var (collectionId, _) = await ViewsApi.SeedAsync(owner.Client, workspace.Slug);
         var path = Path(workspace, $"/collections/{collectionId}/views");
 
-        using var negated = await owner.Client.PostAsJsonAsync(path, new { name = "N", type = "table", filter = new { not = new { prop = "status", op = "eq", value = "todo" } } }, Ct);
+        using var negated = await owner.Client.PostAsJsonAsync(path, new { name = "N", type = "table", filter = new { nicht = new { prop = "status", op = "eq", value = "todo" } } }, Ct);
         var problem = await ProblemAssert.IsProblemAsync(negated, HttpStatusCode.BadRequest, "validation_failed");
-        var error = ProblemAssert.Field(problem, "filter.not");
+        var error = ProblemAssert.Field(problem, "filter.nicht");
         Assert.Equal("unknown_property", error.GetProperty("code").GetString());
-        Assert.Equal(["and", "or", "prop", "op", "value"], error.GetProperty("allowed").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal(["and", "or", "not", "prop", "op", "value"], error.GetProperty("allowed").EnumerateArray().Select(e => e.GetString()));
+
+        using var not = await owner.Client.PostAsJsonAsync(path, new { name = "Nicht erledigt", type = "table", filter = new { not = new { prop = "status", op = "eq", value = "done" } } }, Ct);
+        Assert.Equal(HttpStatusCode.Created, not.StatusCode);
 
         using var nested = await owner.Client.PostAsJsonAsync(path, new { name = "M", type = "table", filter = new { and = new object[] { new { all = One } } } }, Ct);
         problem = await ProblemAssert.IsProblemAsync(nested, HttpStatusCode.BadRequest, "validation_failed");

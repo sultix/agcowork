@@ -1,7 +1,9 @@
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Identity;
+using Agcowork.Application.Query;
 using Agcowork.Infrastructure.Identity;
 using Agcowork.Infrastructure.Persistence;
+using Agcowork.Infrastructure.Query;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +26,7 @@ public static class DependencyInjection
         services.AddDbContext<AgcoworkDbContext>((sp, options) =>
             AgcoworkDbContextOptions.Configure(options, GetConnectionString(configuration)));
         services.AddScoped<IAgcoworkDbContext>(sp => sp.GetRequiredService<AgcoworkDbContext>());
+        services.AddSingleton<IRecordQueryTranslator, SqlQueryTranslator>();
 
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
         services.AddSingleton<IApiKeyGenerator, ApiKeyGenerator>();

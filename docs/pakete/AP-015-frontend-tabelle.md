@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-014: `shared/properties/*` (Property-Editoren mit `value`/`valueChange`/`definition`/`readonly`), `features/records/record-save.service.ts` (PATCH mit `expectedRevision`, 409-Dialog), `features/collections/collection-page.component.ts` (Record-Liste, Cursor), `WorkspaceTreeStore`; AP-016/AP-013 Muster |
@@ -83,3 +83,4 @@ Drag&Drop) kommt als zweiter View-Typ dazu.
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |

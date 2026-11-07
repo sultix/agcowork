@@ -4,10 +4,10 @@ using System.Text.Json.Serialization;
 namespace Agcowork.Domain.Views;
 
 /// <summary>
-/// One node of the filter DSL (architecture §3), shared by REST, MCP and storage: either a group
-/// (<c>{ "and": [ … ] }</c> / <c>{ "or": [ … ] }</c>) or a condition (<c>{ "prop", "op", "value" }</c>).
-/// Exactly one of the three shapes is set; <see cref="ViewFilterOperators"/> lists the operators.
-/// The structure is checked by the application layer; translation to SQL is a separate concern.
+/// One node of the filter DSL (architecture §3), shared by REST, MCP and storage: a group
+/// (<c>{ "and": [ … ] }</c> / <c>{ "or": [ … ] }</c>), a negation (<c>{ "not": { … } }</c>) or a condition
+/// (<c>{ "prop", "op", "value" }</c>). Exactly one of the four shapes is set; <see cref="ViewFilterOperators"/> lists the operators.
+/// This is the wire and storage form; the application layer parses it into a typed tree (and rejects what does not fit the schema).
 /// </summary>
 public sealed record ViewFilterNode
 {
@@ -16,6 +16,9 @@ public sealed record ViewFilterNode
 
     /// <summary>At least one child must match.</summary>
     public IReadOnlyList<ViewFilterNode>? Or { get; init; }
+
+    /// <summary>The child must not match.</summary>
+    public ViewFilterNode? Not { get; init; }
 
     /// <summary>Condition: key of a schema property.</summary>
     public string? Prop { get; init; }
@@ -31,11 +34,11 @@ public sealed record ViewFilterNode
     public Dictionary<string, JsonElement>? Unknown { get; init; }
 
     /// <summary>Keys of the DSL: the only members a node may have.</summary>
-    public static IReadOnlyList<string> Keys { get; } = ["and", "or", "prop", "op", "value"];
+    public static IReadOnlyList<string> Keys { get; } = ["and", "or", "not", "prop", "op", "value"];
 
     /// <summary>True when no member is set, i.e. "no filter" (<c>{}</c>).</summary>
     [JsonIgnore]
-    public bool IsEmpty => And is null && Or is null && Prop is null && Op is null && Value is null && Unknown is not { Count: > 0 };
+    public bool IsEmpty => And is null && Or is null && Not is null && Prop is null && Op is null && Value is null && Unknown is not { Count: > 0 };
 }
 
 /// <summary>Operators of filter conditions.</summary>

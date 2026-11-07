@@ -535,7 +535,7 @@ export interface paths {
         put?: never;
         /**
          * Create a view
-         * @description Creates a view. Required: 'name' (unique in the collection, max. 100 characters) and 'type' (table, board, gallery, list, document, raw; timeline and calendar are not available yet). A board also needs 'groupBy': the key of a select or status property. 'filter' uses the filter DSL: { "and": [ … ] } or { "or": [ … ] } groups of conditions { "prop", "op", "value" }; ops: eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty, is_not_empty ('in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). 'sorts': [ { "prop", "dir": "asc"|"desc" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover. All property keys must exist in the collection schema. 'isDefault': true makes it the default view. Invalid input: 400 with 'errors[]' and 'allowed' values. Requires write.
+         * @description Creates a view. Required: 'name' (unique in the collection, max. 100 characters) and 'type' (table, board, gallery, list, document, raw; timeline and calendar are not available yet). A board also needs 'groupBy': the key of a select or status property. 'filter' uses the filter DSL: { "and": [ … ] }, { "or": [ … ] } and { "not": { … } } around conditions { "prop", "op", "value" }; the operators depend on the property type and option values must exist (the rules of POST /collections/{id}/query, which lists the operator matrix; 'in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). Run a view with POST /views/{id}/query. 'sorts': [ { "prop", "dir": "asc"|"desc" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover. All property keys must exist in the collection schema. 'isDefault': true makes it the default view. Invalid input: 400 with 'errors[]' and 'allowed' values. Requires write.
          */
         post: operations["CreateView"];
         delete?: never;
@@ -734,6 +734,46 @@ export interface paths {
         get: operations["GetRevision"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Query the records of a collection
+         * @description Filters, sorts and pages the records of a collection. Body (all optional): 'filter', 'sorts' [ { "prop", "dir": "asc"|"desc" } ] (max. 10; numbers numerically, dates chronologically, text alphabetically; empty values last; ties by creation time; multi_select, relation and json cannot be sorted), 'fields' (property keys to return; add "body" for the Markdown body), 'limit', 'cursor', 'includeArchived', 'includeCount'. Filter DSL: a node is { "and": [ … ] }, { "or": [ … ] }, { "not": { … } } or a condition { "prop", "op", "value" }; nest freely (max. 8 levels, 100 conditions). 'prop' is a property key of the collection or a pseudo-field (title, created_at, updated_at, created_by, updated_by; a schema property with the same key wins). Operators per type: text, markdown, url, email, title: eq, neq, contains, starts_with, in, nin, is_empty, is_not_empty; number: eq, neq, gt, gte, lt, lte, in, nin, is_empty, is_not_empty; checkbox: eq, neq, is_empty; select, status: eq, neq, in, nin, is_empty, is_not_empty; multi_select: contains, in, nin, is_empty, is_not_empty; date: eq, neq, gt, gte, lt, lte, is_empty, is_not_empty; datetime, created_at, updated_at: eq, neq, gt, gte, lt, lte, is_empty, is_not_empty; relation: contains, in, nin, is_empty, is_not_empty; actor, created_by, updated_by: eq, neq, in, nin, is_empty, is_not_empty; json: not filterable. 'in'/'nin' take a list (max. 100), 'is_empty'/'is_not_empty' no value (empty = missing, null, "" or []). 'contains'/'starts_with' on text are case-insensitive; 'contains' on multi_select/relation tests one value; 'in' on them means any of the values; 'neq'/'nin' also match records without a value. Values: numbers as JSON numbers, dates 'YYYY-MM-DD', date-times ISO 8601 with offset (or a date = start of day UTC), relation values record ids, actor values ids or 'actor:<id>', option values must exist in the schema. Example: { "and": [ { "prop": "status", "op": "in", "value": ["todo", "in_progress"] }, { "or": [ { "prop": "due", "op": "lt", "value": "2026-12-01" }, { "prop": "priority", "op": "eq", "value": "high" } ] } ] }. Results: 'items' (records without body unless requested), 'nextCursor' (pass as 'cursor' for the next page; null when there are no further matches) and, with 'includeCount': true, 'count' (all matches, at most 10000). 'limit' 1..500, default 50. Archived records only with 'includeArchived': true. Invalid input: 400 with 'errors[]' on the path (e.g. 'filter.and[1].op'), codes unknown_property, unknown_operator, operator_not_applicable, invalid_value, not_in_options, not_sortable, invalid_cursor, each with 'allowed' where there is a closed set; unknown body members (e.g. 'sort' instead of 'sorts') are 'unknown_property' with the accepted members as 'allowed'. Requires read.
+         */
+        post: operations["QueryRecords"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/views/{viewId}/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a view
+         * @description Returns the records of the view's collection with the view's filter and sorts; properties are reduced to its visibleProperties (empty = all). Body (optional): 'filter' (combined with the view's filter by and; both together at most 150 conditions), 'limit', 'cursor', 'includeArchived', 'includeCount'; sorts and fields come from the view. A stored view definition that does not fit the schema any more is reported as 400 on 'view.filter…'/'view.sorts…'; fix it with PATCH /views/{id}. Filter DSL: a node is { "and": [ … ] }, { "or": [ … ] }, { "not": { … } } or a condition { "prop", "op", "value" }; nest freely (max. 8 levels, 100 conditions). 'prop' is a property key of the collection or a pseudo-field (title, created_at, updated_at, created_by, updated_by; a schema property with the same key wins). Operators per type: text, markdown, url, email, title: eq, neq, contains, starts_with, in, nin, is_empty, is_not_empty; number: eq, neq, gt, gte, lt, lte, in, nin, is_empty, is_not_empty; checkbox: eq, neq, is_empty; select, status: eq, neq, in, nin, is_empty, is_not_empty; multi_select: contains, in, nin, is_empty, is_not_empty; date: eq, neq, gt, gte, lt, lte, is_empty, is_not_empty; datetime, created_at, updated_at: eq, neq, gt, gte, lt, lte, is_empty, is_not_empty; relation: contains, in, nin, is_empty, is_not_empty; actor, created_by, updated_by: eq, neq, in, nin, is_empty, is_not_empty; json: not filterable. 'in'/'nin' take a list (max. 100), 'is_empty'/'is_not_empty' no value (empty = missing, null, "" or []). 'contains'/'starts_with' on text are case-insensitive; 'contains' on multi_select/relation tests one value; 'in' on them means any of the values; 'neq'/'nin' also match records without a value. Values: numbers as JSON numbers, dates 'YYYY-MM-DD', date-times ISO 8601 with offset (or a date = start of day UTC), relation values record ids, actor values ids or 'actor:<id>', option values must exist in the schema. Example: { "and": [ { "prop": "status", "op": "in", "value": ["todo", "in_progress"] }, { "or": [ { "prop": "due", "op": "lt", "value": "2026-12-01" }, { "prop": "priority", "op": "eq", "value": "high" } ] } ] }. Results: 'items' (records without body unless requested), 'nextCursor' (pass as 'cursor' for the next page; null when there are no further matches) and, with 'includeCount': true, 'count' (all matches, at most 10000). 'limit' 1..500, default 50. Archived records only with 'includeArchived': true. Invalid input: 400 with 'errors[]' on the path (e.g. 'filter.and[1].op'), codes unknown_property, unknown_operator, operator_not_applicable, invalid_value, not_in_options, not_sortable, invalid_cursor, each with 'allowed' where there is a closed set; unknown body members (e.g. 'sort' instead of 'sorts') are 'unknown_property' with the accepted members as 'allowed'. Requires read.
+         */
+        post: operations["QueryView"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1300,12 +1340,67 @@ export interface components {
          * @enum {unknown}
          */
         PropertyType: "text" | "markdown" | "number" | "checkbox" | "select" | "multi_select" | "status" | "date" | "datetime" | "url" | "email" | "relation" | "actor" | "json" | "created_at" | "updated_at" | "created_by" | "updated_by";
+        /**
+         * @description A query over the records of a collection as sent by a caller (REST body, MCP arguments). The parser
+         *     (QueryParser) checks it against the collection schema and turns it into a RecordQuery.
+         */
+        QueryDefinition: {
+            filter?: null | components["schemas"]["ViewFilterNode"];
+            /** @description [ { "prop", "dir": "asc"|"desc" } ] in order of priority (max. 10); ties are broken by creation time, then id. Empty values sort last. */
+            sorts?: null | components["schemas"]["ViewSortInput"][];
+            /**
+             * Format: int32
+             * @description Page size, 1..500, default 50.
+             */
+            limit?: null | number | string;
+            /** @description `nextCursor` of the previous page, unchanged; it only fits the same sorts. */
+            cursor?: null | string;
+            /** @description Property keys to return (default: all). `body` adds the Markdown body, which is otherwise omitted. */
+            fields?: null | string[];
+            /**
+             * @description Also return archived records.
+             * @default false
+             */
+            includeArchived: boolean;
+            /**
+             * @description Also count all matches (up to 10 000).
+             * @default false
+             */
+            includeCount: boolean;
+        };
+        /** @description One page of query results. */
+        QueryResultOfRecordDto: {
+            /** @description Matching records in sort order; properties reduced to the requested fields. */
+            items: components["schemas"]["RecordDto"][];
+            /** @description Pass as `cursor` to get the next page; null when there are no further matches. */
+            nextCursor: null | string;
+            /**
+             * Format: int32
+             * @description Number of all matches when `includeCount` was set, at most 10 000 (10 000 means "10 000 or more").
+             */
+            count?: null | number | string;
+        };
+        /** @description Body of `POST /views/{viewId}/query`; everything optional. */
+        QueryViewBody: {
+            filter?: null | components["schemas"]["ViewFilterNode"];
+            /** @description nextCursor of the previous page of this view. */
+            cursor?: null | string;
+            /**
+             * Format: int32
+             * @description Page size, 1..500, default 50.
+             */
+            limit?: null | number | string;
+            /** @description Also return archived records. */
+            includeArchived?: null | boolean;
+            /** @description Also count all matches (up to 10 000). */
+            includeCount?: null | boolean;
+        };
         /** @description Optional body of archive and restore. */
         ReasonBody: {
             /** @description Why; stored with the revision. */
             reason?: null | string;
         };
-        /** @description A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoint (AP-009). */
+        /** @description A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoints (AP-009). */
         RecordDto: {
             /**
              * Format: uuid
@@ -1652,16 +1747,17 @@ export interface components {
             createdAt: string;
         };
         /**
-         * @description One node of the filter DSL (architecture §3), shared by REST, MCP and storage: either a group
-         *     (`{ "and": [ … ] }` / `{ "or": [ … ] }`) or a condition (`{ "prop", "op", "value" }`).
-         *     Exactly one of the three shapes is set; ViewFilterOperators lists the operators.
-         *     The structure is checked by the application layer; translation to SQL is a separate concern.
+         * @description One node of the filter DSL (architecture §3), shared by REST, MCP and storage: a group
+         *     (`{ "and": [ … ] }` / `{ "or": [ … ] }`), a negation (`{ "not": { … } }`) or a condition
+         *     (`{ "prop", "op", "value" }`). Exactly one of the four shapes is set; ViewFilterOperators lists the operators.
+         *     This is the wire and storage form; the application layer parses it into a typed tree (and rejects what does not fit the schema).
          */
         ViewFilterNode: {
             /** @description All children must match. */
             and?: null | components["schemas"]["ViewFilterNode"][];
             /** @description At least one child must match. */
             or?: null | components["schemas"]["ViewFilterNode"][];
+            not?: null | components["schemas"]["ViewFilterNode"];
             /** @description Condition: key of a schema property. */
             prop?: null | string;
             /** @description Condition: eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty or is_not_empty. */
@@ -4633,6 +4729,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    QueryRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["QueryDefinition"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueryResultOfRecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    QueryView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["QueryViewBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueryResultOfRecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Unauthorized */

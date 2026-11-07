@@ -45,6 +45,7 @@ internal static class ApiV1
         workspace.MapCollectionEndpoints();
         workspace.MapViewEndpoints();
         workspace.MapRecordEndpoints();
+        workspace.MapQueryEndpoints();
         workspace.MapActivityEndpoints();
 
         return app;

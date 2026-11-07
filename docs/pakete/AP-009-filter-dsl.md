@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-007: `ListRecords` (Cursor nach `(CreatedAt, Id)`), `RecordDto`-Mapper; AP-008: `ViewDefinitionValidator` (strukturelle Filter-Validierung, Records für Filter/Sorts); AP-006: `ISchemaProvider`, Property-Typen |
@@ -95,3 +95,9 @@ ausführen (Filter + Sorts aus dem View). Die Übersetzung nach SQL nutzt den GI
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: 864 Tests grün (200/460/204), keine Migration. `OperatorMatrix` als Code-Tabelle, `QueryParser` einzige DSL-Stelle (ViewDefinitionValidator nutzt ihn), `not`-Knoten, `QueryCursor` Base64url an Sortierung gebunden, `SqlQueryTranslator` mit `@>`/`jsonb_extract_path_text`/ILIKE-Escape, eigene EF-Funktionen (`JsonbFunctions`, argumentsPropagateNullability=false), Keyset mit Leerwerten zuletzt, EXPLAIN-Test mit Index-Nachweis, Architektur §3 ergänzt. Entscheidungen: leer = fehlt/null/""/[]; neq/nin treffen auch fehlende; starts_with case-insensitiv; multi_select/relation/json nicht sortierbar, json nicht filterbar; Pseudo-Felder auch in Views. Offen: Altwerte nach relation multiple false→true |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: **Blockiert**. B1: NUL-Zeichen/einzelne Surrogate in Filter- oder Cursor-Werten → 500 (PostgreSQL 22021, `GetString()`-Exception). Wichtig: View-Hook hält Sortierungen/`contains` nicht mit strengerer Matrix konsistent (400 bei ExecuteView); unbekannte Top-Level-Schlüssel im Query-Body still ignoriert. Hinweise: `eq` auf datetime mit reinem Datum, §3-Formulierung, Hook-Kommentar zu `not`, Parametergrenze. Parametrisierung, Tenancy, NULL-Dreiwertigkeit, Keyset, Laden/Zählen ohne Befund; Orakel-Testmuster lobend erwähnt |
+| 2026-11-07 | Nacharbeit an implementer-opus (B1, W1, W2, H1–H5); danach erneute Prüfung |
+| 2026-11-07 | Nacharbeit fertig: 895 Tests grün. `QueryText` (NUL/Surrogate → `invalid_value`/`invalid_cursor`), View-Hook entfernt unsortierbare Sorts und `contains` auf entfernte Option, unbekannte Top-Level-Schlüssel → `unknown_property` mit `allowed`, reines Datum nur bei Vergleichsoperatoren, `MaxCombinedConditions = 150`, §3 präzisiert. An reviewer zur erneuten Prüfung |
+| 2026-11-07 | Erneute Prüfung: **Freigabe**, keine offenen Befunde. Vom Orchestrator verifiziert (895 Backend-, 466 Frontend-Tests). Abgeschlossen, Commit siehe Backlog |

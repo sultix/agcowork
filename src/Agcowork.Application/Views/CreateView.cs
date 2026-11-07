@@ -16,7 +16,7 @@ namespace Agcowork.Application.Views;
 /// <param name="CollectionId">Collection the view belongs to.</param>
 /// <param name="Name">Display name, unique within the collection, max. 100 characters, e.g. <c>Board nach Status</c>.</param>
 /// <param name="Type">table, board, gallery, list, document or raw. A board needs <paramref name="GroupBy"/>.</param>
-/// <param name="Filter">Filter DSL: { "and": [ { "prop", "op", "value" }, … ] } / "or"; operators eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty, is_not_empty. Omit for all records.</param>
+/// <param name="Filter">Filter DSL: { "and": [ { "prop", "op", "value" }, … ] } / "or" / "not"; operators per property type (<see cref="Query.OperatorMatrix"/>). Omit for all records.</param>
 /// <param name="Sorts">[ { "prop", "dir": "asc"|"desc" } ] in order of priority.</param>
 /// <param name="GroupBy">Key of a select/status property; board columns. Required for boards.</param>
 /// <param name="VisibleProperties">Keys of the properties shown; omit or empty for all.</param>

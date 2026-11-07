@@ -30,8 +30,9 @@ internal static class ViewEndpoints
             .WithDescription(
                 "Creates a view. Required: 'name' (unique in the collection, max. 100 characters) and 'type' (table, board, gallery, list, "
                 + "document, raw; timeline and calendar are not available yet). A board also needs 'groupBy': the key of a select or status "
-                + "property. 'filter' uses the filter DSL: { \"and\": [ … ] } or { \"or\": [ … ] } groups of conditions { \"prop\", \"op\", \"value\" }; "
-                + "ops: eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty, is_not_empty ('in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). "
+                + "property. 'filter' uses the filter DSL: { \"and\": [ … ] }, { \"or\": [ … ] } and { \"not\": { … } } around conditions { \"prop\", \"op\", \"value\" }; "
+                + "the operators depend on the property type and option values must exist (the rules of POST /collections/{id}/query, which lists the "
+                + "operator matrix; 'in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). Run a view with POST /views/{id}/query. "
                 + "'sorts': [ { \"prop\", \"dir\": \"asc\"|\"desc\" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover. "
                 + "All property keys must exist in the collection schema. 'isDefault': true makes it the default view. Invalid input: 400 with "
                 + "'errors[]' and 'allowed' values. Requires write.")
@@ -135,7 +136,7 @@ internal static class ViewEndpoints
 /// <summary>Body of <c>POST /collections/{collectionId}/views</c>.</summary>
 /// <param name="Name">Display name, unique in the collection, max. 100 characters.</param>
 /// <param name="Type">table, board, gallery, list, document or raw. A board needs groupBy.</param>
-/// <param name="Filter">Filter DSL: { "and": [ { "prop", "op", "value" }, … ] } or "or". Omit for all records.</param>
+/// <param name="Filter">Filter DSL: { "and": [ { "prop", "op", "value" }, … ] }, "or" or "not". Omit for all records.</param>
 /// <param name="Sorts">[ { "prop", "dir": "asc"|"desc" } ].</param>
 /// <param name="GroupBy">Key of a select/status property; board columns. Required for boards.</param>
 /// <param name="VisibleProperties">Keys of the properties shown; empty or omitted = all.</param>

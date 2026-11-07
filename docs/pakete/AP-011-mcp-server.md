@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Alle Use-Cases aus AP-004–AP-010 (MCP ist ein dünner Adapter darüber); `TenantResolutionMiddleware` + `TenantEndpointMetadata` (AP-005); `ProblemDetailsMapping` (Fehlerformat); `TenancyFixture` |
@@ -86,3 +86,4 @@ Produkts („agent-first“) eingelöst.
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |

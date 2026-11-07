@@ -231,9 +231,60 @@ und `raw` erreichbar, unabhängig von Views.
 }
 ```
 
+Knoten: `{ "and": [ … ] }`, `{ "or": [ … ] }`, `{ "not": { … } }` oder eine Bedingung `{ "prop", "op", "value" }`,
+beliebig verschachtelt (max. 8 Ebenen, 100 Bedingungen); `{}` heißt „kein Filter“, unbekannte Schlüssel sind Fehler.
 Operatoren: `eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty, is_not_empty`.
 Sortierung: `[{ "prop": "due", "dir": "asc" }]`. Paginierung per Cursor.
 Übersetzung nach SQL über JSONB-Operatoren mit GIN-Index auf `properties`.
+
+**Typ-Matrix (verbindlich, aus AP-009; im Code `OperatorMatrix`):**
+
+| Typ | Operatoren | Werte |
+|---|---|---|
+| `text`, `markdown`, `url`, `email`, Pseudo-Feld `title` | eq, neq, contains, starts_with, in, nin, is_empty, is_not_empty | String; `contains`/`starts_with` case-insensitiv, `eq` exakt |
+| `number` | eq, neq, gt, gte, lt, lte, in, nin, is_empty, is_not_empty | JSON-Zahl |
+| `checkbox` | eq, neq, is_empty | `true`/`false` |
+| `select`, `status` | eq, neq, in, nin, is_empty, is_not_empty | Option-Wert (muss existieren) |
+| `multi_select` | contains (ein Wert), in (Schnittmenge nicht leer), nin, is_empty, is_not_empty | Option-Wert(e) |
+| `date` | eq, neq, gt, gte, lt, lte, is_empty, is_not_empty | `YYYY-MM-DD` |
+| `datetime`, `created_at`, `updated_at` | eq, neq, gt, gte, lt, lte, is_empty, is_not_empty | ISO 8601 mit Offset; reines Datum (= Tagesbeginn UTC) nur bei gt/gte/lt/lte |
+| `relation` | contains (Record-Id), in, nin, is_empty, is_not_empty | Record-Id |
+| `actor`, `created_by`, `updated_by` | eq, neq, in, nin, is_empty, is_not_empty | Actor-Id oder `actor:<id>` |
+| `json` | – (weder filter- noch sortierbar) | – |
+
+Regeln:
+- `prop` ist ein Schema-Key oder ein Pseudo-Feld (`title`, `created_at`, `updated_at`, `created_by`, `updated_by`);
+  ein Schema-Key gleichen Namens gewinnt. Berechnete Properties (Typen `created_at` usw. unter beliebigem Key) und
+  Pseudo-Felder werden auf die Spalten abgebildet, nie auf `properties->>'key'`.
+- „Leer“ (`is_empty`) heißt: Key fehlt oder `null`; bei Text-Typen auch `""`, bei `multi_select`/`relation` auch `[]`.
+  `neq`/`nin` treffen auch Records ohne Wert; jede Bedingung ist NULL-frei, `not` ist das exakte Komplement.
+- Fehler (400, `errors[]` mit Pfad wie `filter.and[1].op`): `unknown_property`, `unknown_operator`,
+  `operator_not_applicable` (`allowed` = Operatoren des Typs), `invalid_value` (Meldung nennt den erwarteten Typ),
+  `not_in_options` (Wert existiert im Schema nicht mehr, `allowed` = Optionen), `not_sortable`, `invalid_cursor`;
+  unbekannte Schlüssel im Request-Body (z. B. `sort` statt `sorts`) → `unknown_property` mit den erlaubten Feldern.
+  Strings mit NUL (`\u0000`) oder ungepaarten Surrogaten werden als `invalid_value` (im Cursor: `invalid_cursor`)
+  abgelehnt, weil PostgreSQL sie nicht speichern kann.
+- Sortierung typgerecht (number numerisch, date/datetime zeitlich, Text nach DB-Collation, select nach Wert, nicht nach
+  Options-Reihenfolge); fehlende Werte (Key fehlt oder `null`) zuletzt in beiden Richtungen – `""` ist beim Sortieren
+  ein normaler Wert und steht aufsteigend vorn; Tie-Breaker immer `(created_at, id)`.
+  `multi_select`, `relation` und `json` sind nicht sortierbar.
+- Cursor: opak (Base64url), enthält die Sortierwerte des letzten Records (wie die DB sie berechnet hat) plus
+  `(created_at, id)` und ist an die Sortierung gebunden; Keyset-Paginierung, keine OFFSETs; `nextCursor` nur, wenn
+  weitere Treffer existieren. Ungültig oder zu anderer Sortierung → 400 `invalid_cursor`.
+- SQL: `eq`/`in` auf Text, select/status, checkbox, actor und `contains`/`in` auf multi_select/relation als
+  `properties @> '{"key": …}'` (GIN `(workspace_id, properties jsonb_path_ops)`); Vergleiche über
+  `jsonb_extract_path_text` mit Cast (numeric/date/timestamptz, abgesichert über `jsonb_typeof`); `contains`/`starts_with`
+  als `ILIKE` mit maskierten Wildcards. Werte und Keys sind immer Parameter. Der Parser (`QueryParser`) ist die einzige
+  Stelle, die die DSL versteht; REST, MCP und gespeicherte Views (`ViewDefinitionValidator`) nutzen ihn.
+- Abfrage: `POST /collections/{id}/query` (`filter`, `sorts`, `fields` mit `body` auf Anfrage, `limit` 1..500,
+  `cursor`, `includeArchived`, `includeCount` bis 10 000); `POST /views/{id}/query` führt Filter, Sorts und
+  `visibleProperties` des Views aus, ein Zusatzfilter wird per `and` kombiniert (zusammen max. 150 Bedingungen).
+  Gespeicherte Views, die die strengere Matrix verletzen (angelegt vor AP-009 nur strukturell geprüft), liefern dort
+  400 auf `view.filter…` bzw. `view.sorts…`; sie werden mit `PATCH /views/{id}` korrigiert.
+- Schemaänderungen bereinigen Views (`ViewSchemaHook`): entfernte Properties und Optionen verschwinden aus Filtern
+  (`eq`/`neq`/`contains` auf eine entfernte Option → Bedingung weg, `in`/`nin` verlieren den Wert), Sortierungen auf
+  nicht mehr sortierbare Properties (select → multi_select) fallen weg. Bereinigung unterhalb von `not` macht den Filter
+  enger, nicht weiter.
 
 ## 4. Agent-Schnittstelle
 
@@ -329,7 +380,7 @@ GET    /records/{id}                    POST   /records
 PATCH  /records/{id}                    POST   /records/{id}/append
 GET    /records/{id}/history            POST   /records/{id}/comments
 GET    /search?q=…                      GET    /activity?since=…
-GET    /views/{id}                      POST   /views
+GET    /views/{id}                      POST   /views   POST /views/{id}/query
 GET    /members   POST /members   PATCH /members/{actorId}   DELETE /members/{actorId}
 ```
 
