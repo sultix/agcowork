@@ -61,4 +61,35 @@ describe('ThemeService', () => {
     expect(() => TestBed.tick()).not.toThrow();
     expect(root.getAttribute('data-theme')).toBe('light');
   });
+
+  it('isDark_ResolvesModeAndSystemPreference', () => {
+    let listener: ((event: MediaQueryListEvent) => void) | undefined;
+    const media = {
+      matches: true,
+      addEventListener: (_: string, fn: (event: MediaQueryListEvent) => void) => (listener = fn),
+    };
+    const view = document.defaultView as Window;
+    Object.defineProperty(view, 'matchMedia', { configurable: true, value: () => media });
+    onTestFinished(() => {
+      delete (view as Partial<Window>).matchMedia;
+    });
+
+    const theme = TestBed.inject(ThemeService);
+    expect(theme.isDark()).toBe(true);
+
+    listener?.({ matches: false } as MediaQueryListEvent);
+    expect(theme.isDark()).toBe(false);
+
+    theme.mode.set('dark');
+    expect(theme.isDark()).toBe(true);
+    theme.mode.set('light');
+    expect(theme.isDark()).toBe(false);
+  });
+
+  it('isDark_WithoutMatchMedia_FollowsExplicitModeOnly', () => {
+    const theme = TestBed.inject(ThemeService);
+    expect(theme.isDark()).toBe(false);
+    theme.mode.set('dark');
+    expect(theme.isDark()).toBe(true);
+  });
 });

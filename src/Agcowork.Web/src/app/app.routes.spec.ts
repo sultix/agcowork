@@ -4,6 +4,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Route, Router, Routes, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
+import { FakeCodeEditor, provideFakeCodeEditor } from './shared/raw-view/fake-code-editor';
 
 /** Expands lazy `loadChildren` so the full path tree can be checked. */
 async function collectPaths(list: Routes, prefix = ''): Promise<string[]> {
@@ -41,6 +42,7 @@ describe('app routes', () => {
         'w/:workspaceSlug/search',
         'w/:workspaceSlug/activity',
         'w/:workspaceSlug/settings/members',
+        'dev/playground',
         '**',
       ]),
     );
@@ -71,4 +73,20 @@ describe('app routes', () => {
       expect(TestBed.inject(Router).url).toBe('/workspaces');
     },
   );
+
+  it('navigate_DevPlayground_RendersEditorAndBothRawViews', async () => {
+    const editors: FakeCodeEditor[] = [];
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), provideFakeCodeEditor(editors)],
+    });
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/dev/playground');
+    await harness.fixture.whenStable();
+
+    const root = harness.routeNativeElement as HTMLElement;
+    expect(TestBed.inject(Router).url).toBe('/dev/playground');
+    expect(root.querySelector('ag-markdown-editor .ProseMirror')).not.toBeNull();
+    expect(editors.map((e) => e.language)).toEqual(['markdown', 'json']);
+  });
 });

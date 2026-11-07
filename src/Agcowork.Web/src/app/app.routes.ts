@@ -20,6 +20,14 @@ export const routes: Routes = [
         (m) => m.workspaceShellRoutes,
       ),
   },
+  {
+    // Manual test bench for editor building blocks; intentionally not linked in the navigation.
+    path: 'dev/playground',
+    loadComponent: () =>
+      import('./features/dev-playground/dev-playground.component').then(
+        (m) => m.DevPlaygroundComponent,
+      ),
+  },
   { path: '', pathMatch: 'full', redirectTo: 'workspaces' },
   { path: '**', redirectTo: 'workspaces' },
 ];

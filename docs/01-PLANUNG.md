@@ -83,6 +83,12 @@ kostet viel und bringt Agenten nichts. Eingebettete Datenbanken/Views im Text l�
 
 Konsequenz: Tabellen im Fließtext sind Markdown-Tabellen; „richtige“ Tabellen sind Collections.
 
+Konsequenz 2 (entschieden 2026-11-07, AP-012): Der WYSIWYG-Editor serialisiert beim ersten
+menschlichen Bearbeiten das ganze Dokument neu und normalisiert dabei (Escapes wie `\*`,
+Autolinks in `<…>`, `*`-Listen zu `-`, Setext- zu ATX-Überschriften). Die Bedeutung bleibt
+gleich; Agenten lesen das Ergebnis problemlos. Wir akzeptieren das, statt blockweise zu
+ersetzen. Reines Laden erzeugt keine Änderung, also keinen Diff.
+
 ### E3 – Schema als Daten, Properties als JSONB
 
 Collections (Sammlungen) haben ein Schema aus Property-Definitionen, das in der Datenbank

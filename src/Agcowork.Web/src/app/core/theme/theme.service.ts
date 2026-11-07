@@ -1,8 +1,10 @@
-import { DOCUMENT, Injectable, effect, inject, signal } from '@angular/core';
+import { DOCUMENT, Injectable, computed, effect, inject, signal } from '@angular/core';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'ag-theme';
+
+const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 /**
  * Manual theme override. `system` removes `data-theme` so `prefers-color-scheme` applies;
@@ -14,7 +16,23 @@ export class ThemeService {
 
   readonly mode = signal<ThemeMode>(this.readStored());
 
+  private readonly systemDark = signal(false);
+
+  /**
+   * Effective theme after resolving `system`. For widgets that cannot read CSS tokens directly
+   * (e.g. Monaco needs a named theme).
+   */
+  readonly isDark = computed(
+    () => this.mode() === 'dark' || (this.mode() === 'system' && this.systemDark()),
+  );
+
   constructor() {
+    const media = this.document.defaultView?.matchMedia?.(DARK_QUERY);
+    if (media) {
+      this.systemDark.set(media.matches);
+      media.addEventListener?.('change', (event) => this.systemDark.set(event.matches));
+    }
+
     effect(() => {
       const mode = this.mode();
       const root = this.document.documentElement;

@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten; Muster aus AP-002: `WorkspaceContext`, `app.routes.spec.ts`) |
@@ -68,6 +68,13 @@ mit Records.
 
 - `shared/editor/markdown-editor.component.spec.ts` (oder Serialisierungs-Spec), `shared/raw-view/raw-view.component.spec.ts`, Routen-Spec um `/dev/playground` ergänzt.
 
+## Getroffene Entscheidungen (aus dem Bericht)
+
+- **Milkdown 7.23 über `@milkdown/kit`**, nicht Crepe: läuft in Vitest/jsdom ohne Fake; Crepe bringt CodeMirror, KaTeX und eigenes Theming mit (größerer Chunk, Token-Kollision). TipTap nicht nötig.
+- **Monaco 0.57 kuratiert** (Editor-API, gezielte Contribs, Markdown, JSON) statt `editor.main`; Worker als lokale Dateien, CSS als nicht-injizierter `styles`-Eintrag, `.ttf`-Loader. CodeMirror nicht nötig.
+- **Adapter-Schnitt**: Engines hinter `InjectionToken` mit `import()`-Factory, Fake-Provider für Tests. Standard für jede weitere Fremdbibliothek.
+- Serializer: `-` für Listen, `*` für Hervorhebung, Backtick-Fences.
+
 ## Entscheidungen, die der Implementierer treffen darf
 
 - Milkdown vs. TipTap; Monaco vs. CodeMirror 6 (jeweils begründen).
@@ -80,3 +87,8 @@ mit Records.
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: Milkdown 7.23 (@milkdown/kit, nicht Crepe), Monaco 0.57 kuratiert mit lokalen Workern; Adapter-Schnitt mit Injection-Tokens; 71 Tests grün (18 Round-Trips gegen echtes Milkdown, Raw-View nur gegen Fake), Initial 285 kB, Editor 468 kB lazy, Monaco 3,3 MB lazy; manuell in Chrome geprüft. Abweichungen: Output `editorBlur`, Input `debounceMs`. Offen: Änderungen im Debounce-Fenster gehen bei Destroy verloren; Checkboxen nicht klickbar; javascript:-Links und img-src ungefiltert |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen. Wichtig: Listen-Test normalisiert Einrückung weg (nicht beweiskräftig); Editor normalisiert beim Bearbeiten das ganze Dokument (Escapes, Autolinks, `*`→`-`), Entscheidung vor Record-Anbindung; Destroy-Verlust bekannt. Hinweise: javascript:-Links filtert Milkdown bereits (Allowlist), nur img-src offen; kein Fehlerzustand bei fehlgeschlagenem Nachladen; Monaco-Adapter ohne Test; `token()` nur Hex; drei verwaiste CSS-Chunks |
+| 2026-11-07 | Entscheidungen: Normalisierung akzeptiert (Architektur E2 ergänzt). Nacharbeit an implementer-opus: Listen-Test mit Einrückung, Link-Filter-Test, Fehlerzustand beim Nachladen |
+| 2026-11-07 | Nacharbeit fertig: 80 Tests grün, Lint/Build grün, Initial 285 kB; vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |
