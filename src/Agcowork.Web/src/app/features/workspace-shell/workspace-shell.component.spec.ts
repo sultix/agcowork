@@ -149,7 +149,6 @@ describe('WorkspaceShellComponent sidebar tree', () => {
         `${API}/collections`,
         [collection(), collection({ id: 'c2', spaceId: 'sp2', name: 'Entscheidungen' })],
       ],
-      [`${API}/members`, []],
       [
         `${API}/collections/${COLLECTION_ID}/describe`,
         {
@@ -161,7 +160,7 @@ describe('WorkspaceShellComponent sidebar tree', () => {
           statistics: { recordCount: 0 },
         },
       ],
-      [`${API}/records?collectionId=${COLLECTION_ID}&limit=50`, { items: [], nextCursor: null }],
+      [`${API}/collections/${COLLECTION_ID}/views`, []],
     ]);
     await navigation;
     await settle(harness.fixture);

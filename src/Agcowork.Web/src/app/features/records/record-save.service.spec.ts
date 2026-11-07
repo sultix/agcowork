@@ -415,4 +415,26 @@ describe('RecordSaveService', () => {
       expect(service.conflict()).toBeNull();
     });
   });
+
+  it('setBody_AttachedRecord_Throws', () => {
+    service.attach('demo', recordDto());
+
+    expect(() => service.setBody('x')).toThrow(/not tracked/);
+  });
+
+  it('discardPropertyEdits_SomeKeys_KeepsOtherEdits', () => {
+    service.attach('demo', recordDto({ properties: { status: 'todo', estimate: 2 } as never }));
+    service.setProperty('status', 'done');
+    service.setProperty('estimate', 9);
+    service.setTitle('Neu');
+
+    service.discardPropertyEdits(['estimate']);
+    service.discardTitleEdit();
+
+    expect(service.properties()).toEqual({ status: 'done', estimate: 2 });
+    expect(service.title()).toBe('Login bauen');
+    expect(service.isDirty()).toBe(true);
+    service.discardPropertyEdits(['status']);
+    expect(service.isDirty()).toBe(false);
+  });
 });

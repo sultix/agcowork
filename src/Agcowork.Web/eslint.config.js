@@ -36,6 +36,25 @@ module.exports = defineConfig([
     },
   },
   {
+    // Shared building blocks must not depend on features (features build on shared, not back).
+    // (Specs may use feature fixtures, e.g. the playground samples.)
+    files: ['src/app/shared/**/*.ts'],
+    ignores: ['src/app/shared/**/*.spec.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^(\\.\\./)+features/',
+              message: 'src/app/shared must not import from src/app/features.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {},

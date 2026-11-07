@@ -12,9 +12,13 @@ import {
   collection,
   expectRequest,
   member,
+  queryPage,
+  VIEW_ID,
+  viewDto,
   pageProviders,
   recordDto,
   respond,
+  respondIfRequested,
   serve,
   settle,
   space,
@@ -22,6 +26,8 @@ import {
   workspace,
 } from '../../core/testing/test-utils';
 import { CollectionPageComponent } from './collection-page.component';
+import { DefaultViewRedirectComponent } from '../views/default-view-redirect.component';
+import { ViewPageComponent } from '../views/view-page.component';
 
 @Component({ template: 'stub' })
 class StubComponent {}
@@ -50,7 +56,7 @@ const TEMPLATES = [
     createdAt: '2026-11-07T10:00:00Z',
   },
 ];
-const RECORDS_URL = `${API}/records?collectionId=${COLLECTION_ID}&limit=50`;
+const QUERY_URL = `${API}/views/${VIEW_ID}/query`;
 
 function describeBody(templates = TEMPLATES.slice(0, 1), recordCount = 2) {
   return {
@@ -77,7 +83,14 @@ describe('CollectionPageComponent', () => {
           {
             path: 'w/:workspaceSlug',
             children: [
-              { path: 'collections/:collectionId', component: CollectionPageComponent },
+              {
+                path: 'collections/:collectionId',
+                component: CollectionPageComponent,
+                children: [
+                  { path: '', component: DefaultViewRedirectComponent },
+                  { path: 'views/:viewId', component: ViewPageComponent },
+                ],
+              },
               { path: 'spaces/:spaceId', component: StubComponent },
               { path: 'records/:recordId', component: StubComponent },
             ],
@@ -90,30 +103,42 @@ describe('CollectionPageComponent', () => {
     const navigation = harness.navigateByUrl(`/w/demo/collections/${COLLECTION_ID}`);
     await serve(http, [
       [`${API}/collections/${COLLECTION_ID}/describe`, describeBody(options.templates)],
-      [
-        RECORDS_URL,
-        options.records ?? {
-          items: [
-            recordDto({ id: RECORD_ID, title: 'Login bauen' }),
-            recordDto({
-              id: 'r2',
-              title: 'Logout bauen',
-              properties: { status: 'done' } as never,
-              updatedBy: 'agent-1',
-            }),
-          ],
-          nextCursor: null,
-        },
-      ],
+      [`${API}/collections/${COLLECTION_ID}/views`, [viewDto()]],
+    ]);
+    await respond(
+      http,
+      'POST',
+      QUERY_URL,
+      options.records ??
+        queryPage([
+          recordDto({ id: RECORD_ID, title: 'Login bauen' }),
+          recordDto({
+            id: 'r2',
+            title: 'Logout bauen',
+            properties: { status: 'done' } as never,
+            updatedBy: 'agent-1',
+          }),
+        ]),
+    );
+    await serve(http, [
       [`${API}/spaces`, [space()]],
       [`${API}/collections`, [collection()]],
-      [`${API}/members`, [member(), member({ actorId: 'agent-1', name: 'Coder', kind: 'agent' })]],
     ]);
     await navigation;
+    await respondIfRequested(http, `${API}/members`, [
+      member(),
+      member({ actorId: 'agent-1', name: 'Coder', kind: 'agent' }),
+    ]);
     await settle(harness.fixture);
   }
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // members are asked for once the table renders cells; not part of these checks
+    for (const request of http.match(`${API}/members`)) {
+      request.flush([member()]);
+    }
+    http.verify();
+  });
 
   const root = () => harness.routeNativeElement as HTMLElement;
   const q = (id: string) => root().querySelector<HTMLElement>(`[data-testid="${id}"]`);
@@ -121,70 +146,42 @@ describe('CollectionPageComponent', () => {
     Array.from(root().querySelectorAll<HTMLElement>(`[data-testid="${id}"]`));
   const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
-  it('render_Collection_ShowsHeaderSchemaChipsAndRecordRows', async () => {
+  it('render_Collection_ShowsHeaderSchemaChipsAndOpensDefaultViewAsTable', async () => {
     await render();
 
+    expect(TestBed.inject(Router).url).toBe(
+      `/w/demo/collections/${COLLECTION_ID}/views/${VIEW_ID}`,
+    );
     expect(text(q('collection-title'))).toBe('Aufgaben');
     expect(text(q('collection-description'))).toBe('Arbeitspakete des Teams');
     expect(text(q('record-count'))).toBe('2 Records');
     expect(all('schema-chips')[0].querySelectorAll('li')).toHaveLength(3);
-    expect(text(q('schema-chips'))).toContain('status: status');
     expect(text(q('breadcrumbs'))).toBe('Produkt›Aufgaben');
-    expect(all('record-row')).toHaveLength(2);
-    expect(text(all('record-link')[0])).toBe('Login bauen');
-    expect(all('record-link')[0].getAttribute('href')).toBe(`/w/demo/records/${RECORD_ID}`);
+    expect(all('view-tab').map(text)).toEqual(['▦ Tabelle ★']);
+    expect(all('table-row')).toHaveLength(2);
+    expect(text(all('row-link')[0])).toBe('Login bauen');
+    expect(all('row-link')[0].getAttribute('href')).toBe(`/w/demo/records/${RECORD_ID}`);
   });
 
-  it('render_StatusProperty_ShowsOptionLabelAndUpdaterName', async () => {
+  it('render_StatusColumn_ShowsOptionLabel', async () => {
     await render();
 
-    const [first, second] = all('record-row');
-    expect(text(first.querySelector('[data-testid="record-status"]'))).toBe('Offen');
-    expect(text(second.querySelector('[data-testid="record-status"]'))).toBe('Erledigt');
-    expect(text(first)).toContain('Admin');
-    expect(text(second)).toContain('Coder');
+    const [first, second] = all('table-row');
+    expect(text(first.querySelector('[data-key="status"]'))).toBe('Offen');
+    expect(text(second.querySelector('[data-key="status"]'))).toBe('Erledigt');
   });
 
   it('render_NoRecords_ShowsEmptyHint', async () => {
-    await render({ records: { items: [], nextCursor: null } });
+    await render({ records: queryPage([]) });
 
-    expect(text(q('record-table'))).toContain('Noch keine Records.');
+    expect(text(q('table-empty'))).toBe('Noch keine Records.');
   });
 
-  it('render_Viewer_HidesNewRecordButton', async () => {
+  it('render_Viewer_HidesNewRecordButtonAndViewActions', async () => {
     await render({ scopes: ['read'] });
 
     expect(q('record-new')).toBeNull();
-  });
-
-  it('records_NextCursor_LoadMoreAppendsAndHidesButtonAtEnd', async () => {
-    await render({ records: { items: [recordDto()], nextCursor: 'cur-1' } });
-    expect(all('record-row')).toHaveLength(1);
-
-    q('records-more')!.click();
-    await respond(http, 'GET', `${RECORDS_URL}&cursor=cur-1`, {
-      items: [recordDto({ id: 'r9', title: 'Neunte' })],
-      nextCursor: null,
-    });
-    await settle(harness.fixture);
-
-    expect(all('record-row')).toHaveLength(2);
-    expect(q('records-more')).toBeNull();
-  });
-
-  it('records_LoadMoreFails_KeepsRowsAndShowsError', async () => {
-    await render({ records: { items: [recordDto()], nextCursor: 'cur-1' } });
-
-    q('records-more')!.click();
-    (await expectRequest(http, 'GET', `${RECORDS_URL}&cursor=cur-1`)).flush(
-      { code: 'internal_error', status: 500 },
-      { status: 500, statusText: 'Server Error' },
-    );
-    await settle(harness.fixture);
-
-    expect(all('record-row')).toHaveLength(1);
-    expect(root().textContent).toContain('Der Server hat einen Fehler gemeldet');
-    expect(q('records-more')).not.toBeNull();
+    expect(q('view-new')).toBeNull();
   });
 
   describe('new record', () => {

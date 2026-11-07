@@ -7,6 +7,8 @@ import { routes } from './app.routes';
 import { authGuard } from './core/auth/auth.guard';
 import { instanceAdminGuard } from './features/admin/admin.guard';
 import { recordLeaveGuard } from './features/records/record-leave.guard';
+import { DefaultViewRedirectComponent } from './features/views/default-view-redirect.component';
+import { ViewPageComponent } from './features/views/view-page.component';
 import { SessionStatus, SessionStore } from './core/auth/session.store';
 import { ADMIN_ME } from './core/testing/test-utils';
 import { FakeCodeEditor, provideFakeCodeEditor } from './shared/raw-view/fake-code-editor';
@@ -57,6 +59,7 @@ describe('app routes', () => {
         'w/:workspaceSlug',
         'w/:workspaceSlug/spaces/:spaceId',
         'w/:workspaceSlug/collections/:collectionId',
+        'w/:workspaceSlug/collections/:collectionId/views/:viewId',
         'w/:workspaceSlug/records/:recordId',
         'w/:workspaceSlug/records/:recordId/raw',
         'w/:workspaceSlug/records/:recordId/history',
@@ -112,6 +115,7 @@ describe('app routes', () => {
     '/w/demo/activity',
     '/w/demo/spaces/s1',
     '/w/demo/collections/c1',
+    '/w/demo/collections/c1/views/v1',
     '/w/demo/records/r1',
     '/w/demo/records/r1/raw',
     '/w/demo/records/r1/history',
@@ -151,6 +155,18 @@ describe('app routes', () => {
     expect(children.find((r) => r.path === 'records/:recordId/raw')?.canDeactivate).toEqual([
       recordLeaveGuard,
     ]);
+  });
+
+  it('routes_Collection_ChildrenAreDefaultRedirectAndLazyViewPage', async () => {
+    const shell = await loadChildren(routes.find((r) => r.path === 'w/:workspaceSlug')!);
+    const collectionRoute = shell![0].children!.find(
+      (r) => r.path === 'collections/:collectionId',
+    )!;
+    const children = collectionRoute.children!;
+
+    expect(children.map((r) => r.path)).toEqual(['', 'views/:viewId']);
+    expect(await children[0].loadComponent!()).toBe(DefaultViewRedirectComponent);
+    expect(await children[1].loadComponent!()).toBe(ViewPageComponent);
   });
 
   it('routes_ProtectedAreas_HaveAuthGuard', () => {

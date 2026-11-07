@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-014: `shared/properties/*` (Property-Editoren mit `value`/`valueChange`/`definition`/`readonly`), `features/records/record-save.service.ts` (PATCH mit `expectedRevision`, 409-Dialog), `features/collections/collection-page.component.ts` (Record-Liste, Cursor), `WorkspaceTreeStore`; AP-016/AP-013 Muster |
@@ -84,3 +84,9 @@ Drag&Drop) kommt als zweiter View-Typ dazu.
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Unterbrechung durch Nutzungslimit, danach fortgesetzt |
+| 2026-11-07 | Bericht: 582 Tests grün; AK 1–5 per Playwright (5 000 Records, 44 Zeilen im DOM, Frame-Zeit Median 16,6 ms). `CollectionStore`, `ag-data-table` (CDK Virtual Scroll, Resize/Reorder, Shift-Mehrfachsortierung, Auswahl, Inline-Edit im Overlay), `InlineEditService` über `RecordSaveService.attach()`, Filter-Builder mit DSL-Round-Trip, Board mit Drag&Drop und Rollback. Abweichungen: Arbeitsstand läuft über `POST /collections/{id}/query` (QueryViewBody nimmt keine sorts/fields), View-Query nur bei unverändertem View; Spaltenbreiten nur in Sitzung. Offen: `shared/table` hängt von `features/records` ab; Flackern bei neuer Abfrage; kein Bulk-Archivieren |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; Inline-Edit (genau ein Save, `bodyTracked` korrekt), DSL-Matrix identisch mit Backend, Views, Performance, Cleanup ohne Befund. Wichtig: `shared/table` importiert `features/records` (Zyklus); natives Select speichert bei Tastaturnavigation sofort (plattformabhängig); `query-pager` ohne Spec. Hinweise: ungültiger Edit A blockiert Edit B, Entwurf geht bei Validierungsfehler verloren, `{}`-Knoten lassen View-Seite abstürzen, Retry pro Scrollschritt, fehlende Tests, `setBody` ohne Guard im attach-Modus |
+| 2026-11-07 | Dokumentierte Abweichungen (akzeptiert): Arbeitsstand läuft über `POST /collections/{id}/query` statt View-Query + `and`, weil `QueryViewBody` keine `sorts`/`fields` annimmt (Backlog-Kleinpaket); nackte Bedingung wird nach Bearbeiten zu `{and:[…]}` (semantisch gleich). Nacharbeit an implementer-opus (W1–W3, H1–H3, H5, H6, H8) |
+| 2026-11-07 | Nacharbeit fertig: 600 Tests grün. `InlineEditService` in features/views mit `CellEditor`-Interface, Lint-Regel gegen `shared → features`, Maus-/Tastatur-Unterscheidung bei Selects, `query-pager.spec`, Edits je Record strikt sequenziell mit Serverstand, Entwurf bleibt bei Fehler, robustes `cleanFilter`, kein Auto-Retry nach Fehler, `setBody`-Guard. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |

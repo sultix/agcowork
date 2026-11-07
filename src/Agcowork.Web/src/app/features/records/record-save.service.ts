@@ -51,6 +51,8 @@ export class RecordSaveService {
   private loadToken = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private inflight: Promise<boolean> | null = null;
+  /** `false` after {@link attach}: the body is neither edited nor refreshed. */
+  private bodyTracked = true;
 
   /** Server state of the record (metadata is current, `body` is the loaded one). */
   readonly record = signal<RecordDto | null>(null);
@@ -103,6 +105,7 @@ export class RecordSaveService {
     const token = ++this.loadToken;
     this.slug = slug;
     this.recordId = recordId;
+    this.bodyTracked = true;
     this.clearTimer();
     this.loading.set(true);
     this.loadError.set(null);
@@ -142,6 +145,34 @@ export class RecordSaveService {
     }
   }
 
+  /**
+   * Takes over a record that was loaded elsewhere (a table row, a board card) instead of loading
+   * it, and discards all unsaved edits. The body is not tracked: such a record is saved with
+   * title and property changes only, and "Überschreiben" does not fetch the body afterwards.
+   */
+  attach(slug: string, record: RecordDto): void {
+    this.loadToken++;
+    this.slug = slug;
+    this.recordId = record.id;
+    this.bodyTracked = false;
+    this.clearTimer();
+    this.loading.set(false);
+    this.loadError.set(null);
+    this.record.set(record);
+    this.title.set(record.title);
+    this.properties.set({ ...record.properties });
+    this.body.set(record.body ?? '');
+    this.editorValue.set(record.body ?? '');
+    this.titleDirty.set(false);
+    this.dirtyKeys.set(new Set());
+    this.bodyDirty.set(false);
+    this.conflict.set(null);
+    this.fieldErrors.set({});
+    this.saveError.set(null);
+    this.savedAt.set(null);
+    this.bodyStale.set(null);
+  }
+
   /** Throws away unsaved edits and the conflict, and loads the current server state. */
   reload(): Promise<void> {
     return this.load(this.slug, this.recordId);
@@ -162,16 +193,41 @@ export class RecordSaveService {
   }
 
   /**
-   * Drops unsaved property edits and shows the server's values again. For views that derive
+   * Drops unsaved property edits (all, or only `keys`) and shows the server's values again. For views that derive
    * the property patch from their own text before every save (raw view) and must not keep a
    * failed patch alive.
    */
-  discardPropertyEdits(): void {
-    this.dirtyKeys.set(new Set());
-    this.properties.set({ ...this.record()?.properties });
+  discardPropertyEdits(keys?: readonly string[]): void {
+    if (!keys) {
+      this.dirtyKeys.set(new Set());
+      this.properties.set({ ...this.record()?.properties });
+      return;
+    }
+    const server = (this.record()?.properties ?? {}) as PropertyValues;
+    this.dirtyKeys.update((dirty) => new Set([...dirty].filter((k) => !keys.includes(k))));
+    this.properties.update((props) => {
+      const next = { ...props };
+      for (const key of keys) {
+        if (key in server) {
+          next[key] = server[key];
+        } else {
+          delete next[key];
+        }
+      }
+      return next;
+    });
+  }
+
+  /** Drops an unsaved title edit and shows the server's title again. */
+  discardTitleEdit(): void {
+    this.titleDirty.set(false);
+    this.title.set(this.record()?.title ?? '');
   }
 
   setBody(body: string): void {
+    if (!this.bodyTracked) {
+      throw new Error('RecordSaveService: the body is not tracked for an attached record.');
+    }
     this.body.set(body);
     this.bodyDirty.set(true);
     this.schedule();
@@ -212,7 +268,7 @@ export class RecordSaveService {
     const saved = await this.save({ overwrite: true });
     // Without own body edits the editor still shows the old body although the other writer may
     // have changed it; the next body save would silently overwrite that text.
-    if (saved && !bodyWasDirty) {
+    if (saved && !bodyWasDirty && this.bodyTracked) {
       await this.refreshBody(revisionBefore);
     }
     return saved;

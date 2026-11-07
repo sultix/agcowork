@@ -295,3 +295,79 @@ export function typeInto(
   element.dispatchEvent(new Event('input', { bubbles: true }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Fixtures for views, tables and boards (AP-015).
+// ---------------------------------------------------------------------------------------------
+
+export type View = components['schemas']['ViewDto'];
+
+export const VIEW_ID = '0199a000-0000-7000-8000-0000000000e1';
+export const BOARD_VIEW_ID = '0199a000-0000-7000-8000-0000000000e2';
+
+export function viewDto(overrides: Partial<View> = {}): View {
+  return {
+    id: VIEW_ID,
+    collectionId: COLLECTION_ID,
+    name: 'Tabelle',
+    type: 'table',
+    filter: null,
+    sorts: [],
+    groupBy: null,
+    visibleProperties: [],
+    cardCoverProperty: null,
+    isDefault: true,
+    isSystem: true,
+    sortOrder: 0,
+    needsAttention: false,
+    createdBy: ADMIN_ME.id,
+    createdAt: '2026-11-07T10:00:00Z',
+    ...overrides,
+  };
+}
+
+/** A query result page (`POST …/query`). */
+export function queryPage(
+  items: readonly RecordDto[],
+  nextCursor: string | null = null,
+  count: number | null = items.length,
+): { items: readonly RecordDto[]; nextCursor: string | null; count: number | null } {
+  return { items, nextCursor, count };
+}
+
+/** Waits for one `POST` and answers it with `body`; returns the request for body checks. */
+export function respondPost(
+  http: HttpTestingController,
+  url: string,
+  body: unknown,
+  init: { status?: number; statusText?: string } = {},
+): Promise<TestRequest> {
+  return respond(http, 'POST', url, body, init);
+}
+
+/**
+ * Answers a `GET` that may or may not be issued (e.g. `/members`, asked for once a cell renders);
+ * waits up to `ms` for it. Resolves whether it came.
+ */
+export async function respondIfRequested(
+  http: HttpTestingController,
+  url: string,
+  body: unknown,
+  ms = 300,
+): Promise<boolean> {
+  const deadline = Date.now() + ms;
+  for (;;) {
+    TestBed.tick();
+    const matches = http.match({ method: 'GET', url });
+    if (matches.length > 0) {
+      for (const match of matches) {
+        match.flush(body as never);
+      }
+      return true;
+    }
+    if (Date.now() > deadline) {
+      return false;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}

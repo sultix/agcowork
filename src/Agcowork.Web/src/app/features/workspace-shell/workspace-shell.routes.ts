@@ -25,6 +25,20 @@ export const workspaceShellRoutes: Routes = [
         path: 'collections/:collectionId',
         loadComponent: () =>
           import('../collections/collection-page.component').then((m) => m.CollectionPageComponent),
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('../views/default-view-redirect.component').then(
+                (m) => m.DefaultViewRedirectComponent,
+              ),
+          },
+          {
+            path: 'views/:viewId',
+            loadComponent: () =>
+              import('../views/view-page.component').then((m) => m.ViewPageComponent),
+          },
+        ],
       },
       {
         path: 'records/:recordId',
