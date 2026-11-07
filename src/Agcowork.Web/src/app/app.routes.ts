@@ -1,0 +1,25 @@
+import { Routes } from '@angular/router';
+import { WORKSPACE_SLUG_PARAM } from './core/workspace/workspace-context.service';
+
+export const routes: Routes = [
+  {
+    path: 'login',
+    loadComponent: () => import('./features/auth/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    path: 'workspaces',
+    loadComponent: () =>
+      import('./features/workspaces/workspace-switcher.component').then(
+        (m) => m.WorkspaceSwitcherComponent,
+      ),
+  },
+  {
+    path: `w/:${WORKSPACE_SLUG_PARAM}`,
+    loadChildren: () =>
+      import('./features/workspace-shell/workspace-shell.routes').then(
+        (m) => m.workspaceShellRoutes,
+      ),
+  },
+  { path: '', pathMatch: 'full', redirectTo: 'workspaces' },
+  { path: '**', redirectTo: 'workspaces' },
+];

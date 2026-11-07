@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 0 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten) |
@@ -69,3 +69,4 @@ Postgres und die API startet. Jedes spätere Backend-Paket baut auf dieser Struk
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |

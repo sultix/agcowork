@@ -32,6 +32,8 @@ GitHub-Actions-Workflow baut und testet Backend und Frontend.
 
 - Es gibt noch kein GitHub-Remote. Der Workflow kann lokal nicht ausgeführt werden; er wird syntaktisch geprüft (`actionlint` per `npx`, falls verfügbar, sonst sorgfältig gegengelesen) und beim ersten Push verifiziert.
 - Aspire verteilt Ports dynamisch; der Angular-Proxy darf keinen festen Port annehmen.
+- **Port 5000 ist auf dem Entwicklungs-Mac vom AirPlay-Empfänger belegt** (antwortet mit 403). Der Fallback in `proxy.conf.json` muss auf einen freien Port wechseln (z. B. 5180), und die Api sollte in `launchSettings.json` denselben Port nutzen, damit `npm start` auch ohne Aspire funktioniert.
+- Die Angular-CLI hat `src/Agcowork.Web/.vscode/` erzeugt. Nicht einchecken: Eintrag in der Root-`.gitignore` ist bereits vorhanden (`.vscode/`).
 
 ## Akzeptanzkriterien
 

@@ -1,0 +1,78 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Light is the default; dark applies via prefers-color-scheme unless
+ * data-theme="light" overrides it, or via data-theme="dark" explicitly.
+ */
+:root {
+  color-scheme: light;
+  --ag-bg: #f8fafc;
+  --ag-surface: #ffffff;
+  --ag-surface-hover: #f1f5f9;
+  --ag-fg: #0f172a;
+  --ag-muted: #64748b;
+  --ag-accent: #4f46e5;
+  --ag-accent-fg: #ffffff;
+  --ag-border: #e2e8f0;
+  --ag-success: #15803d;
+  --ag-danger: #b91c1c;
+}
+
+/* Dark tokens (system preference). Keep in sync with the [data-theme='dark'] block below. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --ag-bg: #0b1120;
+    --ag-surface: #111827;
+    --ag-surface-hover: #1f2937;
+    --ag-fg: #e5e7eb;
+    --ag-muted: #9ca3af;
+    --ag-accent: #818cf8;
+    --ag-accent-fg: #0b1120;
+    --ag-border: #1f2937;
+    --ag-success: #4ade80;
+    --ag-danger: #f87171;
+  }
+}
+
+/* Dark tokens (manual override). Keep in sync with the prefers-color-scheme block above. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ag-bg: #0b1120;
+  --ag-surface: #111827;
+  --ag-surface-hover: #1f2937;
+  --ag-fg: #e5e7eb;
+  --ag-muted: #9ca3af;
+  --ag-accent: #818cf8;
+  --ag-accent-fg: #0b1120;
+  --ag-border: #1f2937;
+  --ag-success: #4ade80;
+  --ag-danger: #f87171;
+}
+
+/* Expose tokens as Tailwind colors: bg-bg, bg-surface, text-fg, text-muted, border-border, ... */
+@theme inline {
+  --color-bg: var(--ag-bg);
+  --color-surface: var(--ag-surface);
+  --color-surface-hover: var(--ag-surface-hover);
+  --color-fg: var(--ag-fg);
+  --color-muted: var(--ag-muted);
+  --color-accent: var(--ag-accent);
+  --color-accent-fg: var(--ag-accent-fg);
+  --color-border: var(--ag-border);
+  --color-success: var(--ag-success);
+  --color-danger: var(--ag-danger);
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--ag-bg);
+    color: var(--ag-fg);
+  }
+
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+}
