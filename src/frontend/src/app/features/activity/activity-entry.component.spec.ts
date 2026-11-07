@@ -135,6 +135,21 @@ describe('ActivityEntryComponent', () => {
     expect(q('activity-link')!.getAttribute('href')).toBe(`/w/demo/records/${RECORD_ID}`);
   });
 
+  it('render_TargetTitle_IsLinkTextInsteadOfOpen', async () => {
+    await render(activityEvent({ type: 'record.updated', targetTitle: 'Login bauen', diff: {} }));
+
+    expect(text(q('activity-link'))).toBe('Login bauen');
+    expect(q('activity-link')!.getAttribute('href')).toBe(`/w/demo/records/${RECORD_ID}`);
+    expect(text(q('entry-text'))).toBe('hat einen Record geändert');
+    expect(q('entry-name')).toBeNull();
+  });
+
+  it('render_NoTargetTitle_LinkTextIsOpen', async () => {
+    await render(activityEvent({ type: 'record.updated', targetTitle: null, diff: {} }));
+
+    expect(text(q('activity-link'))).toBe('Öffnen');
+  });
+
   it('render_UnknownType_ShowsRawType', async () => {
     await render(activityEvent({ type: 'thing.exploded', targetType: 'thing' }));
 

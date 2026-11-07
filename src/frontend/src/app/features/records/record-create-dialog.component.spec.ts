@@ -135,6 +135,34 @@ describe('RecordCreateDialogComponent', () => {
     expect(q('create-record-dialog')).not.toBeNull();
   });
 
+  it('submit_Retry_ReusesTheIdempotencyKeyAndNewDialogGetsANewOne', async () => {
+    await settle(fixture);
+    typeInto(q<HTMLInputElement>('create-title')!, 'x');
+
+    q<HTMLButtonElement>('create-submit')!.click();
+    const first = await expectRequest(http, 'POST', `${API}/records`);
+    const key = first.request.headers.get('Idempotency-Key');
+    expect(key).toMatch(/^[0-9a-f-]{36}$/);
+    first.error(new ProgressEvent('error'));
+    await settle(fixture);
+
+    q<HTMLButtonElement>('create-submit')!.click();
+    const second = await expectRequest(http, 'POST', `${API}/records`);
+    expect(second.request.headers.get('Idempotency-Key')).toBe(key);
+    second.flush(recordDto(), { status: 201, statusText: 'Created' });
+    await settle(fixture);
+    fixture.destroy();
+
+    const other = TestBed.createComponent(HostComponent);
+    await settle(other);
+    typeInto(q<HTMLInputElement>('create-title')!, 'y');
+    q<HTMLButtonElement>('create-submit')!.click();
+    const third = await expectRequest(http, 'POST', `${API}/records`);
+    expect(third.request.headers.get('Idempotency-Key')).not.toBe(key);
+    third.flush(recordDto(), { status: 201, statusText: 'Created' });
+    await settle(other);
+  });
+
   it('cancel_ButtonAndEscape_EmitCancelled', async () => {
     await settle(fixture);
 

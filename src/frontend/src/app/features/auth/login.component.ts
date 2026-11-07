@@ -25,7 +25,9 @@ export function safeReturnUrl(value: string | null | undefined): string {
   if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) {
     return DEFAULT_AFTER_LOGIN;
   }
-  return value.startsWith('/login') ? DEFAULT_AFTER_LOGIN : value;
+  return value.startsWith('/login') || value.startsWith('/account/password')
+    ? DEFAULT_AFTER_LOGIN
+    : value;
 }
 
 /** Same text for unknown email and wrong password: the UI must not reveal which accounts exist. */

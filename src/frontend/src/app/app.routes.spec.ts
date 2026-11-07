@@ -37,13 +37,18 @@ async function loadChildren(route: Route): Promise<Routes | undefined> {
 }
 
 /** Session stub for routing tests: the guard only asks `ready()`. */
-function sessionStub(status: SessionStatus, instanceScopes: string[] = []) {
+function sessionStub(
+  status: SessionStatus,
+  instanceScopes: string[] = [],
+  mustChangePassword = false,
+) {
   return {
     provide: SessionStore,
     useValue: {
       ready: () => Promise.resolve(status),
       status: () => status,
-      me: () => (status === 'authenticated' ? { ...ADMIN_ME, instanceScopes } : null),
+      me: () =>
+        status === 'authenticated' ? { ...ADMIN_ME, instanceScopes, mustChangePassword } : null,
     },
   };
 }
@@ -55,6 +60,7 @@ describe('app routes', () => {
     expect(paths).toEqual(
       expect.arrayContaining([
         'login',
+        'account/password',
         'workspaces',
         'w/:workspaceSlug',
         'w/:workspaceSlug/spaces/:spaceId',
@@ -107,6 +113,43 @@ describe('app routes', () => {
       expect(TestBed.inject(Router).url).toBe('/workspaces');
     },
   );
+
+  it.each(['/workspaces', '/w/demo/activity', '/admin/actors'])(
+    'navigate_MustChangePassword_%s_EndsOnPasswordPageWithReturnUrl',
+    async (url) => {
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter(routes),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          sessionStub('authenticated', ['instance:admin'], true),
+        ],
+      });
+      const harness = await RouterTestingHarness.create();
+
+      await harness.navigateByUrl(url);
+
+      const router = TestBed.inject(Router);
+      expect(router.url.startsWith('/account/password?')).toBe(true);
+      expect(router.parseUrl(router.url).queryParams['returnUrl']).toBe(url);
+    },
+  );
+
+  it('navigate_PasswordPageWhenAnonymous_EndsOnLogin', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        sessionStub('anonymous'),
+      ],
+    });
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/account/password');
+
+    expect(TestBed.inject(Router).url.startsWith('/login?')).toBe(true);
+  });
 
   it.each([
     '/workspaces',

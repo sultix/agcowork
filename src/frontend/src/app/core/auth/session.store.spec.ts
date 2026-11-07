@@ -189,6 +189,44 @@ describe('SessionStore', () => {
     expect(store.me()).toBeNull();
   });
 
+  it('changePassword_Valid_PatchesThenReloadsMeWithoutMustChange', async () => {
+    const loaded = store.load();
+    (await expectRequest('GET', '/api/v1/me')).flush({ ...ME, mustChangePassword: true });
+    await loaded;
+    expect(store.me()?.mustChangePassword).toBe(true);
+
+    const change = store.changePassword('old-password-1', 'a-new-password-1');
+    const patch = await expectRequest('PATCH', '/api/v1/me/password');
+    expect(patch.request.body).toEqual({
+      currentPassword: 'old-password-1',
+      newPassword: 'a-new-password-1',
+    });
+    patch.flush(null, { status: 204, statusText: 'No Content' });
+    (await expectRequest('GET', '/api/v1/me')).flush(ME);
+
+    await expect(change).resolves.toBeUndefined();
+    expect(store.me()?.mustChangePassword).toBe(false);
+  });
+
+  it('changePassword_WrongCurrent_RejectsWithFieldErrorAndKeepsSession', async () => {
+    await signIn();
+
+    const change = store.changePassword('wrong', 'a-new-password-1');
+    (await expectRequest('PATCH', '/api/v1/me/password')).flush(
+      {
+        status: 400,
+        code: 'validation_failed',
+        errors: [{ field: 'currentPassword', code: 'invalid_credentials', message: 'Wrong.' }],
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+
+    const error = (await change.catch((e: unknown) => e)) as ApiError;
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.errors[0].field).toBe('currentPassword');
+    expect(store.status()).toBe('authenticated');
+  });
+
   it('logout_Authenticated_PostsLogoutAndClears', async () => {
     await signIn();
 

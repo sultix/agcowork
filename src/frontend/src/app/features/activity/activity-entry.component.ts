@@ -57,7 +57,7 @@ export const ACTIVITY_TYPE_LABELS: Readonly<Record<string, string>> = Object.fro
       <span class="flex flex-wrap items-baseline gap-x-1.5">
         <ag-actor-label [actorId]="event().actorId" />
         <span data-testid="entry-text">{{ text() }}</span>
-        @if (name(); as name) {
+        @if (shownName(); as name) {
           <span class="text-muted-foreground" data-testid="entry-name">„{{ name }}“</span>
         }
         @if (link(); as link) {
@@ -65,7 +65,7 @@ export const ACTIVITY_TYPE_LABELS: Readonly<Record<string, string>> = Object.fro
             [routerLink]="link"
             class="font-medium underline underline-offset-4"
             data-testid="activity-link"
-            >Öffnen</a
+            >{{ event().targetTitle || 'Öffnen' }}</a
           >
         }
         @if (diff().affectedRecords !== null) {
@@ -152,7 +152,7 @@ export class ActivityEntryComponent {
       return this.event().type;
     }
     // With a name the noun is followed by it („Record „X“ geändert“); without, it is "einen Record".
-    return this.name()
+    return this.shownName()
       ? `hat ${info.noun} ${info.verb}`
       : `hat ${info.article} ${info.noun} ${info.verb}`;
   });
@@ -175,6 +175,11 @@ export class ActivityEntryComponent {
         return null;
     }
   });
+
+  /** The name next to the text; not shown when the link already carries the target's title. */
+  protected readonly shownName = computed(() =>
+    this.event().targetTitle && this.link() ? null : this.name(),
+  );
 
   protected readonly link = computed<string[] | null>(() => {
     const slug = this.context.slug();

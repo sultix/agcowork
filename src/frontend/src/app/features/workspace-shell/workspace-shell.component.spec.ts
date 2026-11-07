@@ -11,6 +11,7 @@ import {
   COLLECTION_ID,
   SPACE_ID,
   collection,
+  expectRequest,
   pageProviders,
   serve,
   settle,
@@ -79,7 +80,18 @@ describe('WorkspaceShellComponent', () => {
     http.expectOne('/health').flush('Healthy');
     await harness.fixture.whenStable();
 
-    expect(text('backend-status')).toBe('Backend: ok');
+    expect(text('backend-status-live')).toBe('Backend: ok');
+    const button = (harness.routeNativeElement as HTMLElement).querySelector(
+      '[data-testid="backend-status"]',
+    )!;
+    expect(button.getAttribute('aria-label')).toBe('Backend: ok');
+    // The live region is a sibling, not a child of the button.
+    expect(button.querySelector('[role="status"]')).toBeNull();
+    expect(
+      (harness.routeNativeElement as HTMLElement)
+        .querySelector('[data-testid="backend-status-live"]')!
+        .getAttribute('role'),
+    ).toBe('status');
     expect(
       (harness.routeNativeElement as HTMLElement)
         .querySelector('[data-testid="backend-status"]')!
@@ -92,12 +104,29 @@ describe('WorkspaceShellComponent', () => {
     http.expectOne('/health').error(new ProgressEvent('error'));
     await harness.fixture.whenStable();
 
-    expect(text('backend-status')).toBe('Backend: nicht erreichbar');
+    expect(text('backend-status-live')).toBe(
+      'Backend: nicht erreichbar (Klick zum erneuten Prüfen)',
+    );
     expect(
       (harness.routeNativeElement as HTMLElement)
         .querySelector('[data-testid="backend-status"]')!
         .getAttribute('data-status'),
     ).toBe('unreachable');
+  });
+
+  it('render_BackendDegraded_ShowsLimitedAndClickReloads', async () => {
+    await harness.navigateByUrl('/w/demo/search');
+    http.expectOne('/health').flush('Degraded');
+    await harness.fixture.whenStable();
+
+    expect(text('backend-status-live')).toBe('Backend: eingeschränkt (Klick zum erneuten Prüfen)');
+    (harness.routeNativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="backend-status"]')!
+      .click();
+    (await expectRequest(http, 'GET', '/health')).flush('Healthy');
+    await harness.fixture.whenStable();
+
+    expect(text('backend-status-live')).toBe('Backend: ok');
   });
 
   it('render_ActiveRoute_MarksOnlyThatNavEntryActive', async () => {

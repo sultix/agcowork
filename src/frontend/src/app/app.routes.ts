@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
+import { authGuard, signedInGuard } from './core/auth/auth.guard';
 import { instanceAdminGuard } from './features/admin/admin.guard';
 import { WORKSPACE_SLUG_PARAM } from './core/workspace/workspace-context.service';
 
@@ -7,6 +7,13 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    // Not behind `authGuard`: that one redirects here while the password must be changed.
+    path: 'account/password',
+    canActivate: [signedInGuard],
+    loadComponent: () =>
+      import('./features/auth/change-password.component').then((m) => m.ChangePasswordComponent),
   },
   {
     path: 'workspaces',

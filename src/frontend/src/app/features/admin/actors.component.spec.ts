@@ -5,7 +5,8 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { apiErrorInterceptor } from '../../core/api/api-error.interceptor';
 import type { components } from '../../core/api/generated/schema';
-import { expectRequest, settle } from '../../core/testing/test-utils';
+import { ADMIN_ME, expectRequest, fakeSession, settle } from '../../core/testing/test-utils';
+import { SessionStore } from '../../core/auth/session.store';
 import { ActorsComponent } from './actors.component';
 
 type Actor = components['schemas']['ActorDto'];
@@ -30,6 +31,14 @@ const AGENT: Actor = {
   instanceScopes: [],
 };
 
+const MIA: Actor = {
+  ...ADMIN,
+  id: '0199a000-0000-7000-8000-000000000003',
+  name: 'Mia',
+  email: 'mia@agcowork.local',
+  instanceScopes: [],
+};
+
 describe('ActorsComponent', () => {
   let harness: RouterTestingHarness;
   let http: HttpTestingController;
@@ -40,6 +49,7 @@ describe('ActorsComponent', () => {
         provideRouter([{ path: 'admin/actors', component: ActorsComponent }]),
         provideHttpClient(withInterceptors([apiErrorInterceptor])),
         provideHttpClientTesting(),
+        { provide: SessionStore, useValue: fakeSession(ADMIN_ME) },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -120,6 +130,164 @@ describe('ActorsComponent', () => {
 
     expect(q('actor-menu')).not.toBeNull();
     expect(q('actor-keys')).toBeNull();
+  });
+
+  it('actions_OtherHuman_OffersPasswordReset', async () => {
+    await render([ADMIN, MIA, AGENT]);
+
+    await openActions(1);
+
+    expect(q('actor-reset-password')).not.toBeNull();
+    expect(q('actor-change-own-password')).toBeNull();
+  });
+
+  it('actions_Agent_OffersNoPasswordReset', async () => {
+    await render([ADMIN, MIA, AGENT]);
+
+    await openActions(2);
+
+    expect(q('actor-reset-password')).toBeNull();
+    expect(q('actor-change-own-password')).toBeNull();
+  });
+
+  it('actions_OwnAccount_LinksToPasswordChangeInsteadOfReset', async () => {
+    await render([ADMIN, MIA, AGENT]);
+
+    await openActions(0);
+
+    expect(q('actor-reset-password')).toBeNull();
+    expect(q('actor-change-own-password')!.getAttribute('href')).toBe(
+      '/account/password?returnUrl=%2Fadmin%2Factors',
+    );
+  });
+
+  it('reset_Dialog_PutsNewPasswordAndMustChangeAndShowsNotice', async () => {
+    await render([ADMIN, MIA]);
+    await openActions(1);
+    q('actor-reset-password')!.click();
+    await settle(harness.fixture);
+
+    const input = (id: string, value: string) => {
+      const el = document.body.querySelector<HTMLInputElement>(`#${id}`)!;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    input('reset-new', 'a-fresh-password-1');
+    input('reset-repeat', 'a-fresh-password-1');
+    document.body
+      .querySelector<HTMLElement>('[data-testid="must-change"] button[role="checkbox"]')!
+      .click();
+    await settle(harness.fixture);
+    document.querySelector<HTMLButtonElement>('[data-testid="reset-submit"]')!.click();
+
+    const put = await expectRequest(http, 'PUT', `/api/v1/actors/${MIA.id}/password`);
+    expect(put.request.body).toEqual({ newPassword: 'a-fresh-password-1', mustChange: false });
+    put.flush(null, { status: 204, statusText: 'No Content' });
+    await settle(harness.fixture);
+
+    expect(text(q('action-notice')!)).toContain('Mia');
+    expect(q('reset-password-dialog')).toBeNull();
+  });
+
+  it('reset_DefaultMustChange_IsTrue', async () => {
+    await render([ADMIN, MIA]);
+    await openActions(1);
+    q('actor-reset-password')!.click();
+    await settle(harness.fixture);
+
+    const input = (id: string, value: string) => {
+      const el = document.body.querySelector<HTMLInputElement>(`#${id}`)!;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    input('reset-new', 'a-fresh-password-1');
+    input('reset-repeat', 'a-fresh-password-1');
+    await settle(harness.fixture);
+    document.querySelector<HTMLButtonElement>('[data-testid="reset-submit"]')!.click();
+
+    const put = await expectRequest(http, 'PUT', `/api/v1/actors/${MIA.id}/password`);
+    expect(put.request.body).toEqual({ newPassword: 'a-fresh-password-1', mustChange: true });
+    put.flush(null, { status: 204, statusText: 'No Content' });
+    await settle(harness.fixture);
+  });
+
+  it('reset_WhileSubmitting_CancelIsDisabledAndEscapeDoesNotCancel', async () => {
+    await render([ADMIN, MIA]);
+    await openActions(1);
+    q('actor-reset-password')!.click();
+    await settle(harness.fixture);
+    const input = (id: string, value: string) => {
+      const el = document.body.querySelector<HTMLInputElement>(`#${id}`)!;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    input('reset-new', 'a-fresh-password-1');
+    input('reset-repeat', 'a-fresh-password-1');
+    await settle(harness.fixture);
+    document.querySelector<HTMLButtonElement>('[data-testid="reset-submit"]')!.click();
+    const put = await expectRequest(http, 'PUT', `/api/v1/actors/${MIA.id}/password`);
+    await harness.fixture.whenStable();
+
+    expect(
+      document.querySelector<HTMLButtonElement>('[data-testid="reset-cancel"]')!.disabled,
+    ).toBe(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await harness.fixture.whenStable();
+    expect(q('reset-password-dialog')).not.toBeNull();
+
+    put.flush(null, { status: 204, statusText: 'No Content' });
+    await settle(harness.fixture);
+    expect(text(q('action-notice')!)).toContain('Mia');
+  });
+
+  it('reset_RepeatDiffers_ShowsErrorAndSendsNothing', async () => {
+    await render([ADMIN, MIA]);
+    await openActions(1);
+    q('actor-reset-password')!.click();
+    await settle(harness.fixture);
+
+    const input = (id: string, value: string) => {
+      const el = document.body.querySelector<HTMLInputElement>(`#${id}`)!;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    input('reset-new', 'a-fresh-password-1');
+    input('reset-repeat', 'different-password-2');
+    await settle(harness.fixture);
+    document.querySelector<HTMLButtonElement>('[data-testid="reset-submit"]')!.click();
+    await settle(harness.fixture);
+
+    expect(text(q('repeat-errors')!)).toBe('Die Wiederholung stimmt nicht überein.');
+  });
+
+  it('reset_ServerError_ShowsFieldError', async () => {
+    await render([ADMIN, MIA]);
+    await openActions(1);
+    q('actor-reset-password')!.click();
+    await settle(harness.fixture);
+
+    const input = (id: string, value: string) => {
+      const el = document.body.querySelector<HTMLInputElement>(`#${id}`)!;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    input('reset-new', 'a-fresh-password-1');
+    input('reset-repeat', 'a-fresh-password-1');
+    await settle(harness.fixture);
+    document.querySelector<HTMLButtonElement>('[data-testid="reset-submit"]')!.click();
+
+    (await expectRequest(http, 'PUT', `/api/v1/actors/${MIA.id}/password`)).flush(
+      {
+        status: 400,
+        code: 'validation_failed',
+        errors: [{ field: 'newPassword', code: 'too_short', message: 'x' }],
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await settle(harness.fixture);
+
+    expect(text(q('new-errors')!)).toBe('Zu kurz.');
+    expect(q('reset-password-dialog')).not.toBeNull();
   });
 
   it('actions_Trigger_LabelContainsActorName', async () => {

@@ -114,6 +114,8 @@ export type RequestOptions<Op> = ([PathParamsOf<Op>] extends [never]
       ? { query: QueryOf<Op> }
       : { query?: QueryOf<Op> }) & {
     context?: HttpContext;
+    /** Extra request headers (e.g. `Idempotency-Key`), sent in addition to `Accept`. */
+    headers?: Record<string, string>;
   };
 
 /** Makes the options argument mandatory only when it carries something required. */
@@ -130,6 +132,7 @@ interface UntypedOptions {
   query?: Record<string, unknown>;
   body?: unknown;
   context?: HttpContext;
+  headers?: Record<string, string>;
 }
 
 const JSON_ACCEPT = 'application/json';
@@ -195,7 +198,7 @@ export class TypedApiClient<TPaths> {
       url: this.url(path, untyped?.path),
       method: 'GET',
       params: toParams(untyped?.query),
-      headers: { Accept: JSON_ACCEPT },
+      headers: { ...untyped?.headers, Accept: JSON_ACCEPT },
       withCredentials: true,
       context: untyped?.context,
     };
@@ -222,7 +225,7 @@ export class TypedApiClient<TPaths> {
       .request<T>(method, this.url(path, options?.path), {
         body: options?.body,
         params: toParams(options?.query),
-        headers: new HttpHeaders({ Accept: JSON_ACCEPT }),
+        headers: new HttpHeaders({ ...options?.headers, Accept: JSON_ACCEPT }),
         context: options?.context,
         withCredentials: true,
         responseType: 'json',

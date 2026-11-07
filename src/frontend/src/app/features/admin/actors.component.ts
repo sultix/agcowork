@@ -7,12 +7,13 @@ import {
   resource,
   signal,
 } from '@angular/core';
-import { FieldTree, FormField, form, minLength, required, submit } from '@angular/forms/signals';
+import { FieldTree, FormField, form, required, submit } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideCircleAlert,
   lucideEllipsis,
+  lucideInfo,
   lucideKeyRound,
   lucidePencil,
   lucidePlus,
@@ -30,16 +31,18 @@ import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
+import { MIN_PASSWORD_LENGTH, applyPasswordPolicy } from '../../core/auth/password-policy';
+import { SessionStore } from '../../core/auth/session.store';
 import type { components } from '../../core/api/generated/schema';
 import { describeError, mapFormErrors } from '../../shared/ui/api-error-text';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { FieldErrorsComponent } from '../../shared/ui/field-errors.component';
+import { ResetPasswordDialogComponent } from './reset-password-dialog.component';
 
 type Actor = components['schemas']['ActorDto'];
 
 const INSTANCE_SCOPES = ['instance:admin', 'workspaces:create'] as const;
 const KIND_LABELS: Record<string, string> = { human: 'Mensch', agent: 'Agent' };
-export const MIN_PASSWORD_LENGTH = 12;
 
 interface CreateModel {
   kind: 'human' | 'agent';
@@ -78,11 +81,13 @@ interface Editing {
     HlmTableImports,
     BadgeComponent,
     FieldErrorsComponent,
+    ResetPasswordDialogComponent,
   ],
   providers: [
     provideIcons({
       lucideCircleAlert,
       lucideEllipsis,
+      lucideInfo,
       lucideKeyRound,
       lucidePencil,
       lucidePlus,
@@ -106,6 +111,13 @@ interface Editing {
         <div hlmAlert variant="destructive" data-testid="action-error">
           <ng-icon name="lucideCircleAlert" />
           <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+        </div>
+      }
+
+      @if (notice(); as message) {
+        <div hlmAlert role="status" data-testid="action-notice">
+          <ng-icon name="lucideInfo" />
+          <p hlmAlertDescription>{{ message }}</p>
         </div>
       }
 
@@ -401,12 +413,44 @@ interface Editing {
           <ng-icon name="lucidePencil" />
           Bearbeiten
         </button>
+        @if (actor.kind === 'human') {
+          @if (actor.id === session.me()?.id) {
+            <!-- A reset would sign the admin out without a new cookie; own password: self-service. -->
+            <a
+              hlmDropdownMenuItem
+              routerLink="/account/password"
+              [queryParams]="{ returnUrl: '/admin/actors' }"
+              data-testid="actor-change-own-password"
+            >
+              <ng-icon name="lucideKeyRound" />
+              Eigenes Passwort ändern
+            </a>
+          } @else {
+            <button
+              hlmDropdownMenuItem
+              data-testid="actor-reset-password"
+              (triggered)="startReset(actor)"
+            >
+              <ng-icon name="lucideKeyRound" />
+              Passwort zurücksetzen
+            </button>
+          }
+        }
       </hlm-dropdown-menu>
     </ng-template>
+
+    @if (resetting(); as actor) {
+      <ag-reset-password-dialog
+        [actor]="actor"
+        (passwordSet)="onResetDone(actor)"
+        (cancelled)="resetting.set(null)"
+      />
+    }
   `,
 })
 export class ActorsComponent {
   private readonly api = inject(ApiClient);
+  protected readonly session = inject(SessionStore);
 
   protected readonly instanceScopes = INSTANCE_SCOPES;
   protected readonly minPasswordLength = MIN_PASSWORD_LENGTH;
@@ -438,12 +482,8 @@ export class ActorsComponent {
       message: 'Bitte eine E-Mail-Adresse eingeben.',
       when: ({ valueOf }) => valueOf(path.kind) === 'human',
     });
-    required(path.password, {
-      message: 'Bitte ein Initialpasswort vergeben.',
-      when: ({ valueOf }) => valueOf(path.kind) === 'human',
-    });
-    minLength(path.password, MIN_PASSWORD_LENGTH, {
-      message: `Das Passwort braucht mindestens ${MIN_PASSWORD_LENGTH} Zeichen.`,
+    applyPasswordPolicy(path.password, {
+      requiredMessage: 'Bitte ein Initialpasswort vergeben.',
       when: ({ valueOf }) => valueOf(path.kind) === 'human',
     });
   });
@@ -453,6 +493,8 @@ export class ActorsComponent {
 
   protected readonly actionError = signal<string | null>(null);
   protected readonly editing = signal<Editing | null>(null);
+  protected readonly resetting = signal<Actor | null>(null);
+  protected readonly notice = signal<string | null>(null);
 
   protected kindLabel(kind: string): string {
     return KIND_LABELS[kind] ?? kind;
@@ -506,6 +548,17 @@ export class ActorsComponent {
       this.creating.set(false);
       return undefined;
     });
+  }
+
+  protected startReset(actor: Actor): void {
+    this.actionError.set(null);
+    this.notice.set(null);
+    this.resetting.set(actor);
+  }
+
+  protected onResetDone(actor: Actor): void {
+    this.resetting.set(null);
+    this.notice.set(`Das Passwort von ${actor.name} wurde gesetzt.`);
   }
 
   protected startEdit(actor: Actor): void {

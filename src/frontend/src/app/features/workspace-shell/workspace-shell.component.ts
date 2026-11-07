@@ -27,12 +27,14 @@ import { ThemeToggleComponent } from '../../shared/ui/theme-toggle.component';
 const STATUS_LABELS: Record<BackendStatus, string> = {
   checking: 'wird geprüft',
   ok: 'ok',
+  degraded: 'eingeschränkt',
   unreachable: 'nicht erreichbar',
 };
 
 const STATUS_DOTS: Record<BackendStatus, string> = {
   checking: 'bg-muted-foreground/50',
   ok: 'bg-success',
+  degraded: 'bg-amber-500',
   unreachable: 'bg-destructive',
 };
 
@@ -137,17 +139,21 @@ interface NavItem {
             </ol>
           </nav>
           <div class="ml-auto flex items-center gap-1">
-            <span
+            <button
+              type="button"
               class="inline-flex size-9 items-center justify-center rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              tabindex="0"
-              role="status"
               data-testid="backend-status"
               [attr.data-status]="health.status()"
+              [attr.aria-label]="statusText()"
               [hlmTooltip]="statusText()"
+              (click)="health.reload()"
             >
               <span class="size-2 rounded-full" [class]="statusDot()" aria-hidden="true"></span>
-              <span class="sr-only">{{ statusText() }}</span>
-            </span>
+            </button>
+            <!-- Live region beside the button: the button's children are presentational. -->
+            <span class="sr-only" role="status" data-testid="backend-status-live">{{
+              statusText()
+            }}</span>
             <ag-theme-toggle />
             <ag-session-menu />
           </div>
@@ -185,6 +191,10 @@ export class WorkspaceShellComponent {
     ];
   });
 
-  protected readonly statusText = computed(() => `Backend: ${STATUS_LABELS[this.health.status()]}`);
+  protected readonly statusText = computed(() => {
+    const status = this.health.status();
+    const hint = status === 'ok' || status === 'checking' ? '' : ' (Klick zum erneuten Prüfen)';
+    return `Backend: ${STATUS_LABELS[status]}${hint}`;
+  });
   protected readonly statusDot = computed(() => STATUS_DOTS[this.health.status()]);
 }

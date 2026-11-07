@@ -22,6 +22,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import type { components } from '../../core/api/generated/schema';
+import { newUuid } from '../../core/util/uuid';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { mapFormErrors } from '../../shared/ui/api-error-text';
 import { FieldErrorsComponent } from '../../shared/ui/field-errors.component';
@@ -171,6 +172,12 @@ export class RecordCreateDialogComponent {
   });
   protected readonly formError = signal<string | null>(null);
 
+  /**
+   * One key per intention: a retry after a failure (e.g. lost response) sends the same key, so
+   * the server returns the first record instead of creating a second; a new one follows success.
+   */
+  private idempotencyKey: string = newUuid();
+
   constructor() {
     // Preselect the default template as soon as the templates are known.
     effect(() => {
@@ -204,6 +211,7 @@ export class RecordCreateDialogComponent {
       try {
         const record = await firstValueFrom(
           this.api.workspace(slug).post('/records', {
+            headers: { 'Idempotency-Key': this.idempotencyKey },
             body: {
               title: value.title.trim(),
               ...(collectionId ? { collectionId } : {}),
@@ -214,6 +222,7 @@ export class RecordCreateDialogComponent {
             },
           }),
         );
+        this.idempotencyKey = newUuid();
         this.created.emit(record);
         return undefined;
       } catch (error) {

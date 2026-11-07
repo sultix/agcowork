@@ -22,6 +22,8 @@ const MESSAGES: Record<string, string> = {
   out_of_range: 'Wert liegt außerhalb des erlaubten Bereichs.',
   not_allowed: 'Nicht erlaubt.',
   conflict: 'Wert ist bereits vergeben.',
+  invalid_credentials: 'Das aktuelle Passwort ist falsch.',
+  unchanged: 'Das neue Passwort muss sich vom bisherigen unterscheiden.',
 };
 
 /** User-facing message for one field error of the API. */

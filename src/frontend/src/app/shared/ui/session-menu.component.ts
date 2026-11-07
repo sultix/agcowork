@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideChevronsUpDown, lucideLogOut, lucideShield } from '@ng-icons/lucide';
+import { lucideChevronsUpDown, lucideKeyRound, lucideLogOut, lucideShield } from '@ng-icons/lucide';
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
@@ -22,12 +22,12 @@ export function initialsOf(name: string): string {
 
 /**
  * Signed-in actor as a dropdown menu: avatar with initials, name and kind on the trigger;
- * administration link (instance admins) and logout in the menu.
+ * administration link (instance admins), password change (humans) and logout in the menu.
  */
 @Component({
   selector: 'ag-session-menu',
   imports: [RouterLink, NgIcon, HlmAvatarImports, HlmButton, HlmDropdownMenuImports],
-  providers: [provideIcons({ lucideChevronsUpDown, lucideLogOut, lucideShield })],
+  providers: [provideIcons({ lucideChevronsUpDown, lucideKeyRound, lucideLogOut, lucideShield })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (session.me(); as me) {
@@ -65,6 +65,17 @@ export function initialsOf(name: string): string {
             </a>
             <hlm-dropdown-menu-separator />
           }
+          @if (me.kind === 'human') {
+            <a
+              hlmDropdownMenuItem
+              routerLink="/account/password"
+              [queryParams]="{ returnUrl: router.url }"
+              data-testid="password-link"
+            >
+              <ng-icon name="lucideKeyRound" />
+              Passwort ändern
+            </a>
+          }
           <button
             hlmDropdownMenuItem
             data-testid="logout"
@@ -81,7 +92,7 @@ export function initialsOf(name: string): string {
 })
 export class SessionMenuComponent {
   protected readonly session = inject(SessionStore);
-  private readonly router = inject(Router);
+  protected readonly router = inject(Router);
 
   protected readonly loggingOut = signal(false);
   protected readonly isInstanceAdmin = computed(

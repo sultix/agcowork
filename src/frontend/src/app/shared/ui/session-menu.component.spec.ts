@@ -109,6 +109,26 @@ describe('SessionMenuComponent', () => {
     expect(inBody('admin-link')).toBeNull();
   });
 
+  it('open_Human_ShowsPasswordLinkWithReturnUrl', async () => {
+    me.set({ ...ME, kind: 'human', email: 'mia@agcowork.local' });
+    await render();
+
+    await openMenu();
+
+    expect(inBody('password-link')?.getAttribute('href')).toBe(
+      '/account/password?returnUrl=%2Fhome',
+    );
+  });
+
+  it('open_Agent_HidesPasswordLink', async () => {
+    await render();
+
+    await openMenu();
+
+    expect(inBody('session-menu')).not.toBeNull();
+    expect(inBody('password-link')).toBeNull();
+  });
+
   it('logout_Click_EndsSessionAndGoesToLogin', async () => {
     await render();
     await openMenu();

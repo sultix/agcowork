@@ -86,6 +86,21 @@ export class SessionStore {
     }
   }
 
+  /**
+   * Changes the signed-in human's own password (`PATCH /me/password`; the server answers with a
+   * fresh session cookie) and reloads the actor, which clears `mustChangePassword`. Rejects with
+   * an `ApiError` (400 with `errors[]` on `currentPassword` / `newPassword`).
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await firstValueFrom(
+      this.api.patch('/me/password', { body: { currentPassword, newPassword } }),
+      {
+        defaultValue: undefined,
+      },
+    );
+    await this.load();
+  }
+
   /** Ends the session (`POST /auth/logout`); the local state is cleared even if the call fails. */
   async logout(): Promise<void> {
     try {

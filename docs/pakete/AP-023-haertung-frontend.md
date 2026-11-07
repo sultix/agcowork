@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | Härtung (vor Phase 2) |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | Formular: `src/frontend/src/app/features/auth/login.component.ts`; Admin-Aktion mit Dialog: `features/admin/actor-keys.component.ts` und `shared/ui/confirm-dialog.component.ts`; Guard: `core/auth/auth.guard.ts`; Session: `core/auth/session.store.ts`; API-Aufrufe: `core/api/api-client.ts`; UI-Bausteine und Mapping: `docs/02-ARCHITEKTUR.md` §6 |
@@ -74,3 +74,9 @@ Menschen ändern ihr Passwort in der UI und werden nach dem ersten Login mit Boo
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-sonnet übergeben (parallel zum Review von AP-022); Zusatz aus AP-022-Review: kein Reset aufs eigene Konto |
+| 2026-11-07 | Bericht: 709 Tests grün, `npm audit --omit=dev` 0 Funde über `overrides` dompurify ^3.4.17 (Monaco 0.57 ist aktuell), Route `/account/password` mit `signedInGuard`, Health `checking/ok/degraded/unreachable` |
+| 2026-11-07 | Review: Freigabe mit Hinweisen – Override erreicht Monacos gebündelte DOMPurify-Kopie nicht (→ Backlog), `crypto.randomUUID` fehlt ohne Secure Context (Compose über HTTP), Live-Region im Button, Abbrechen während Speichern, doppelte Passwortregeln, Fokus nach Erfolg |
+| 2026-11-07 | Nacharbeit an implementer-sonnet |
+| 2026-11-07 | Nacharbeit: `core/util/uuid.ts` mit `getRandomValues`-Fallback, Live-Region neben dem Status-Button, Reset-Dialog während Speichern nicht schließbar, `core/auth/password-policy.ts` gemeinsam, Fokus auf „Weiter“; 713 Tests, Orchestrator hat build/test/lint/format nachgeprüft |
+| 2026-11-07 | abgeschlossen |

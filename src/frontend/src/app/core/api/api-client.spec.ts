@@ -84,6 +84,21 @@ describe('ApiClient', () => {
     expect(me.name).toBe('Admin');
   });
 
+  it('post_HeadersOption_IsSentAlongsideAccept', () => {
+    api
+      .post('/auth/login', {
+        body: { email: 'a@b.c', password: 'secret' },
+        headers: { 'Idempotency-Key': 'key-1', Accept: 'text/plain' },
+      })
+      .subscribe();
+
+    const req = http.expectOne('/api/v1/auth/login');
+    expect(req.request.headers.get('Idempotency-Key')).toBe('key-1');
+    // The client's own Accept wins.
+    expect(req.request.headers.get('Accept')).toBe('application/json');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
   it('get_PathParameter_IsSubstitutedAndEncoded', () => {
     api.get('/actors/{id}', { path: { id: 'a b/c' } }).subscribe();
 

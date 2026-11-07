@@ -25,9 +25,9 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-019](AP-019-ui-fundament-spartan.md) | UI-Fundament: spartan/ui (shadcn), Theme neutral, Shell, Referenz-Migration | UI | implementer-opus | AP-012–AP-017 | abgeschlossen | eda627c |
 | [AP-020](AP-020-ui-migration-verwaltung.md) | UI-Migration: Verwaltung, Spaces, Collections, Aktivität | UI | implementer-sonnet | AP-019 | abgeschlossen | 5463f97 |
 | [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | abgeschlossen | 559d0a2 |
-| [AP-022](AP-022-haertung-backend.md) | Härtung Backend: Passwort ändern/zurücksetzen, Sitzungen entwerten, relation-Hook, OpenAPI-Defaults, Activity-Titel | Härtung | implementer-opus | AP-004–AP-011 | abgeschlossen | |
-| [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | Nacharbeit | |
-| [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | angelegt | |
+| [AP-022](AP-022-haertung-backend.md) | Härtung Backend: Passwort ändern/zurücksetzen, Sitzungen entwerten, relation-Hook, OpenAPI-Defaults, Activity-Titel | Härtung | implementer-opus | AP-004–AP-011 | abgeschlossen | 183275b |
+| [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | abgeschlossen | |
+| [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | in Arbeit | |
 | [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | angelegt | |
 | [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | angelegt | |
 | [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | angelegt | |

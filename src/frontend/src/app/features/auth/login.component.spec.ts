@@ -165,6 +165,7 @@ describe('LoginComponent', () => {
     ['/\\evil.example', '/workspaces'],
     ['https://evil.example', '/workspaces'],
     ['/login?returnUrl=%2Fw', '/workspaces'],
+    ['/account/password?returnUrl=%2Fw', '/workspaces'],
   ])('safeReturnUrl_%s_Is_%s', (input, expected) => {
     expect(safeReturnUrl(input)).toBe(expected);
   });
