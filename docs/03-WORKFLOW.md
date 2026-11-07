@@ -119,7 +119,14 @@ sequenceDiagram
 - [ ] Paket, Backlog und ggf. Architektur-/Planungsdokument aktualisiert.
 - [ ] Commit mit Paketnummer.
 
-## 7. Wenn etwas schiefgeht
+## 7. Gelernt aus Phase 0
+
+- **Commit-Hash erst im Folge-Commit eintragen.** Wer den Hash per `--amend` in Backlog und Paket schreibt, ändert damit den Hash. Deshalb: Paket committen, Hash in Backlog/Paket eintragen, mit dem nächsten Commit mitnehmen.
+- **Geteilte Dateien zwischen parallelen Paketen vorab benennen.** AP-003 hat AppHost.cs und launchSettings.json aus AP-001 verändert, bevor AP-001 committet war. Künftig: Ein abhängiges Paket startet erst, wenn das Vorgängerpaket committet ist, oder es bekommt die geteilten Dateien ausdrücklich zugewiesen und der Vorgänger wird vorher committet.
+- **Nicht belegte Akzeptanzkriterien prüft der Orchestrator selbst**, bevor er committet (hier: Browser-Lauf unter Aspire). Der Reviewer startet keine Prozesse, die hängen können.
+- **Sonnet hat für AP-003 gut funktioniert**, weil Referenzbeispiele und Kontext (Ports, Schlüsselbund) im Paket standen. Die Abweichung `.json` → `.js` hat er sauber begründet.
+
+## 8. Wenn etwas schiefgeht
 
 - **Implementierer meldet Unklarheit:** Orchestrator klärt im Paket nach, nicht im Chat mit dem Agenten; das Paket bleibt die Quelle.
 - **Reviewer und Implementierer widersprechen sich:** Orchestrator entscheidet anhand der Architektur. Betrifft es eine Leitentscheidung, geht es an dich.

@@ -157,7 +157,7 @@ ein versehentlich falscher Lookup niemals „zufällig“ einen fremden Datensat
 
 ## 6. Roadmap
 
-### Phase 0 – Gerüst (ca. 1 Woche)
+### Phase 0 – Gerüst (ca. 1 Woche) – **abgeschlossen am 2026-11-07** (AP-001 bis AP-003)
 - Repo, Solution-Struktur, Aspire AppHost, PostgreSQL-Container, Angular-Projekt, CI (Build + Tests).
 - Erste Migration, Health-Endpoint, Login-Seite.
 
