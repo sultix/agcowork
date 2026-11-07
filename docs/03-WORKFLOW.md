@@ -128,6 +128,16 @@ sequenceDiagram
 - **Hooks statt Verdrahtung.** Erweiterungspunkte (`ICollectionCreatedHook`, `ISchemaChangedHook`) früh einführen, damit Folgepakete sich registrieren statt bestehende Use-Cases zu ändern; spart Nacharbeit und Konflikte.
 - **Sonnet hat für AP-003 gut funktioniert**, weil Referenzbeispiele und Kontext (Ports, Schlüsselbund) im Paket standen. Die Abweichung `.json` → `.js` hat er sauber begründet.
 
+## 7a. Gelernt aus Phase 1
+
+- **14 Pakete, 14 Reviews, 3× „Blockiert“** (AP-014 Overwrite-Body, AP-017 JSON-Editor, AP-009 NUL-Zeichen). Jeder Blocker war ein Datenverlust- oder 500-Pfad, den Tests nicht abdeckten; der Reviewer fand sie durch Szenario-Denken, nicht durch Testlauf. Review bleibt Pflicht, auch bei grünen Tests.
+- **Wellen nach Abhängigkeiten, Migration als Taktgeber.** Pro Welle genau ein Backend-Paket mit Migration; Frontend und migrationsfreie Backend-Pakete parallel. So liefen bis zu drei Implementierer gleichzeitig ohne Konflikt.
+- **Geteilte Dateien vorab benennen** (DependencyInjection.cs, UseCaseRegistrationTests.cs, generated/): Das Paket, das sie nicht braucht, bekommt ein Verbot; der andere Implementierer meldet Konflikte statt einzugreifen.
+- **Sonnet funktioniert bei klaren Mustern** (AP-003, AP-008, AP-010, AP-014, AP-016, AP-017), braucht aber eine Nacharbeitsrunde mehr als Opus bei Randfällen (Datenverlust-Pfade, Nebenläufigkeit). Opus für alles, was Sperren, Parser oder Adapter-Verträge betrifft.
+- **Entscheidungen sofort in die Architektur** (Sperr-Reihenfolge, Scopes, destruktive Schemaänderungen, Normalisierung, Bild-Platzhalter), sonst entscheiden Folgepakete anders.
+- **Nutzungslimit:** Unterbrochene Agenten per Nachricht fortsetzen, nicht neu starten; der Arbeitsbaum bleibt erhalten.
+- **Orchestrator-Rauchtest am Ende** jeder Phase im Browser, zusätzlich zu den Paket-Prüfungen; so fiel die fehlende Vorlagenauswahl in der UI auf.
+
 ## 8. Wenn etwas schiefgeht
 
 - **Implementierer meldet Unklarheit:** Orchestrator klärt im Paket nach, nicht im Chat mit dem Agenten; das Paket bleibt die Quelle.

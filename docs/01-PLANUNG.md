@@ -167,7 +167,7 @@ ein versehentlich falscher Lookup niemals „zufällig“ einen fremden Datensat
 - Repo, Solution-Struktur, Aspire AppHost, PostgreSQL-Container, Angular-Projekt, CI (Build + Tests).
 - Erste Migration, Health-Endpoint, Login-Seite.
 
-### Phase 1 – MVP „Agent-first“ (ca. 3–4 Wochen)
+### Phase 1 – MVP „Agent-first“ (ca. 3–4 Wochen) – **abgeschlossen am 2026-11-07** (AP-004 bis AP-017, 965 Backend- und 600 Frontend-Tests)
 - Domain: Workspace, Membership, Space, Collection + Schema, Record (Properties + Markdown-Body), View, Actor, Revision, ActivityEvent.
 - Tenancy: Tenant-Kontext aus URL, Global-Query-Filter, Isolationstests für REST und MCP.
 - Identity: globale Actors (Mensch/Agent), Mitgliedschaften pro Workspace, API-Keys mit Scopes; lokaler Mensch-Login; Instanz-Admin.
