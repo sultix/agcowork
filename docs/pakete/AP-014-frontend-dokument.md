@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-016: `features/workspaces/workspaces.store.ts` (resource abhängig von Slug/Session), `features/workspace-settings/members.component.ts` (Liste + Formulare + Fehlercodes), `shared/ui/*` (Badge, ConfirmDialog, FieldErrors, `describeError`), `core/testing/test-utils.ts`; AP-012: `shared/editor/markdown-editor` (`value`, `valueChange`, `editorBlur`, `getMarkdown()`), `shared/raw-view`; AP-013: `api.workspace(slug)`, `toServerErrors` |
@@ -90,3 +90,4 @@ Ende-zu-Ende-Pfad Mensch ↔ Agent über dieselben Daten offen.
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-sonnet übergeben |

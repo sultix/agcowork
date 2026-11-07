@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-005 `CreateWorkspace` (Transaktion Workspace + Owner-Membership, Interceptor-Ausnahme für neue Workspaces); AP-006 `CreateCollection`, `UpdateSchema`, `Templates/CreateTemplate` (Use-Cases, die die Vorlage aufruft); `IdentityBootstrapper` (Seed-Stil) |
@@ -75,3 +75,4 @@ und Record-Vorlagen. `empty` bleibt wählbar. Agenten können die verfügbaren V
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-sonnet übergeben |

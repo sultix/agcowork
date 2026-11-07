@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | **AP-006 `Collections/Templates`** (Use-Cases Create/Update/Delete/List an einer Collection, Endpunkte, Isolationstests) – Views sind strukturell dasselbe: ein Kind-Objekt einer Collection mit JSON-Inhalt |
@@ -82,3 +82,4 @@ rendert aus diesen Objekten.
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-sonnet übergeben |
