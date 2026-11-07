@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { instanceAdminGuard } from './features/admin/admin.guard';
 import { WORKSPACE_SLUG_PARAM } from './core/workspace/workspace-context.service';
 
 export const routes: Routes = [
@@ -11,9 +12,22 @@ export const routes: Routes = [
     path: 'workspaces',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/workspaces/workspace-switcher.component').then(
-        (m) => m.WorkspaceSwitcherComponent,
+      import('./features/workspaces/workspace-list.component').then(
+        (m) => m.WorkspaceListComponent,
       ),
+  },
+  {
+    path: 'workspaces/new',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/workspaces/workspace-create.component').then(
+        (m) => m.WorkspaceCreateComponent,
+      ),
+  },
+  {
+    path: 'admin',
+    canActivate: [authGuard, instanceAdminGuard],
+    loadChildren: () => import('./features/admin/admin.routes').then((m) => m.adminRoutes),
   },
   {
     path: `w/:${WORKSPACE_SLUG_PARAM}`,

@@ -14,7 +14,18 @@ export const workspaceShellRoutes: Routes = [
       { path: 'spaces/:spaceId', loadComponent: placeholder, data: { title: 'Space' } },
       { path: 'search', loadComponent: placeholder, data: { title: 'Suche' } },
       { path: 'activity', loadComponent: placeholder, data: { title: 'Aktivität' } },
-      { path: 'settings/members', loadComponent: placeholder, data: { title: 'Mitglieder' } },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('../workspace-settings/workspace-settings.component').then(
+            (m) => m.WorkspaceSettingsComponent,
+          ),
+      },
+      {
+        path: 'settings/members',
+        loadComponent: () =>
+          import('../workspace-settings/members.component').then((m) => m.MembersComponent),
+      },
     ],
   },
 ];

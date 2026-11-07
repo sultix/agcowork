@@ -5,7 +5,9 @@ import { Route, Router, Routes, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
 import { authGuard } from './core/auth/auth.guard';
+import { instanceAdminGuard } from './features/admin/admin.guard';
 import { SessionStatus, SessionStore } from './core/auth/session.store';
+import { ADMIN_ME } from './core/testing/test-utils';
 import { FakeCodeEditor, provideFakeCodeEditor } from './shared/raw-view/fake-code-editor';
 
 /** Expands lazy `loadChildren` so the full path tree can be checked. */
@@ -32,10 +34,14 @@ async function loadChildren(route: Route): Promise<Routes | undefined> {
 }
 
 /** Session stub for routing tests: the guard only asks `ready()`. */
-function sessionStub(status: SessionStatus) {
+function sessionStub(status: SessionStatus, instanceScopes: string[] = []) {
   return {
     provide: SessionStore,
-    useValue: { ready: () => Promise.resolve(status), me: () => null },
+    useValue: {
+      ready: () => Promise.resolve(status),
+      status: () => status,
+      me: () => (status === 'authenticated' ? { ...ADMIN_ME, instanceScopes } : null),
+    },
   };
 }
 
@@ -51,7 +57,12 @@ describe('app routes', () => {
         'w/:workspaceSlug/spaces/:spaceId',
         'w/:workspaceSlug/search',
         'w/:workspaceSlug/activity',
+        'workspaces/new',
+        'w/:workspaceSlug/settings',
         'w/:workspaceSlug/settings/members',
+        'admin/workspaces',
+        'admin/actors',
+        'admin/actors/:id/keys',
         'dev/playground',
         '**',
       ]),
@@ -89,32 +100,79 @@ describe('app routes', () => {
     },
   );
 
-  it.each(['/workspaces', '/w/demo', '/w/demo/activity'])(
-    'navigate_AnonymousToProtected_%s_EndsOnLoginWithReturnUrl',
+  it.each([
+    '/workspaces',
+    '/workspaces/new',
+    '/w/demo',
+    '/w/demo/activity',
+    '/w/demo/settings',
+    '/admin/actors',
+  ])('navigate_AnonymousToProtected_%s_EndsOnLoginWithReturnUrl', async (url) => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        sessionStub('anonymous'),
+      ],
+    });
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl(url);
+
+    const router = TestBed.inject(Router);
+    expect(router.url.startsWith('/login?')).toBe(true);
+    expect(router.parseUrl(router.url).queryParams['returnUrl']).toBe(url);
+  });
+
+  it('routes_ProtectedAreas_HaveAuthGuard', () => {
+    for (const path of ['workspaces', 'workspaces/new', 'w/:workspaceSlug']) {
+      expect(routes.find((r) => r.path === path)?.canActivate, path).toEqual([authGuard]);
+    }
+    expect(routes.find((r) => r.path === 'admin')?.canActivate).toEqual([
+      authGuard,
+      instanceAdminGuard,
+    ]);
+    expect(routes.find((r) => r.path === 'login')?.canActivate).toBeUndefined();
+  });
+
+  it.each(['/admin', '/admin/actors', '/admin/actors/abc/keys', '/admin/workspaces'])(
+    'navigate_NonAdminToAdmin_%s_EndsOnWorkspacesWithNotice',
     async (url) => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter(routes),
           provideHttpClient(),
           provideHttpClientTesting(),
-          sessionStub('anonymous'),
+          sessionStub('authenticated', ['workspaces:create']),
         ],
       });
       const harness = await RouterTestingHarness.create();
 
       await harness.navigateByUrl(url);
 
-      const router = TestBed.inject(Router);
-      expect(router.url.startsWith('/login?')).toBe(true);
-      expect(router.parseUrl(router.url).queryParams['returnUrl']).toBe(url);
+      expect(TestBed.inject(Router).url).toBe('/workspaces?notice=admin_required');
     },
   );
 
-  it('routes_ProtectedAreas_HaveAuthGuard', () => {
-    for (const path of ['workspaces', 'w/:workspaceSlug']) {
-      expect(routes.find((r) => r.path === path)?.canActivate, path).toEqual([authGuard]);
-    }
-    expect(routes.find((r) => r.path === 'login')?.canActivate).toBeUndefined();
+  it.each([
+    ['/admin', '/admin/actors'],
+    ['/admin/workspaces', '/admin/workspaces'],
+    ['/workspaces/new', '/workspaces/new'],
+  ])('navigate_InstanceAdmin_%s_EndsOn_%s', async (url, expected) => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        sessionStub('authenticated', ['instance:admin']),
+      ],
+    });
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl(url);
+
+    expect(TestBed.inject(Router).url).toBe(expected);
   });
 
   it('navigate_DevPlayground_RendersEditorAndBothRawViews', async () => {

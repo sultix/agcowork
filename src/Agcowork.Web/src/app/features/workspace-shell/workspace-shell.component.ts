@@ -3,6 +3,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { BackendStatus, HealthService } from '../../core/api/health.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
+import { ADMIN_ROLES, WorkspacesStore } from '../workspaces/workspaces.store';
+import { WorkspaceSwitcherComponent } from '../workspaces/workspace-switcher.component';
 import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
 
 const STATUS_LABELS: Record<BackendStatus, string> = {
@@ -14,15 +16,20 @@ const STATUS_LABELS: Record<BackendStatus, string> = {
 /** Layout for everything under `/w/:workspaceSlug`: sidebar, header and content outlet. */
 @Component({
   selector: 'ag-workspace-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, SessionMenuComponent],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    SessionMenuComponent,
+    WorkspaceSwitcherComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex min-h-screen">
       <aside class="w-56 shrink-0 border-r border-border bg-surface p-4">
-        <a routerLink="/workspaces" class="text-sm text-muted hover:text-fg">Workspaces</a>
-        <div class="mt-1 truncate font-semibold" data-testid="workspace-slug">{{ slug() }}</div>
+        <ag-workspace-switcher [slug]="slug()" />
         <nav class="mt-6 flex flex-col gap-1 text-sm">
-          @for (item of nav; track item.path) {
+          @for (item of nav(); track item.path) {
             <a
               [routerLink]="item.path"
               routerLinkActive="bg-surface-hover text-fg"
@@ -64,12 +71,21 @@ export class WorkspaceShellComponent {
 
   protected readonly slug = this.workspace.slug;
 
-  protected readonly nav = [
-    { path: '.', label: 'Start', exact: true },
-    { path: 'search', label: 'Suche', exact: false },
-    { path: 'activity', label: 'Aktivität', exact: false },
-    { path: 'settings/members', label: 'Mitglieder', exact: false },
-  ];
+  private readonly workspaces = inject(WorkspacesStore);
+
+  /** "Einstellungen" is offered to admins and owners only. */
+  protected readonly nav = computed(() => {
+    const role = this.workspaces.find(this.slug())?.role;
+    return [
+      { path: '.', label: 'Start', exact: true },
+      { path: 'search', label: 'Suche', exact: false },
+      { path: 'activity', label: 'Aktivität', exact: false },
+      { path: 'settings/members', label: 'Mitglieder', exact: false },
+      ...(role && ADMIN_ROLES.includes(role)
+        ? [{ path: 'settings', label: 'Einstellungen', exact: true }]
+        : []),
+    ];
+  });
 
   protected readonly statusLabel = computed(() => STATUS_LABELS[this.health.status()]);
   protected readonly statusClass = computed(() => {

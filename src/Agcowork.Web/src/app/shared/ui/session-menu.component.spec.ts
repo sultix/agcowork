@@ -62,6 +62,24 @@ describe('SessionMenuComponent', () => {
     ).toBeNull();
   });
 
+  it('render_InstanceAdmin_ShowsAdminLink', async () => {
+    me.set({ ...ME, instanceScopes: ['instance:admin'] });
+    const harness = await RouterTestingHarness.create('/home');
+
+    const link = (harness.routeNativeElement as HTMLElement).querySelector(
+      '[data-testid="admin-link"]',
+    );
+    expect(link?.getAttribute('href')).toBe('/admin');
+  });
+
+  it('render_NoInstanceAdmin_HidesAdminLink', async () => {
+    const harness = await RouterTestingHarness.create('/home');
+
+    expect(
+      (harness.routeNativeElement as HTMLElement).querySelector('[data-testid="admin-link"]'),
+    ).toBeNull();
+  });
+
   it('logout_Click_EndsSessionAndGoesToLogin', async () => {
     const harness = await RouterTestingHarness.create('/home');
 

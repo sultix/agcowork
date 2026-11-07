@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-013: `core/api/api-client.ts` (typisierter Client, `api.workspace(slug)`), `core/api/field-errors.ts` + `features/auth/login.component.ts` (Signal Forms mit Serverfehlern), `core/auth/session.store.ts` (resource-Muster), `app.routes.spec.ts`, `workspace-shell.component.spec.ts`; AP-002: `WorkspaceContext` |
@@ -89,3 +89,8 @@ ist agcowork erstmals ohne REST-Client bedienbar, und Agenten können eingericht
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-sonnet übergeben |
+| 2026-11-07 | Bericht: 229 Tests grün, Lint/Build grün; AK 1–3 per Playwright gegen laufende API (18 Checks); AK 4 nur per Unit-/Routen-Tests. Anlegen als Seite `/workspaces/new`; Vorlagen fest `empty` + `allowed`; Archivieren nur Owner (Backend verlangt es); `/admin/workspaces` zeigt nur eigene Mitgliedschaften (kein Endpunkt für alle). Testhelfer `core/testing/test-utils.ts` |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; Sicherheit (Key-Klartext nur im Signal, Guard, keine erfundenen Rechte) und Tenancy ohne Befund. Wichtig: `describeError` zeigt bei `validation_failed` nur den englischen `detail`-Text statt `errors[]`. Hinweise: tote Fehlerpfade für `instanceScopes`/`scopes`, Resource ohne Idle-Zustand (`null` statt `undefined`), ewiges Laden in Einstellungen bei Fehler/Nicht-Mitglied, `createdKey` bei ID-Wechsel, keine gemeinsame Tabelle (vertretbar), IIFE-Muster |
+| 2026-11-07 | Nacharbeit an implementer-sonnet (5 Punkte) |
+| 2026-11-07 | Nacharbeit fertig: 236 Tests grün; `describeError` mit Feldmeldungen, tote Pfade entfernt, Resource idle ohne Slug, Settings mit Fehler-/Nicht-gefunden-Zustand, `createdKey` als `linkedSignal`. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |

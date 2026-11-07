@@ -40,7 +40,7 @@ export const INVALID_CREDENTIALS_MESSAGE = 'E-Mail oder Passwort falsch.';
 
         @if (formError(); as message) {
           <p
-            class="mt-4 rounded-md border border-danger px-3 py-2 text-sm text-danger"
+            class="mt-4 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
             role="alert"
             data-testid="form-error"
           >
