@@ -272,6 +272,234 @@ export interface paths {
         patch: operations["UpdateMember"];
         trace?: never;
     };
+    "/api/v1/w/{workspaceSlug}/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List spaces
+         * @description Spaces (areas such as projects or teams) of the workspace, ordered by 'sortOrder', then name. Each space groups collections; read 'description' to decide where things belong. Archived spaces only with includeArchived=true. Requires read.
+         */
+        get: operations["ListSpaces"];
+        put?: never;
+        /**
+         * Create a space
+         * @description Creates a space. 'name' is required (max. 200); 'description' (max. 2000) should say what the space is for, agents read it; 'icon' is an emoji or icon name; 'sortOrder' defaults to after the last space. Requires write.
+         */
+        post: operations["CreateSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/spaces/{spaceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a space
+         * @description One space, archived ones included. Requires read. Unknown id: 404.
+         */
+        get: operations["GetSpace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a space
+         * @description Partial update of 'name', 'description', 'icon' ("" clears description and icon) and 'sortOrder'; omitted fields stay unchanged. Requires write. Archived space: 409 'space_archived'.
+         */
+        patch: operations["UpdateSpace"];
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/spaces/{spaceId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a space
+         * @description Makes the space read-only and hides it from the list; it gets no new collections, its collections stay as they are. Requires admin. Already archived: 409 'space_archived'.
+         */
+        post: operations["ArchiveSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List collections
+         * @description Collections of the workspace, or of one space with ?spaceId=, ordered by name, each with description and schema. Archived collections only with includeArchived=true. Requires read. Unknown spaceId: 404.
+         */
+        get: operations["ListCollections"];
+        put?: never;
+        /**
+         * Create a collection
+         * @description Creates a typed collection in a space. 'spaceId', 'name' (unique in the space) and 'description' are required; the description tells agents what a record is and when to add one. 'schema' lists property definitions in display order: 'key' (snake_case, immutable), 'name', 'type' (text, markdown, number, checkbox, select, multi_select, status, date, datetime, url, email, relation, actor, json; computed: created_at, updated_at, created_by, updated_by), optional 'description', 'required', 'options' (select/multi_select/status; status options need 'group' todo|in_progress|done), 'targetCollectionId' and 'multiple' (relation, same workspace), 'default', 'unit'/'precision' (number). A title property (key 'title', text, required) is added when missing. Requires write. Invalid input: 400 with 'errors[]' and 'allowed' values; name taken: 409 'collection_name_taken'.
+         */
+        post: operations["CreateCollection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a collection
+         * @description One collection with its schema, archived ones included. Requires read. Unknown id: 404.
+         */
+        get: operations["GetCollection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename or re-describe a collection
+         * @description Partial update of 'name' (unique in the space) and 'description' (cannot be cleared). Properties change through PATCH …/schema. Requires schema. Archived: 409 'collection_archived'; name taken: 409 'collection_name_taken'.
+         */
+        patch: operations["UpdateCollection"];
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the schema of a collection
+         * @description Property definitions, 'schemaVersion' and the JSON Schema (draft 2020-12) of a record's 'properties' object: enum values, required keys, descriptions, additionalProperties false. Requires read.
+         */
+        get: operations["GetCollectionSchema"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change the schema of a collection
+         * @description Applies 'add' (new property definitions, appended), 'update' (by 'key'; only the given fields change; 'options' replaces the list; 'clearDefault' removes the default) and 'remove' (keys) together, or nothing. Prefer additive changes. Keys are immutable (400 'key_immutable': add a new property instead); types change only text ↔ markdown and select → multi_select (400 'type_change_not_allowed' with 'allowed'). Changes that lose stored values need 'confirmRemoval': true, otherwise 400 'removal_not_confirmed' naming what would be lost: removing properties, removing option values, lowering 'precision', markdown → text. Template presets are adjusted. Increments 'schemaVersion' (entries without an actual change do not); send 'expectedSchemaVersion' to get 409 'schema_version_conflict' instead of overwriting a concurrent change. Requires schema.
+         */
+        patch: operations["UpdateCollectionSchema"];
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/describe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Describe a collection for agents
+         * @description Everything needed to work with a collection in one call: the collection with schema and description, its space, the JSON Schema of record properties, a valid example 'properties' object, the record templates (default first) and statistics. Read this before creating records. Requires read.
+         */
+        get: operations["DescribeCollection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a collection
+         * @description Makes the collection read-only and hides it from the list (includeArchived=true shows it). Requires schema. Already archived: 409 'collection_archived'.
+         */
+        post: operations["ArchiveCollection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List record templates
+         * @description Record templates of the collection (preset properties and Markdown body), default first. Requires read.
+         */
+        get: operations["ListTemplates"];
+        put?: never;
+        /**
+         * Create a record template
+         * @description Creates a template: 'name' (unique in the collection) is required; 'description' says when to use it; 'propertiesPreset' holds property values by key and is validated against the schema like a partial record (400 with 'errors[]' on 'propertiesPreset.<key>', e.g. 'unknown_property' or 'not_in_options' with 'allowed'); 'bodyMarkdown' is the starting body (e.g. an ADR outline); 'isDefault' makes it the default for new records. Requires schema.
+         */
+        post: operations["CreateTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a record template
+         * @description Deletes the template; records created from it keep their content. Requires schema.
+         */
+        delete: operations["DeleteTemplate"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a record template
+         * @description Partial update; omitted fields stay unchanged. 'propertiesPreset' and 'bodyMarkdown' replace the old values; 'isDefault': true moves the default flag to this template. Requires schema.
+         */
+        patch: operations["UpdateTemplate"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -324,6 +552,89 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        /** @description Everything an agent needs to work with a collection, in one response. */
+        CollectionDescriptionDto: {
+            /** @description The collection with its schema. */
+            collection: components["schemas"]["CollectionDto"];
+            /** @description The space it belongs to. */
+            space: components["schemas"]["SpaceDto"];
+            /** @description JSON Schema (draft 2020-12) of a record's `properties` object. */
+            jsonSchema: components["schemas"]["JsonObject"];
+            /** @description A valid example `properties` object: one value per writable property. Relation and actor properties are left out; they need real record and member ids. */
+            example: components["schemas"]["JsonObject"];
+            /** @description Record templates, default first. */
+            templates: components["schemas"]["TemplateDto"][];
+            /** @description Counts; filled once records exist. */
+            statistics: components["schemas"]["CollectionStatisticsDto"];
+        };
+        /** @description A collection with its schema. */
+        CollectionDto: {
+            /**
+             * Format: uuid
+             * @description Collection id.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Space the collection belongs to.
+             */
+            spaceId: string;
+            /** @description Display name, unique within the space. */
+            name: string;
+            /** @description What the collection holds and when to add a record. Written for agents. */
+            description: string;
+            /** @description Key of the title property (always `title`). */
+            titlePropertyKey: string;
+            /**
+             * Format: int32
+             * @description Increments with every schema change; send it as `expectedSchemaVersion` to avoid lost updates.
+             */
+            schemaVersion: number | string;
+            /** @description Ordered property definitions. */
+            schema: components["schemas"]["PropertyDefinitionDto"][];
+            /**
+             * Format: uuid
+             * @description Actor that created the collection.
+             */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @description Creation time (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Set when archived; archived collections are read-only.
+             */
+            archivedAt: null | string;
+        };
+        /** @description The schema of a collection, as definitions and as JSON Schema. */
+        CollectionSchemaDto: {
+            /**
+             * Format: uuid
+             * @description Collection id.
+             */
+            collectionId: string;
+            /**
+             * Format: int32
+             * @description Current version; send it as `expectedSchemaVersion` with the next change.
+             */
+            schemaVersion: number | string;
+            /** @description Key of the title property. */
+            titlePropertyKey: string;
+            /** @description Ordered property definitions. */
+            properties: components["schemas"]["PropertyDefinitionDto"][];
+            /** @description JSON Schema (draft 2020-12) of a record's `properties` object. */
+            jsonSchema: components["schemas"]["JsonObject"];
+        };
+        /** @description Counts of a collection. */
+        CollectionStatisticsDto: {
+            /**
+             * Format: int64
+             * @description Number of records; null until records exist (AP-007).
+             */
+            recordCount: null | number | string;
+        };
         CreateActorRequest: {
             /** @description `human` or `agent`. */
             kind: null | string;
@@ -346,11 +657,50 @@ export interface components {
             /** Format: date-time */
             expiresAt: null | string;
         };
+        CreateCollectionRequest: {
+            /**
+             * Format: uuid
+             * @description Space the collection belongs to (see GET /spaces).
+             */
+            spaceId: null | string;
+            /** @description Display name, unique within the space, max. 200 characters, e.g. `Entscheidungen`. */
+            name: null | string;
+            /** @description Required, max. 4000 characters: what a record is, when to add one, what matters. Agents decide by it. */
+            description: null | string;
+            /** @description Property definitions in display order. Optional; the title property (key `title`, text) is added in front when missing. */
+            schema?: null | components["schemas"]["PropertyDefinitionInput"][];
+        };
         CreatedApiKeyDto: {
             /** @description Plain-text key. Shown exactly once; store it now, it cannot be retrieved later. */
             key: string;
             /** @description Metadata of the new key. */
             apiKey: components["schemas"]["ApiKeyDto"];
+        };
+        CreateSpaceRequest: {
+            /** @description Display name, max. 200 characters, e.g. `Produkt`. */
+            name: null | string;
+            /** @description What the space is for, max. 2000 characters. Agents read it to decide where things belong. */
+            description?: null | string;
+            /** @description Emoji or icon name, max. 64 characters. */
+            icon?: null | string;
+            /**
+             * Format: int32
+             * @description Position in the navigation; default: after the last space.
+             */
+            sortOrder?: null | number | string;
+        };
+        /** @description Body of `POST /collections/{collectionId}/templates`. */
+        CreateTemplateBody: {
+            /** @description Display name, unique in the collection. */
+            name: null | string;
+            /** @description When to use the template. */
+            description?: null | string;
+            /** @description Property values by key, validated against the schema. */
+            propertiesPreset?: null | Record<string, never>;
+            /** @description Starting Markdown body. */
+            bodyMarkdown?: null | string;
+            /** @description Make it the collection's default template. */
+            isDefault?: null | boolean;
         };
         CreateWorkspaceRequest: {
             /** @description URL segment, unique, immutable: lowercase letters, digits, single hyphens, max. 63 characters. */
@@ -362,6 +712,8 @@ export interface components {
             /** @description Structure to start with. Only `empty` for now (also the default when omitted). */
             templateId?: null | string;
         };
+        JsonElement: unknown;
+        JsonObject: Record<string, never>;
         LoginRequest: {
             email: null | string;
             password: null | string;
@@ -426,6 +778,200 @@ export interface components {
                 allowed?: string[];
             }[];
         };
+        /** @description Partial change of one existing property. Null leaves a field unchanged. */
+        PropertyChangeInput: {
+            /** @description Key of the property to change. Keys are immutable. */
+            key: null | string;
+            /** @description Not supported: keys cannot be renamed. Add a new property and remove the old one instead. */
+            newKey?: null | string;
+            /** @description New display name. */
+            name?: null | string;
+            /** @description New type; only text ↔ markdown and select → multi_select are allowed. */
+            type?: null | string;
+            /** @description New description; an empty string clears it. */
+            description?: null | string;
+            /** @description Whether a value is required. */
+            required?: null | boolean;
+            /** @description New complete list of options (replaces the old list). */
+            options?: null | components["schemas"]["PropertyOptionInput"][];
+            /** @description New default value. */
+            default?: unknown;
+            /** @description true removes the default. */
+            clearDefault?: null | boolean;
+            /** @description number: new unit; an empty string clears it. */
+            unit?: null | string;
+            /**
+             * Format: int32
+             * @description number: new maximum decimal places.
+             */
+            precision?: null | number | string;
+            /** @description relation: true allows several references (cannot be undone). */
+            multiple?: null | boolean;
+            /**
+             * Format: uuid
+             * @description relation: cannot change; listed so a change attempt is reported instead of ignored.
+             */
+            targetCollectionId?: null | string;
+        };
+        /** @description One property of a collection schema. */
+        PropertyDefinitionDto: {
+            /** @description snake_case identifier; the key in a record's `properties`. Immutable. */
+            key: string;
+            /** @description Display name. */
+            name: string;
+            /** @description Value type, e.g. `text`, `status`, `relation`. */
+            type: components["schemas"]["PropertyType"];
+            /** @description What belongs in the property. Written for agents. */
+            description: null | string;
+            /** @description A value must be present on every record. */
+            required: boolean;
+            /** @description Computed by the system (created_at, updated_at, created_by, updated_by); never send it. */
+            readOnly: boolean;
+            /** @description Choices of select, multi_select and status; null for other types. */
+            options: null | components["schemas"]["PropertyOptionDto"][];
+            /**
+             * Format: uuid
+             * @description Relation only: collection of the referenced records.
+             */
+            targetCollectionId: null | string;
+            /** @description Relation only: several references allowed. */
+            multiple: boolean;
+            default: null | components["schemas"]["JsonElement"];
+            /** @description Number only: unit, e.g. `h`. */
+            unit: null | string;
+            /**
+             * Format: int32
+             * @description Number only: maximum decimal places.
+             */
+            precision: null | number | string;
+        };
+        /** @description A property definition as sent by clients. Strings instead of enums, so unknown values get a field error with the allowed values. */
+        PropertyDefinitionInput: {
+            /** @description snake_case identifier, unique in the collection, immutable: `^[a-z][a-z0-9_]{0,62}$`, e.g. `due_date`. */
+            key: null | string;
+            /** @description Display name, e.g. `Due date`. */
+            name: null | string;
+            /** @description One of text, markdown, number, checkbox, select, multi_select, status, date, datetime, url, email, relation, actor, json, created_at, updated_at, created_by, updated_by. */
+            type: null | string;
+            /** @description What belongs in the property, written for agents. Strongly recommended. */
+            description?: null | string;
+            /** @description A value must be present on every record. Default false (title: always true). */
+            required?: null | boolean;
+            /** @description select, multi_select, status: the choices. Status options need a group (todo, in_progress, done). */
+            options?: null | components["schemas"]["PropertyOptionInput"][];
+            /**
+             * Format: uuid
+             * @description relation: the collection (same workspace) whose records are referenced.
+             */
+            targetCollectionId?: null | string;
+            /** @description relation: allow several references. Default false. */
+            multiple?: null | boolean;
+            /** @description Value for new records that leave the property out. Not for relation, actor and computed types. */
+            default?: unknown;
+            /** @description number: unit shown next to the value, e.g. `h`. */
+            unit?: null | string;
+            /**
+             * Format: int32
+             * @description number: maximum decimal places, 0-10 (0 = whole numbers).
+             */
+            precision?: null | number | string;
+        };
+        /** @description A choice of a select, multi_select or status property. */
+        PropertyOptionDto: {
+            /** @description Stored value (case-sensitive). Send this in record properties. */
+            value: string;
+            /** @description Display text. */
+            label: string;
+            /** @description UI color, if set. */
+            color: null | string;
+            group: null | components["schemas"]["StatusGroup"];
+        };
+        /** @description A choice of a select, multi_select or status property. */
+        PropertyOptionInput: {
+            /** @description Stored value, unique in the property, case-sensitive, e.g. `high`. */
+            value: null | string;
+            /** @description Display text; defaults to the value. */
+            label?: null | string;
+            /** @description gray, brown, orange, yellow, green, blue, purple, pink or red. */
+            color?: null | string;
+            /** @description Status only, required there: todo, in_progress or done. */
+            group?: null | string;
+        };
+        /**
+         * @description Type of a property (architecture §2, "Property-Typen"). Wire and storage names are snake_case,
+         *     e.g. `multi_select`; `datetime` is written as one word. Values are stable: add, never renumber.
+         * @enum {unknown}
+         */
+        PropertyType: "text" | "markdown" | "number" | "checkbox" | "select" | "multi_select" | "status" | "date" | "datetime" | "url" | "email" | "relation" | "actor" | "json" | "created_at" | "updated_at" | "created_by" | "updated_by";
+        /** @description A space of the workspace. */
+        SpaceDto: {
+            /**
+             * Format: uuid
+             * @description Space id; collections reference it as `spaceId`.
+             */
+            id: string;
+            /** @description Display name. */
+            name: string;
+            /** @description What the space is for. */
+            description: null | string;
+            /** @description Emoji or icon name. */
+            icon: null | string;
+            /**
+             * Format: int32
+             * @description Position in the navigation, ascending.
+             */
+            sortOrder: number | string;
+            /**
+             * Format: uuid
+             * @description Actor that created the space.
+             */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @description Creation time (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Set when archived; archived spaces are read-only.
+             */
+            archivedAt: null | string;
+        };
+        /** @enum {unknown} */
+        StatusGroup: "todo" | "in_progress" | "done" | null;
+        /** @description A record template of a collection. */
+        TemplateDto: {
+            /**
+             * Format: uuid
+             * @description Template id; pass it as `templateId` when creating a record.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Collection the template belongs to.
+             */
+            collectionId: string;
+            /** @description Display name, unique within the collection. */
+            name: string;
+            /** @description When to use the template. */
+            description: null | string;
+            /** @description Property values (by key) a new record starts with. */
+            propertiesPreset: Record<string, never>;
+            /** @description Markdown body a new record starts with. */
+            bodyMarkdown: string;
+            /** @description Used when a record is created without naming a template. */
+            isDefault: boolean;
+            /**
+             * Format: uuid
+             * @description Actor that created the template.
+             */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @description Creation time (UTC).
+             */
+            createdAt: string;
+        };
         /** @description Body of `PATCH /actors/{id}`; the id comes from the route. */
         UpdateActorBody: {
             name: null | string;
@@ -433,10 +979,60 @@ export interface components {
             instanceScopes: null | string[];
             isActive: null | boolean;
         };
+        /** @description Body of `PATCH /collections/{collectionId}`; null leaves a field unchanged. */
+        UpdateCollectionBody: {
+            /** @description New display name, unique in the space. */
+            name?: null | string;
+            /** @description New description; cannot be cleared. */
+            description?: null | string;
+        };
         /** @description Body of `PATCH /members/{actorId}`; the actor comes from the route. */
         UpdateMemberBody: {
             role: null | string;
             scopes: null | string[];
+        };
+        /** @description Body of `PATCH /collections/{collectionId}/schema`. At least one of add, update, remove. */
+        UpdateSchemaBody: {
+            /** @description New properties, appended in this order. */
+            add?: null | components["schemas"]["PropertyDefinitionInput"][];
+            /** @description Changes to existing properties, by key. */
+            update?: null | components["schemas"]["PropertyChangeInput"][];
+            /** @description Keys to remove; needs confirmRemoval. */
+            remove?: null | string[];
+            /** @description true confirms changes that lose values: removed properties or options, lower precision, markdown → text. */
+            confirmRemoval?: null | boolean;
+            /**
+             * Format: int32
+             * @description Apply only if the schema is still at this version.
+             */
+            expectedSchemaVersion?: null | number | string;
+        };
+        /** @description Body of `PATCH /spaces/{spaceId}`; null leaves a field unchanged. */
+        UpdateSpaceBody: {
+            /** @description New display name. */
+            name?: null | string;
+            /** @description New description; "" clears it. */
+            description?: null | string;
+            /** @description New icon; "" clears it. */
+            icon?: null | string;
+            /**
+             * Format: int32
+             * @description New position in the navigation.
+             */
+            sortOrder?: null | number | string;
+        };
+        /** @description Body of `PATCH /collections/{collectionId}/templates/{templateId}`; null leaves a field unchanged. */
+        UpdateTemplateBody: {
+            /** @description New display name. */
+            name?: null | string;
+            /** @description New description; "" clears it. */
+            description?: null | string;
+            /** @description New complete preset. */
+            propertiesPreset?: null | Record<string, never>;
+            /** @description New body; "" clears it. */
+            bodyMarkdown?: null | string;
+            /** @description true makes it the default; false removes the flag. */
+            isDefault?: null | boolean;
         };
         /** @description Partial update: null leaves a field unchanged. */
         UpdateWorkspaceRequest: {
@@ -1420,6 +2016,992 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListSpaces: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSpaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                spaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                spaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSpaceBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                spaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListCollections: {
+        parameters: {
+            query?: {
+                spaceId?: string;
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCollectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCollectionBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCollectionSchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionSchemaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateCollectionSchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSchemaBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionSchemaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DescribeCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDescriptionDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveCollection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"];
                 };
             };
             /** @description Bad Request */

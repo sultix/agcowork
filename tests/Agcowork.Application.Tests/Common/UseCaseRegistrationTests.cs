@@ -1,6 +1,10 @@
+using Agcowork.Application.Collections;
+using Agcowork.Application.Collections.Templates;
 using Agcowork.Application.Identity.Actors;
 using Agcowork.Application.Identity.ApiKeys;
 using Agcowork.Application.Identity.Authentication;
+using Agcowork.Application.Schema;
+using Agcowork.Application.Spaces;
 using Agcowork.Application.Tenancy;
 using Agcowork.Application.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +29,10 @@ public sealed class UseCaseRegistrationTests
                 typeof(ResolveTenant), typeof(ListMyWorkspaces), typeof(CreateWorkspace), typeof(GetWorkspace),
                 typeof(UpdateWorkspace), typeof(ArchiveWorkspace), typeof(ListMembers), typeof(AddMember),
                 typeof(UpdateMember), typeof(RemoveMember),
+                typeof(CreateSpace), typeof(GetSpace), typeof(ListSpaces), typeof(UpdateSpace), typeof(ArchiveSpace),
+                typeof(CreateCollection), typeof(GetCollection), typeof(ListCollections), typeof(UpdateCollection), typeof(GetCollectionSchema),
+                typeof(UpdateSchema), typeof(DescribeCollection), typeof(ArchiveCollection),
+                typeof(CreateTemplate), typeof(UpdateTemplate), typeof(DeleteTemplate), typeof(ListTemplates),
             },
             useCases.ToHashSet());
         foreach (var useCase in useCases)
@@ -41,6 +49,20 @@ public sealed class UseCaseRegistrationTests
 
         Assert.Equal(ServiceLifetime.Scoped, Assert.Single(services, d => d.ServiceType == typeof(ITenantContextAccessor)).Lifetime);
         Assert.Equal(ServiceLifetime.Scoped, Assert.Single(services, d => d.ServiceType == typeof(ITenantContext)).Lifetime);
+    }
+
+    [Fact]
+    public void AddApplication_RegistersSchemaServicesScoped()
+    {
+        var services = new ServiceCollection().AddApplication();
+
+        foreach (var type in new[] { typeof(PropertyValueValidator), typeof(IRelationTargetChecker), typeof(IActorMembershipChecker), typeof(ISchemaProvider) })
+        {
+            Assert.Equal(ServiceLifetime.Scoped, Assert.Single(services, d => d.ServiceType == type).Lifetime);
+        }
+
+        var hook = Assert.Single(services, d => d.ServiceType == typeof(ISchemaChangedHook));
+        Assert.Equal((typeof(TemplatePresetSchemaHook), ServiceLifetime.Scoped), (hook.ImplementationType, hook.Lifetime));
     }
 
     [Fact]

@@ -1,5 +1,8 @@
 using System.Reflection;
+using Agcowork.Application.Collections;
+using Agcowork.Application.Collections.Templates;
 using Agcowork.Application.Common;
+using Agcowork.Application.Schema;
 using Agcowork.Application.Tenancy;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,7 +14,7 @@ public static class DependencyInjection
     /// <summary>
     /// Registers application-layer services: the clock and every <see cref="IUseCase{TRequest,TResponse}"/>
     /// / <see cref="IUseCase{TRequest}"/> implementation of this assembly as a scoped service of its
-    /// concrete type (adapters inject e.g. <c>CreateActor</c> directly), and the tenant context.
+    /// concrete type (adapters inject e.g. <c>CreateActor</c> directly), the tenant context and the property-value services.
     /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
@@ -20,6 +23,13 @@ public static class DependencyInjection
         // Tenant of the current scope: set by the tenancy middleware, read by use cases and the DbContext filter.
         services.TryAddScoped<ITenantContextAccessor, TenantContextAccessor>();
         services.TryAddScoped<ITenantContext, CurrentTenantContext>();
+
+        // Property values (AP-006). The relation checker is a placeholder until records exist (AP-007 replaces it).
+        services.TryAddScoped<PropertyValueValidator>();
+        services.TryAddScoped<IRelationTargetChecker, NoRecordsRelationTargetChecker>();
+        services.TryAddScoped<IActorMembershipChecker, MembershipActorChecker>();
+        services.TryAddScoped<ISchemaProvider, SchemaProvider>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<ISchemaChangedHook, TemplatePresetSchemaHook>());
 
         foreach (var useCase in FindUseCases(typeof(DependencyInjection).Assembly))
         {

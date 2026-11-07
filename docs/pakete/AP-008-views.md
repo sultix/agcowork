@@ -52,6 +52,12 @@ rendert aus diesen Objekten.
 - Filter-DSL-Syntax in §3; Operatoren: `eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty, is_not_empty`.
 - Muster für Use-Cases, Endpunkte, Isolationstests exakt wie in AP-006 `Templates`.
 
+## Ergänzungen aus AP-006 (Bericht)
+
+- `ICollectionCreatedHook` existiert und läuft vor `SaveChanges` in derselben Unit of Work; hier registrieren, um die System-Views anzulegen.
+- Für die Bereinigung bei Feldentfernung `ISchemaChangedHook` (aus AP-006-Nacharbeit, `RemovedKeys`, `RemovedOptions`, `TypeChanges`) implementieren; `AdjustTemplatesAsync` ist das Referenzbeispiel.
+- Scope-Konvention aus AP-006: Lesen = `read`; Views sind Präsentation → Anlegen/Ändern/Löschen = `write`.
+
 ## Akzeptanzkriterien
 
 1. Nach `POST /collections` existieren zwei System-Views (`table` Default, `raw`); `GET …/views` listet sie.

@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-005: Tenant-Entitäten, `RequireScope`, Workspace-Endpunkte, Isolations-Fixture; AP-004: Use-Case-/Fehler-Muster |
@@ -88,3 +88,8 @@ gegen ein Schema ist zentral implementiert und wird von AP-007 (Records) wiederv
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: 474 Tests grün (152/184/138), 0 Warnungen; 17 Endpunkte mit Isolationstests; zusammengesetzte FKs `(workspace_id, space_id)` / `(workspace_id, collection_id)`; `schema_version` als Concurrency-Token; JSONB-Hülle `{version:1, properties:[…]}`; PATCH /schema als `{add, update, remove, confirmRemoval, expectedSchemaVersion}`; JSON Schema gegen Draft-2020-12-Metaschema getestet (JsonSchema.Net, nur Tests); `ICollectionCreatedHook` für AP-008; `IRelationTargetChecker` als Platzhalter für AP-007. Abweichungen: ListTemplates = read; Update/Archive Collection = schema; Relation-Ziel unveränderlich; Option-Farben aus Palette |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; Tenancy ohne Befund. Wichtig: leere Pflichtwerte akzeptiert; `schema_version`-Token → 500 in UpdateCollection/ArchiveCollection bei Race; destruktive Schemaänderungen (Options entfernen, precision senken, markdown→text) machen Werte still ungültig, kein Hook für Folgepakete. Hinweise: Hook-Persistenztest, Platzhalter im describe-Beispiel, `null` nicht im JSON Schema, Raw-JSON-Snapshot, deaktivierte Actors als Wert, no-op erhöht Version |
+| 2026-11-07 | Entscheidungen: destruktive Änderungen brauchen `confirmRemoval`; `ISchemaChangedHook` als Erweiterungspunkt. Nacharbeit an implementer-opus (9 Punkte) |
+| 2026-11-07 | Nacharbeit fertig: 502 Tests grün. `ISchemaChangedHook` + `TemplatePresetSchemaHook`, `CollectionSave.SaveAsync` → 409 bei Token-Konflikt, destruktive Änderungen mit `confirmRemoval`, JSON Schema mit `minLength/minItems` und `null`-Typen, Raw-Snapshot-Test, `actor_inactive`, no-op ohne Versionssprung. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |

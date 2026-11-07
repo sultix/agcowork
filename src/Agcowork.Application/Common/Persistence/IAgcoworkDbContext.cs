@@ -1,4 +1,6 @@
+using Agcowork.Domain.Collections;
 using Agcowork.Domain.Identity;
+using Agcowork.Domain.Spaces;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -32,6 +34,12 @@ public interface IAgcoworkDbContext
     DbSet<Workspace> Workspaces { get; }
 
     DbSet<Membership> Memberships { get; }
+
+    DbSet<Space> Spaces { get; }
+
+    DbSet<Collection> Collections { get; }
+
+    DbSet<Template> Templates { get; }
 
     /// <summary>For explicit transactions (<c>BeginTransactionAsync</c>); see architecture §5.</summary>
     DatabaseFacade Database { get; }

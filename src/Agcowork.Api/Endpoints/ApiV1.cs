@@ -1,5 +1,7 @@
 using Agcowork.Api.Auth;
+using Agcowork.Api.Endpoints.Collections;
 using Agcowork.Api.Endpoints.Identity;
+using Agcowork.Api.Endpoints.Spaces;
 using Agcowork.Api.Endpoints.Workspaces;
 using Agcowork.Api.Tenancy;
 
@@ -36,6 +38,8 @@ internal static class ApiV1
 
         workspace.MapWorkspaceEndpoints();
         workspace.MapMemberEndpoints();
+        workspace.MapSpaceEndpoints();
+        workspace.MapCollectionEndpoints();
 
         return app;
     }

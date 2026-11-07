@@ -43,5 +43,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <!-- Validates generated JSON Schemas (draft 2020-12) in tests only. -->
+    <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />
   </ItemGroup>
 </Project>

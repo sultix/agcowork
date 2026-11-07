@@ -74,17 +74,26 @@ erDiagram
 | **Workspace** | Mandant; beliebig viele pro Installation | `Slug` (URL, eindeutig), `Name`, `Settings`, `CreatedBy`, `ArchivedAt?` |
 | **Membership** | Zugehörigkeit eines Actors zu einem Workspace | `WorkspaceId`, `ActorId`, `Role` (owner / admin / editor / viewer), `Scopes`, `SpaceRestrictions?` |
 | **Space** | Bereich/Projekt/Team (z. B. „Projekt Alpha“, „Marketing“) | `Name`, `Description`, `Icon`, `SortOrder` |
-| **Collection** | Typisierte Sammlung (Notion-„Database“) | `Name`, `Description` (für Agenten!), `Schema: PropertyDefinition[]`, `DefaultTemplateId`, `TitleProperty` |
+| **Collection** | Typisierte Sammlung (Notion-„Database“) | `Name`, `Description` (Pflicht, für Agenten!), `Schema: PropertyDefinition[]` (JSONB-Hülle `{version, properties}`), `SchemaVersion` (Concurrency-Token), `TitlePropertyKey` (`title`), `ArchivedAt?` |
 | **PropertyDefinition** | Feld im Schema (Teil der Collection, JSONB) | `Key`, `Name`, `Type`, `Description`, `Required`, `Options` (für select), `TargetCollectionId` (für relation), `Default` |
 | **Record** | Datensatz / Seite | `Title`, `Properties: JSONB`, `Body: Markdown`, `CollectionId?`, `SpaceId`, `ParentRecordId?`, `RevisionNo`, `CreatedBy`, `UpdatedBy`, `Archived` |
 | **View** | Präsentation einer Collection | `Name`, `Type` (table, board, gallery, list, document, raw), `Filter: JSON`, `Sorts`, `GroupByProperty`, `VisibleProperties`, `CardCoverProperty`, `IsDefault` |
-| **Template** | Vorlage für neue Records | `Name`, `Description`, `PropertiesPreset`, `BodyMarkdown` |
+| **Template** | Vorlage für neue Records | `CollectionId`, `Name`, `Description`, `PropertiesPreset`, `BodyMarkdown`, `IsDefault` (genau eine je Collection) |
 | **Actor** | Agent oder Mensch, **global pro Installation** | `Kind` (Agent/Human), `Name`, `Role` (frei, z. B. „Tech-Lead“), `Email?`, `InstanceScopes` (`instance:admin`, `workspaces:create`), `IsActive` |
 | **ApiKey** | Zugang eines Agenten | `ActorId`, `Prefix` (sichtbar), `Hash` (SHA-256), `WorkspaceId?` (optionale Einschränkung), `Scopes`, `ExpiresAt?`, `LastUsedAt`, `RevokedAt?` |
 | **Revision** | Vollständiger Snapshot eines Records je Änderung | `RecordId`, `No`, `Properties`, `Body`, `ActorId`, `At`, `Reason?` |
 | **ActivityEvent** | Append-only Log, pro Workspace | `WorkspaceId`, `Type` (record.created, record.updated, schema.changed, member.added …), `ActorId`, `Target`, `Diff: JSON`, `At` |
 | **Comment** | Diskussion am Record | `RecordId`, `ActorId`, `BodyMarkdown`, `ParentCommentId?`, `Resolved` |
 | **Attachment** (Phase 3) | Datei am Record | `RecordId`, `FileName`, `ContentType`, `Size`, `StorageKey` |
+
+### Schema-Regeln (aus AP-006)
+
+- Keys `^[a-z][a-z0-9_]{0,62}\z`, unveränderlich; reserviert: `id`, `collection`, `space`, `revision`, `body`; `title` ist immer vorhanden und vom Typ text.
+- Erlaubte Typänderungen: text ↔ markdown, select → multi_select; Relation-Ziel unveränderlich, `multiple` nur false → true. **Destruktive Änderungen** (Feld entfernen, Option-Werte entfernen, `precision` senken, markdown → text) nur mit `confirmRemoval: true`; Entfernen + Neuanlegen desselben Keys im selben Request ist verboten.
+- Erweiterungspunkte: `ICollectionCreatedHook` (Standard-Views) und `ISchemaChangedHook` (Templates, Record-Werte, Views bereinigen) laufen vor `SaveChanges` in derselben Unit of Work. Workspace-Vorlagen müssen Collections über `CreateCollection` anlegen, damit die Hooks laufen.
+- Scopes: Lesen `read`; Space anlegen/ändern und Collection anlegen `write`; Schema, Collection-Metadaten, Archivieren, Vorlagen pflegen `schema`.
+- relation, actor und berechnete Typen haben keinen Default; Status-Optionen brauchen eine Gruppe; Option-Farben aus fester Palette.
+- Zusammengesetzte Fremdschlüssel über `workspace_id` (Collection → Space, Template → Collection), damit die DB Verweise über Workspace-Grenzen ablehnt.
 
 ### Property-Typen
 
@@ -306,9 +315,12 @@ POST   /api/v1/workspaces               (Instanz-Admin)
 GET    /api/v1/actors   POST /api/v1/actors   POST /api/v1/actors/{id}/keys   DELETE /api/v1/keys/{id}
 
 Workspace-Ebene  (Präfix /api/v1/w/{workspaceSlug})
-GET    /spaces                          GET    /collections/{id}/schema
-GET    /spaces/{id}                     PATCH  /collections/{id}/schema
-POST   /collections                     POST   /collections/{id}/query    (Filter-DSL im Body)
+GET    /spaces   POST /spaces   GET|PATCH /spaces/{id}   POST /spaces/{id}/archive
+GET    /collections?spaceId=   POST /collections   GET|PATCH /collections/{id}   POST /collections/{id}/archive
+GET    /collections/{id}/schema         PATCH  /collections/{id}/schema   ({add, update, remove, confirmRemoval, expectedSchemaVersion})
+GET    /collections/{id}/describe       (Schema + JSON Schema + Vorlagen + Beispiel + Statistik)
+GET|POST /collections/{id}/templates    PATCH|DELETE /collections/{id}/templates/{templateId}
+POST   /collections/{id}/query          (Filter-DSL im Body)
 GET    /records/{id}                    POST   /records
 PATCH  /records/{id}                    POST   /records/{id}/append
 GET    /records/{id}/history            POST   /records/{id}/comments

@@ -1228,6 +1228,1392 @@
           }
         }
       }
+    },
+    "/api/v1/w/{workspaceSlug}/spaces": {
+      "get": {
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "List spaces",
+        "description": "Spaces (areas such as projects or teams) of the workspace, ordered by 'sortOrder', then name. Each space groups collections; read 'description' to decide where things belong. Archived spaces only with includeArchived=true. Requires read.",
+        "operationId": "ListSpaces",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SpaceDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "Create a space",
+        "description": "Creates a space. 'name' is required (max. 200); 'description' (max. 2000) should say what the space is for, agents read it; 'icon' is an emoji or icon name; 'sortOrder' defaults to after the last space. Requires write.",
+        "operationId": "CreateSpace",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSpaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/spaces/{spaceId}": {
+      "get": {
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "Get a space",
+        "description": "One space, archived ones included. Requires read. Unknown id: 404.",
+        "operationId": "GetSpace",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "Update a space",
+        "description": "Partial update of 'name', 'description', 'icon' (\"\" clears description and icon) and 'sortOrder'; omitted fields stay unchanged. Requires write. Archived space: 409 'space_archived'.",
+        "operationId": "UpdateSpace",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSpaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/spaces/{spaceId}/archive": {
+      "post": {
+        "tags": [
+          "Spaces"
+        ],
+        "summary": "Archive a space",
+        "description": "Makes the space read-only and hides it from the list; it gets no new collections, its collections stay as they are. Requires admin. Already archived: 409 'space_archived'.",
+        "operationId": "ArchiveSpace",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/collections": {
+      "get": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "List collections",
+        "description": "Collections of the workspace, or of one space with ?spaceId=, ordered by name, each with description and schema. Archived collections only with includeArchived=true. Requires read. Unknown spaceId: 404.",
+        "operationId": "ListCollections",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Create a collection",
+        "description": "Creates a typed collection in a space. 'spaceId', 'name' (unique in the space) and 'description' are required; the description tells agents what a record is and when to add one. 'schema' lists property definitions in display order: 'key' (snake_case, immutable), 'name', 'type' (text, markdown, number, checkbox, select, multi_select, status, date, datetime, url, email, relation, actor, json; computed: created_at, updated_at, created_by, updated_by), optional 'description', 'required', 'options' (select/multi_select/status; status options need 'group' todo|in_progress|done), 'targetCollectionId' and 'multiple' (relation, same workspace), 'default', 'unit'/'precision' (number). A title property (key 'title', text, required) is added when missing. Requires write. Invalid input: 400 with 'errors[]' and 'allowed' values; name taken: 409 'collection_name_taken'.",
+        "operationId": "CreateCollection",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCollectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}": {
+      "get": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Get a collection",
+        "description": "One collection with its schema, archived ones included. Requires read. Unknown id: 404.",
+        "operationId": "GetCollection",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Rename or re-describe a collection",
+        "description": "Partial update of 'name' (unique in the space) and 'description' (cannot be cleared). Properties change through PATCH …/schema. Requires schema. Archived: 409 'collection_archived'; name taken: 409 'collection_name_taken'.",
+        "operationId": "UpdateCollection",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCollectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/schema": {
+      "get": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Get the schema of a collection",
+        "description": "Property definitions, 'schemaVersion' and the JSON Schema (draft 2020-12) of a record's 'properties' object: enum values, required keys, descriptions, additionalProperties false. Requires read.",
+        "operationId": "GetCollectionSchema",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionSchemaDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Change the schema of a collection",
+        "description": "Applies 'add' (new property definitions, appended), 'update' (by 'key'; only the given fields change; 'options' replaces the list; 'clearDefault' removes the default) and 'remove' (keys) together, or nothing. Prefer additive changes. Keys are immutable (400 'key_immutable': add a new property instead); types change only text ↔ markdown and select → multi_select (400 'type_change_not_allowed' with 'allowed'). Changes that lose stored values need 'confirmRemoval': true, otherwise 400 'removal_not_confirmed' naming what would be lost: removing properties, removing option values, lowering 'precision', markdown → text. Template presets are adjusted. Increments 'schemaVersion' (entries without an actual change do not); send 'expectedSchemaVersion' to get 409 'schema_version_conflict' instead of overwriting a concurrent change. Requires schema.",
+        "operationId": "UpdateCollectionSchema",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSchemaBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionSchemaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/describe": {
+      "get": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Describe a collection for agents",
+        "description": "Everything needed to work with a collection in one call: the collection with schema and description, its space, the JSON Schema of record properties, a valid example 'properties' object, the record templates (default first) and statistics. Read this before creating records. Requires read.",
+        "operationId": "DescribeCollection",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDescriptionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/archive": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Archive a collection",
+        "description": "Makes the collection read-only and hides it from the list (includeArchived=true shows it). Requires schema. Already archived: 409 'collection_archived'.",
+        "operationId": "ArchiveCollection",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/templates": {
+      "get": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "List record templates",
+        "description": "Record templates of the collection (preset properties and Markdown body), default first. Requires read.",
+        "operationId": "ListTemplates",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Create a record template",
+        "description": "Creates a template: 'name' (unique in the collection) is required; 'description' says when to use it; 'propertiesPreset' holds property values by key and is validated against the schema like a partial record (400 with 'errors[]' on 'propertiesPreset.<key>', e.g. 'unknown_property' or 'not_in_options' with 'allowed'); 'bodyMarkdown' is the starting body (e.g. an ADR outline); 'isDefault' makes it the default for new records. Requires schema.",
+        "operationId": "CreateTemplate",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/templates/{templateId}": {
+      "patch": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Update a record template",
+        "description": "Partial update; omitted fields stay unchanged. 'propertiesPreset' and 'bodyMarkdown' replace the old values; 'isDefault': true moves the default flag to this template. Requires schema.",
+        "operationId": "UpdateTemplate",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Delete a record template",
+        "description": "Deletes the template; records created from it keep their content. Requires schema.",
+        "operationId": "DeleteTemplate",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1390,6 +2776,182 @@
         },
         "description": "Metadata of an API key. Never contains the secret or its hash."
       },
+      "CollectionDescriptionDto": {
+        "required": [
+          "collection",
+          "space",
+          "jsonSchema",
+          "example",
+          "templates",
+          "statistics"
+        ],
+        "type": "object",
+        "properties": {
+          "collection": {
+            "description": "The collection with its schema.",
+            "$ref": "#/components/schemas/CollectionDto"
+          },
+          "space": {
+            "description": "The space it belongs to.",
+            "$ref": "#/components/schemas/SpaceDto"
+          },
+          "jsonSchema": {
+            "description": "JSON Schema (draft 2020-12) of a record's `properties` object.",
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "example": {
+            "description": "A valid example `properties` object: one value per writable property. Relation and actor properties are left out; they need real record and member ids.",
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateDto"
+            },
+            "description": "Record templates, default first."
+          },
+          "statistics": {
+            "description": "Counts; filled once records exist.",
+            "$ref": "#/components/schemas/CollectionStatisticsDto"
+          }
+        },
+        "description": "Everything an agent needs to work with a collection, in one response."
+      },
+      "CollectionDto": {
+        "required": [
+          "id",
+          "spaceId",
+          "name",
+          "description",
+          "titlePropertyKey",
+          "schemaVersion",
+          "schema",
+          "createdBy",
+          "createdAt",
+          "archivedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Collection id.",
+            "format": "uuid"
+          },
+          "spaceId": {
+            "type": "string",
+            "description": "Space the collection belongs to.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name, unique within the space."
+          },
+          "description": {
+            "type": "string",
+            "description": "What the collection holds and when to add a record. Written for agents."
+          },
+          "titlePropertyKey": {
+            "type": "string",
+            "description": "Key of the title property (always `title`)."
+          },
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Increments with every schema change; send it as `expectedSchemaVersion` to avoid lost updates.",
+            "format": "int32"
+          },
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyDefinitionDto"
+            },
+            "description": "Ordered property definitions."
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Actor that created the collection.",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when archived; archived collections are read-only.",
+            "format": "date-time"
+          }
+        },
+        "description": "A collection with its schema."
+      },
+      "CollectionSchemaDto": {
+        "required": [
+          "collectionId",
+          "schemaVersion",
+          "titlePropertyKey",
+          "properties",
+          "jsonSchema"
+        ],
+        "type": "object",
+        "properties": {
+          "collectionId": {
+            "type": "string",
+            "description": "Collection id.",
+            "format": "uuid"
+          },
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Current version; send it as `expectedSchemaVersion` with the next change.",
+            "format": "int32"
+          },
+          "titlePropertyKey": {
+            "type": "string",
+            "description": "Key of the title property."
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyDefinitionDto"
+            },
+            "description": "Ordered property definitions."
+          },
+          "jsonSchema": {
+            "description": "JSON Schema (draft 2020-12) of a record's `properties` object.",
+            "$ref": "#/components/schemas/JsonObject"
+          }
+        },
+        "description": "The schema of a collection, as definitions and as JSON Schema."
+      },
+      "CollectionStatisticsDto": {
+        "required": [
+          "recordCount"
+        ],
+        "type": "object",
+        "properties": {
+          "recordCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Number of records; null until records exist (AP-007).",
+            "format": "int64"
+          }
+        },
+        "description": "Counts of a collection."
+      },
       "CreateActorRequest": {
         "required": [
           "kind",
@@ -1478,6 +3040,48 @@
         },
         "description": "Optional body of `POST /actors/{id}/keys`."
       },
+      "CreateCollectionRequest": {
+        "required": [
+          "spaceId",
+          "name",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "spaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Space the collection belongs to (see GET /spaces).",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Display name, unique within the space, max. 200 characters, e.g. `Entscheidungen`."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Required, max. 4000 characters: what a record is, when to add one, what matters. Agents decide by it."
+          },
+          "schema": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PropertyDefinitionInput"
+            },
+            "description": "Property definitions in display order. Optional; the title property (key `title`, text) is added in front when missing."
+          }
+        }
+      },
       "CreatedApiKeyDto": {
         "required": [
           "key",
@@ -1494,6 +3098,89 @@
             "$ref": "#/components/schemas/ApiKeyDto"
           }
         }
+      },
+      "CreateSpaceRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Display name, max. 200 characters, e.g. `Produkt`."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the space is for, max. 2000 characters. Agents read it to decide where things belong."
+          },
+          "icon": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Emoji or icon name, max. 64 characters."
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Position in the navigation; default: after the last space.",
+            "format": "int32"
+          }
+        }
+      },
+      "CreateTemplateBody": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Display name, unique in the collection."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When to use the template."
+          },
+          "propertiesPreset": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Property values by key, validated against the schema."
+          },
+          "bodyMarkdown": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Starting Markdown body."
+          },
+          "isDefault": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Make it the collection's default template."
+          }
+        },
+        "description": "Body of `POST /collections/{collectionId}/templates`."
       },
       "CreateWorkspaceRequest": {
         "required": [
@@ -1531,6 +3218,10 @@
             "description": "Structure to start with. Only `empty` for now (also the default when omitted)."
           }
         }
+      },
+      "JsonElement": { },
+      "JsonObject": {
+        "type": "object"
       },
       "LoginRequest": {
         "required": [
@@ -1734,6 +3425,529 @@
           }
         }
       },
+      "PropertyChangeInput": {
+        "required": [
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of the property to change. Keys are immutable."
+          },
+          "newKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Not supported: keys cannot be renamed. Add a new property and remove the old one instead."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New display name."
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New type; only text ↔ markdown and select → multi_select are allowed."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New description; an empty string clears it."
+          },
+          "required": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a value is required."
+          },
+          "options": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PropertyOptionInput"
+            },
+            "description": "New complete list of options (replaces the old list)."
+          },
+          "default": {
+            "description": "New default value."
+          },
+          "clearDefault": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "true removes the default."
+          },
+          "unit": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "number: new unit; an empty string clears it."
+          },
+          "precision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "number: new maximum decimal places.",
+            "format": "int32"
+          },
+          "multiple": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "relation: true allows several references (cannot be undone)."
+          },
+          "targetCollectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "relation: cannot change; listed so a change attempt is reported instead of ignored.",
+            "format": "uuid"
+          }
+        },
+        "description": "Partial change of one existing property. Null leaves a field unchanged."
+      },
+      "PropertyDefinitionDto": {
+        "required": [
+          "key",
+          "name",
+          "type",
+          "description",
+          "required",
+          "readOnly",
+          "options",
+          "targetCollectionId",
+          "multiple",
+          "default",
+          "unit",
+          "precision"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "snake_case identifier; the key in a record's `properties`. Immutable."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "type": {
+            "description": "Value type, e.g. `text`, `status`, `relation`.",
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What belongs in the property. Written for agents."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "A value must be present on every record."
+          },
+          "readOnly": {
+            "type": "boolean",
+            "description": "Computed by the system (created_at, updated_at, created_by, updated_by); never send it."
+          },
+          "options": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PropertyOptionDto"
+            },
+            "description": "Choices of select, multi_select and status; null for other types."
+          },
+          "targetCollectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Relation only: collection of the referenced records.",
+            "format": "uuid"
+          },
+          "multiple": {
+            "type": "boolean",
+            "description": "Relation only: several references allowed."
+          },
+          "default": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Value new records get when they do not set the property.",
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "unit": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Number only: unit, e.g. `h`."
+          },
+          "precision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Number only: maximum decimal places.",
+            "format": "int32"
+          }
+        },
+        "description": "One property of a collection schema."
+      },
+      "PropertyDefinitionInput": {
+        "required": [
+          "key",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "snake_case identifier, unique in the collection, immutable: `^[a-z][a-z0-9_]{0,62}$`, e.g. `due_date`."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Display name, e.g. `Due date`."
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "One of text, markdown, number, checkbox, select, multi_select, status, date, datetime, url, email, relation, actor, json, created_at, updated_at, created_by, updated_by."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What belongs in the property, written for agents. Strongly recommended."
+          },
+          "required": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "A value must be present on every record. Default false (title: always true)."
+          },
+          "options": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PropertyOptionInput"
+            },
+            "description": "select, multi_select, status: the choices. Status options need a group (todo, in_progress, done)."
+          },
+          "targetCollectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "relation: the collection (same workspace) whose records are referenced.",
+            "format": "uuid"
+          },
+          "multiple": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "relation: allow several references. Default false."
+          },
+          "default": {
+            "description": "Value for new records that leave the property out. Not for relation, actor and computed types."
+          },
+          "unit": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "number: unit shown next to the value, e.g. `h`."
+          },
+          "precision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "number: maximum decimal places, 0-10 (0 = whole numbers).",
+            "format": "int32"
+          }
+        },
+        "description": "A property definition as sent by clients. Strings instead of enums, so unknown values get a field error with the allowed values."
+      },
+      "PropertyOptionDto": {
+        "required": [
+          "value",
+          "label",
+          "color",
+          "group"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "Stored value (case-sensitive). Send this in record properties."
+          },
+          "label": {
+            "type": "string",
+            "description": "Display text."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "UI color, if set."
+          },
+          "group": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Status only: `todo`, `in_progress` or `done`.",
+                "$ref": "#/components/schemas/StatusGroup"
+              }
+            ]
+          }
+        },
+        "description": "A choice of a select, multi_select or status property."
+      },
+      "PropertyOptionInput": {
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Stored value, unique in the property, case-sensitive, e.g. `high`."
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Display text; defaults to the value."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "gray, brown, orange, yellow, green, blue, purple, pink or red."
+          },
+          "group": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Status only, required there: todo, in_progress or done."
+          }
+        },
+        "description": "A choice of a select, multi_select or status property."
+      },
+      "PropertyType": {
+        "enum": [
+          "text",
+          "markdown",
+          "number",
+          "checkbox",
+          "select",
+          "multi_select",
+          "status",
+          "date",
+          "datetime",
+          "url",
+          "email",
+          "relation",
+          "actor",
+          "json",
+          "created_at",
+          "updated_at",
+          "created_by",
+          "updated_by"
+        ],
+        "description": "Type of a property (architecture §2, \"Property-Typen\"). Wire and storage names are snake_case,\ne.g. `multi_select`; `datetime` is written as one word. Values are stable: add, never renumber."
+      },
+      "SpaceDto": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "icon",
+          "sortOrder",
+          "createdBy",
+          "createdAt",
+          "archivedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Space id; collections reference it as `spaceId`.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the space is for."
+          },
+          "icon": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Emoji or icon name."
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Position in the navigation, ascending.",
+            "format": "int32"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Actor that created the space.",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when archived; archived spaces are read-only.",
+            "format": "date-time"
+          }
+        },
+        "description": "A space of the workspace."
+      },
+      "StatusGroup": {
+        "enum": [
+          "todo",
+          "in_progress",
+          "done",
+          null
+        ]
+      },
+      "TemplateDto": {
+        "required": [
+          "id",
+          "collectionId",
+          "name",
+          "description",
+          "propertiesPreset",
+          "bodyMarkdown",
+          "isDefault",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template id; pass it as `templateId` when creating a record.",
+            "format": "uuid"
+          },
+          "collectionId": {
+            "type": "string",
+            "description": "Collection the template belongs to.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name, unique within the collection."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When to use the template."
+          },
+          "propertiesPreset": {
+            "type": "object",
+            "description": "Property values (by key) a new record starts with."
+          },
+          "bodyMarkdown": {
+            "type": "string",
+            "description": "Markdown body a new record starts with."
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Used when a record is created without naming a template."
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Actor that created the template.",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A record template of a collection."
+      },
       "UpdateActorBody": {
         "required": [
           "name",
@@ -1773,6 +3987,26 @@
         },
         "description": "Body of `PATCH /actors/{id}`; the id comes from the route."
       },
+      "UpdateCollectionBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New display name, unique in the space."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New description; cannot be cleared."
+          }
+        },
+        "description": "Body of `PATCH /collections/{collectionId}`; null leaves a field unchanged."
+      },
       "UpdateMemberBody": {
         "required": [
           "role",
@@ -1797,6 +4031,137 @@
           }
         },
         "description": "Body of `PATCH /members/{actorId}`; the actor comes from the route."
+      },
+      "UpdateSchemaBody": {
+        "type": "object",
+        "properties": {
+          "add": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PropertyDefinitionInput"
+            },
+            "description": "New properties, appended in this order."
+          },
+          "update": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PropertyChangeInput"
+            },
+            "description": "Changes to existing properties, by key."
+          },
+          "remove": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Keys to remove; needs confirmRemoval."
+          },
+          "confirmRemoval": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "true confirms changes that lose values: removed properties or options, lower precision, markdown → text."
+          },
+          "expectedSchemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Apply only if the schema is still at this version.",
+            "format": "int32"
+          }
+        },
+        "description": "Body of `PATCH /collections/{collectionId}/schema`. At least one of add, update, remove."
+      },
+      "UpdateSpaceBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New display name."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New description; \"\" clears it."
+          },
+          "icon": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New icon; \"\" clears it."
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "New position in the navigation.",
+            "format": "int32"
+          }
+        },
+        "description": "Body of `PATCH /spaces/{spaceId}`; null leaves a field unchanged."
+      },
+      "UpdateTemplateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New display name."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New description; \"\" clears it."
+          },
+          "propertiesPreset": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "New complete preset."
+          },
+          "bodyMarkdown": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New body; \"\" clears it."
+          },
+          "isDefault": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "true makes it the default; false removes the flag."
+          }
+        },
+        "description": "Body of `PATCH /collections/{collectionId}/templates/{templateId}`; null leaves a field unchanged."
       },
       "UpdateWorkspaceRequest": {
         "type": "object",
@@ -1913,6 +4278,15 @@
     },
     {
       "name": "Members"
+    },
+    {
+      "name": "Spaces"
+    },
+    {
+      "name": "Collections"
+    },
+    {
+      "name": "Templates"
     }
   ]
 }

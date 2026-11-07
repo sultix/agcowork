@@ -19,4 +19,14 @@ public static class ErrorCodes
     public const string NotAllowed = "not_allowed";
     public const string Conflict = "conflict";
     public const string ActorInactive = "actor_inactive";
+
+    // Field codes of schemas and property values (AP-006). Schema rules live in the domain; the codes are shared.
+    public const string InvalidType = "invalid_type";
+    public const string UnknownProperty = "unknown_property";
+    public const string ReadOnly = "read_only";
+    public const string Duplicate = Domain.Collections.Schema.SchemaViolationCodes.Duplicate;
+    public const string Reserved = Domain.Collections.Schema.SchemaViolationCodes.Reserved;
+    public const string TypeChangeNotAllowed = Domain.Collections.Schema.SchemaViolationCodes.TypeChangeNotAllowed;
+    public const string KeyImmutable = Domain.Collections.Schema.SchemaViolationCodes.KeyImmutable;
+    public const string RemovalNotConfirmed = "removal_not_confirmed";
 }

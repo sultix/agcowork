@@ -2,8 +2,10 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Collections;
 using Agcowork.Domain.Common;
 using Agcowork.Domain.Identity;
+using Agcowork.Domain.Spaces;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -26,6 +28,12 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
     public DbSet<Workspace> Workspaces => Set<Workspace>();
 
     public DbSet<Membership> Memberships => Set<Membership>();
+
+    public DbSet<Space> Spaces => Set<Space>();
+
+    public DbSet<Collection> Collections => Set<Collection>();
+
+    public DbSet<Template> Templates => Set<Template>();
 
     public DbSet<Actor> Actors => Set<Actor>();
 

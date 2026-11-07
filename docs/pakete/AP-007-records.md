@@ -60,6 +60,15 @@ Actor. Updates können eine erwartete Revision mitgeben, damit sich zwei Agenten
 - Property-Validierung und -Normalisierung kommen aus AP-006 (`PropertyValueValidator`, `PropertyValueNormalizer`); nicht duplizieren.
 - Record-Vorlagen (`Template`) aus AP-006: `PropertiesPreset` wird mit den gesendeten Properties gemischt (gesendet gewinnt), `BodyMarkdown` wird Body, wenn keiner gesendet wurde.
 
+## Ergänzungen aus AP-006 (Bericht)
+
+- `IRelationTargetChecker` echt implementieren (heute `NoRecordsRelationTargetChecker` per `TryAdd`; eigene Registrierung muss diese ersetzen).
+- Beim Entfernen von Properties (`UpdateSchema` mit `confirmRemoval`) die Werte aus den Records löschen (JSONB-Update, tenant-gefiltert, ohne `IgnoreQueryFilters`); AP-006 bereinigt nur Template-Presets.
+- `CollectionStatisticsDto.RecordCount` in `DescribeCollection` füllen.
+- Beim Anlegen aus Vorlage das Preset erneut gegen das aktuelle Schema prüfen (Options können entfernt worden sein).
+- `ISchemaChangedHook` (aus AP-006-Nacharbeit) registrieren: bei entfernten Keys, entfernten Options, gesenkter Präzision und markdown→text die Record-Werte bereinigen bzw. kürzen (tenant-gefiltert, in derselben Unit of Work). Trimmen von Property-Strings ist Normalizer-Verhalten; Präfixe wie `"Bug: "` nicht aus Properties zusammensetzen.
+- `PropertyValidationMode.Full` verlangt `title` im Properties-Dictionary: Titel beim Validieren hineinmischen oder separat prüfen; eine Stelle, dokumentiert.
+
 ## Akzeptanzkriterien
 
 1. Agent mit `write` legt einen Record in einer Collection an (mit und ohne Vorlage); `GET` liefert ihn als JSON und als Markdown mit Frontmatter (Properties, Revision, Zeitstempel).
