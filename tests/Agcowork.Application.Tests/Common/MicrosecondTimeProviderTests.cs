@@ -22,7 +22,9 @@ public sealed class MicrosecondTimeProviderTests
     {
         var provider = new MicrosecondTimeProvider();
 
-        var difference = TimeProvider.System.GetUtcNow() - provider.GetUtcNow();
+        // Truncation can only move the value backwards, so read the provider first.
+        var truncated = provider.GetUtcNow();
+        var difference = TimeProvider.System.GetUtcNow() - truncated;
 
         Assert.InRange(difference, TimeSpan.Zero, TimeSpan.FromSeconds(1));
     }

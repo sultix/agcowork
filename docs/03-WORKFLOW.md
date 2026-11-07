@@ -136,6 +136,7 @@ sequenceDiagram
 - **Sonnet funktioniert bei klaren Mustern** (AP-003, AP-008, AP-010, AP-014, AP-016, AP-017), braucht aber eine Nacharbeitsrunde mehr als Opus bei Randfällen (Datenverlust-Pfade, Nebenläufigkeit). Opus für alles, was Sperren, Parser oder Adapter-Verträge betrifft.
 - **Entscheidungen sofort in die Architektur** (Sperr-Reihenfolge, Scopes, destruktive Schemaänderungen, Normalisierung, Bild-Platzhalter), sonst entscheiden Folgepakete anders.
 - **Nutzungslimit:** Unterbrochene Agenten per Nachricht fortsetzen, nicht neu starten; der Arbeitsbaum bleibt erhalten.
+- **CI auf Linux ist die Wahrheit, lokal ist macOS.** Die .NET-Uhr hat auf macOS Mikrosekunden-, auf Linux 100-ns-Auflösung; PostgreSQL speichert Mikrosekunden. Zeitstempel-Vergleiche vor/nach dem DB-Roundtrip fielen nur in der CI. Lösung: `MicrosecondTimeProvider` zentral, per `Replace` (ASP.NET Core registriert `TimeProvider.System` selbst), plus Host-Test. Nach jedem Push die CI abwarten, nicht nur lokale Tests.
 - **Orchestrator-Rauchtest am Ende** jeder Phase im Browser, zusätzlich zu den Paket-Prüfungen; so fiel die fehlende Vorlagenauswahl in der UI auf.
 
 ## 8. Wenn etwas schiefgeht
