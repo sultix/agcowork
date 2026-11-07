@@ -12,14 +12,14 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-006](AP-006-schema.md) | Spaces, Collections, Property-Schema, Validierung, JSON Schema, Record-Vorlagen | 1 | implementer-opus | AP-005 | in Arbeit | |
 | [AP-007](AP-007-records.md) | Records, Revisionen, Activity, optimistische Nebenläufigkeit, append | 1 | implementer-opus | AP-006 | angelegt | |
 | [AP-008](AP-008-views.md) | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | angelegt | |
-| AP-009 | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007 | geplant | |
+| [AP-009](AP-009-filter-dsl.md) | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007, AP-008 | angelegt | |
 | AP-010 | Workspace-Vorlage „Software-Projekt“ und `empty`, Anlage aus Vorlage | 1 | implementer-sonnet | AP-006, AP-008 | geplant | |
 | AP-011 | MCP-Server: Workspace- und Instanz-Tools, Resources, Auth, Isolationstests | 1 | implementer-opus | AP-009, AP-010 | geplant | |
 | [AP-012](AP-012-editor-bausteine.md) | Frontend: Markdown-Editor und Raw-View als Bausteine | 1 | implementer-opus | AP-002 | abgeschlossen | 2fc5c4c |
 | [AP-013](AP-013-frontend-client-login.md) | Frontend: OpenAPI-Client, Login, Session, Auth-Guard | 1 | implementer-opus | AP-004 | abgeschlossen | 72abfeb |
 | AP-014 | Frontend: Space-Navigation, Collections, Dokument-View verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | geplant | |
 | AP-015 | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, Property-Editoren | 1 | implementer-opus | AP-009, AP-013 | geplant | |
-| [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | (folgt) |
+| [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | 45c5e25 |
 | AP-017 | Frontend: Raw-View, Historie und Aktivitätsfeed verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013 | geplant | |
 
 ## Zurückgestellte Review-Hinweise
