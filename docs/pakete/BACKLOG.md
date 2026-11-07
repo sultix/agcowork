@@ -13,6 +13,6 @@ Status: angelegt · in Arbeit · im Review · Nacharbeit · abgeschlossen · zur
 | Quelle | Hinweis | Entscheidung |
 |---|---|---|
 | AP-002 Review | `HealthService` lädt `/health` nur einmal; startet das Backend später, bleibt „nicht erreichbar“ bis zum Reload | Phase 1: Polling oder Klick-Reload im Paket zur Kopfzeile/Statusanzeige |
-| AP-003 Review | `actions/*@v4` laufen auf Node 20, das GitHub 2026 abkündigt | Beim ersten Push Deprecation-Warnungen prüfen, ggf. auf aktuelle Major-Versionen heben |
+| AP-003 Review | `actions/*@v4` laufen auf Node 20, das GitHub 2026 abkündigt | Erledigt 2026-11-07: checkout v7, setup-node v7, setup-dotnet v6 |
 | AP-001 Review | `/health/ready` öffnet pro Aufruf eine DB-Verbindung und ist wie `/openapi/v1.json` in Production ohne Auth erreichbar | Wenn Hosting entschieden ist: Reverse-Proxy/Rate-Limit; OpenAPI in Production ggf. hinter Auth. In Architektur §7 vermerkt |
 | AP-002 Review | Jede 2xx-Antwort gilt als „ok“, auch `Degraded`; 503 erscheint als „nicht erreichbar“ | Phase 1: Health-JSON auswerten, drei Zustände anzeigen |
