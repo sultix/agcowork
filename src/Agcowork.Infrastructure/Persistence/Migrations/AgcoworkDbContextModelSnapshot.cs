@@ -22,6 +22,141 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Agcowork.Domain.Identity.Actor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.PrimitiveCollection<string[]>("InstanceScopes")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("instance_scopes");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("role");
+
+                    b.HasKey("Id")
+                        .HasName("pk_actors");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_actors_email")
+                        .HasFilter("email IS NOT NULL");
+
+                    b.ToTable("actors", (string)null);
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Identity.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character(8)")
+                        .HasColumnName("prefix")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.PrimitiveCollection<string[]>("Scopes")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("scopes");
+
+                    b.Property<byte[]>("SecretHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("secret_hash");
+
+                    b.Property<Guid?>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_api_keys");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_api_keys_actor_id");
+
+                    b.HasIndex("Prefix")
+                        .IsUnique()
+                        .HasDatabaseName("ix_api_keys_prefix");
+
+                    b.ToTable("api_keys", (string)null);
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Identity.LocalLogin", b =>
+                {
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ActorId")
+                        .HasName("pk_local_logins");
+
+                    b.ToTable("local_logins", (string)null);
+                });
+
             modelBuilder.Entity("Agcowork.Domain.Workspaces.Workspace", b =>
                 {
                     b.Property<Guid>("Id")
@@ -52,6 +187,26 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_workspaces_slug");
 
                     b.ToTable("workspaces", (string)null);
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Identity.ApiKey", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Identity.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_api_keys_actors_actor_id");
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Identity.LocalLogin", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Identity.Actor", null)
+                        .WithOne()
+                        .HasForeignKey("Agcowork.Domain.Identity.LocalLogin", "ActorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_local_logins_actors_actor_id");
                 });
 #pragma warning restore 612, 618
         }

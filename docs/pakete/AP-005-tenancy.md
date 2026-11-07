@@ -60,6 +60,14 @@ unschreibbar macht, und ein Isolations-Testmuster, das alle folgenden Pakete kop
 - Actors und Keys kommen aus AP-004; Key-Scopes und Workspace-Einschränkung werden hier erstmals ausgewertet.
 - IDs UUIDv7, Zeit über `TimeProvider`, keine Retry-Strategie, Transaktionen direkt (Workspace + Owner-Membership in einer Transaktion).
 
+## Ergänzungen aus AP-004 (Bericht)
+
+- `instance:admin` **impliziert** `workspaces:create` (Entscheidung Orchestrator). `RequireInstanceScope` entsprechend auslegen.
+- Testhilfen heißen `CreateAdminClientAsync`, `CreateAgentClientAsync(params scopes)`, `CreateAgentAsync(...)` → `TestAgent(ActorId, ApiKeyId, Key, Client)`.
+- `ICurrentActor.KeyScopes` und Claim `key_scope` werden bereits durchgereicht; `api_keys.workspace_id` bekommt hier den Fremdschlüssel.
+- `AuthenticateApiKey` lädt Key und Actor getrackt in den scoped DbContext. Prüfen, ob der Tenant-Filter damit kollidiert (Actor ist keine Tenant-Entität, sollte also unkritisch sein).
+- `GET /actors` ohne Paginierung; nicht hier lösen.
+
 ## Akzeptanzkriterien
 
 1. Ein Actor mit `workspaces:create` legt per `POST /api/v1/workspaces` einen Workspace an und ist danach Owner; `GET /api/v1/workspaces` listet ihn mit Rolle; ein Agent ohne das Recht bekommt 403.

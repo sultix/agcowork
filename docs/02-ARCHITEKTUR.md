@@ -346,6 +346,36 @@ agcowork.sln
 Templates), `Records`, `Views`, `Query` (Filter-DSL), `Activity` (Revisions, Events),
 `Comments`, `Identity` (Actors, Keys, Scopes, Instanz-Admin), `Search`, `Realtime`.
 
+### Use-Case- und Fehler-Muster (aus AP-004, verbindlich für alle Backend-Pakete)
+
+- **Use-Case** = eine `sealed class` pro Operation mit Primärkonstruktor, implementiert
+  `IUseCase<TRequest, TResponse>` (liefert `Result<T>`) oder `IUseCase<TRequest>` (liefert `Result`).
+  Der Request-Record steht in derselben Datei. Reihenfolge im Code: **autorisieren → validieren →
+  Zustand prüfen → ändern und speichern → mappen**. `AddApplication()` registriert alle Use-Cases
+  per Assembly-Scan (scoped); Endpunkte injizieren den konkreten Typ.
+- **Autorisierung im Use-Case**, nicht nur am Endpunkt:
+  `if (currentActor.RequireInstanceScope(InstanceScope.Admin) is { } denied) return denied;`
+  (ab AP-005 analog `RequireScope("write")` gegen die effektiven Workspace-Scopes).
+- **Result/Fehler** (`Application/Common/Results`): eigener Typ, implizite Konvertierungen für Wert
+  und Fehler. Fehlertypen `ValidationError(FieldError[])`, `NotFoundError`, `ForbiddenError`,
+  `UnauthorizedError` (Grund nur ins Log), `ConflictError(Code, Message, Field?)`. Feldfehler über
+  `FieldErrors` (`Required`, `MaxLength`, `OneOf`, `AllOneOf`); Listenelemente heißen `field[i]`.
+- **Datenzugriff** über `IAgcoworkDbContext` (DbSets), keine Repositories.
+- **Unique-Verletzungen** werden zentral übersetzt: `SaveChangesOrConflictAsync(ct, UniqueConflict("ix_…", new ConflictError("…_taken", …)))`; der Context wirft bei SqlState 23505 eine `UniqueConstraintViolationException(ConstraintName)`. Check-then-insert bleibt als schneller Pfad, der Konfliktpfad ist die Wahrheit. Nach einem Konflikt den Fehler zurückgeben, nicht erneut speichern.
+- **Listen** einheitlich `Result.Success<IReadOnlyList<T>>(…)` (implizite Konvertierung greift bei Interface-T nicht).
+- **Authorization-Requirements** mit DI-Abhängigkeiten (z. B. Membership-Lookup) brauchen einen separaten `AuthorizationHandler<T>`; Requirement+Handler in einer Klasse nur ohne Abhängigkeiten.
+- **Endpunkte** unter `Api/Endpoints/<Modul>/…`, Gruppe `/api/v1` mit `RequireAuthorization` als
+  Standard. Handler-Signatur `Task<Results<Ok<T>, ProblemHttpResult>>`, Rückgabe
+  `result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem()`. Mit Routenparametern
+  gibt es einen eigenen Body-Record, sonst ist der Request-Record der Body.
+- **Fehlerformat** (RFC 9457, festgenagelt in `ProblemDetailsFormatTests`): `type`, `title`,
+  `status`, `code` (maschinenlesbar, immer), `detail` nur bei 400/403/409, `errors[]` mit `field`,
+  `code`, `message`, optional `allowed`, dazu `traceId`. 401 ohne Details, 404 ohne Existenzhinweis.
+- **Tests**: Domain-Unit; Application-Tests gegen Testcontainers-Postgres (`PostgresFixture`, Schema
+  einmal in Template-DB, pro Test eigene DB per `CREATE DATABASE … TEMPLATE`, Basisklasse `DatabaseTest`);
+  Api-Integration mit Testcontainers über `AgcoworkApiFactory` (`CreateAdminClientAsync`, `CreateAgentClientAsync(scopes)`,
+  `CreateAgentAsync` → `TestAgent`).
+
 ### Wichtige technische Punkte
 
 - **Properties-Validierung** zentral im Application Layer anhand des Collection-Schemas;

@@ -1,3 +1,8 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Agcowork.Api.Auth;
+using Agcowork.Api.Endpoints;
+using Agcowork.Api.Http;
 using Agcowork.Application;
 using Agcowork.Infrastructure;
 using Agcowork.Infrastructure.Persistence;
@@ -18,13 +23,40 @@ builder.EnrichNpgsqlDbContext<AgcoworkDbContext>(settings =>
     settings.DisableRetry = true;
 });
 
-builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
+// Enums travel as snake_case strings ("human", "agent").
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)));
+
+// Every error response is ProblemDetails with a machine-readable "code" (see ProblemDetailsMapping).
+builder.Services.AddProblemDetails(options =>
+    options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Extensions.TryAdd(
+            ProblemDetailsMapping.CodeExtension,
+            ProblemDetailsMapping.CodeForStatus(context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode));
+
+        // Binding failures (malformed JSON, wrong content type) say which parameter failed; safe to expose.
+        if (context.Exception is BadHttpRequestException badRequest)
+        {
+            context.ProblemDetails.Detail ??= badRequest.Message;
+        }
+    });
+builder.Services.AddOpenApi(options => options.AddSchemaTransformer<ProblemDetailsSchemaTransformer>());
+builder.Services.AddAgcoworkAuthentication(builder.Environment);
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
+app.UseExceptionHandler(new ExceptionHandlerOptions
+{
+    // Malformed JSON and similar binding failures are client errors, not 500s.
+    StatusCodeSelector = exception => exception is BadHttpRequestException badRequest
+        ? badRequest.StatusCode
+        : StatusCodes.Status500InternalServerError,
+});
 app.UseStatusCodePages();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapOpenApi();
 if (app.Environment.IsDevelopment())
@@ -33,7 +65,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapDefaultEndpoints();
+app.MapApiV1();
 
 await app.Services.ApplyMigrationsAsync();
+await app.Services.BootstrapIdentityAsync();
 
 await app.RunAsync();

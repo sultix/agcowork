@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Agcowork.Application\Agcowork.Application.csproj" />
+    <!-- For the real AgcoworkDbContext (on PostgreSQL), password hasher and key generator. -->
+    <ProjectReference Include="..\..\src\Agcowork.Infrastructure\Agcowork.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

@@ -5,6 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- EF Core (provider-agnostic) so use cases can query DbSets via IAgcoworkDbContext. No provider here. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 

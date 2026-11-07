@@ -1,3 +1,6 @@
+using Agcowork.Application.Common.Persistence;
+using Agcowork.Application.Identity;
+using Agcowork.Infrastructure.Identity;
 using Agcowork.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +23,12 @@ public static class DependencyInjection
         // Resolve the connection string lazily so hosts and test factories can supply it late.
         services.AddDbContext<AgcoworkDbContext>((sp, options) =>
             AgcoworkDbContextOptions.Configure(options, GetConnectionString(configuration)));
+        services.AddScoped<IAgcoworkDbContext>(sp => sp.GetRequiredService<AgcoworkDbContext>());
+
+        services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
+        services.AddSingleton<IApiKeyGenerator, ApiKeyGenerator>();
+        services.AddOptions<BootstrapOptions>().Bind(configuration.GetSection(BootstrapOptions.SectionName));
+        services.AddScoped<IdentityBootstrapper>();
 
         services.AddHealthChecks()
             .AddNpgSql(_ => GetConnectionString(configuration), name: "postgres", tags: [ReadyTag]);
@@ -35,6 +44,19 @@ public static class DependencyInjection
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
         await db.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates the bootstrap admin from <see cref="BootstrapOptions"/> if the installation has no
+    /// actors yet. Call after <see cref="ApplyMigrationsAsync"/>.
+    /// </summary>
+    public static async Task BootstrapIdentityAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        await using var scope = services.CreateAsyncScope();
+        var bootstrapper = scope.ServiceProvider.GetRequiredService<IdentityBootstrapper>();
+        await bootstrapper.RunAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static string GetConnectionString(IConfiguration configuration) =>

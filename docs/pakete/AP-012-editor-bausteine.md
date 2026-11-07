@@ -91,4 +91,4 @@ mit Records.
 | 2026-11-07 | an reviewer übergeben |
 | 2026-11-07 | Review: Freigabe mit Hinweisen. Wichtig: Listen-Test normalisiert Einrückung weg (nicht beweiskräftig); Editor normalisiert beim Bearbeiten das ganze Dokument (Escapes, Autolinks, `*`→`-`), Entscheidung vor Record-Anbindung; Destroy-Verlust bekannt. Hinweise: javascript:-Links filtert Milkdown bereits (Allowlist), nur img-src offen; kein Fehlerzustand bei fehlgeschlagenem Nachladen; Monaco-Adapter ohne Test; `token()` nur Hex; drei verwaiste CSS-Chunks |
 | 2026-11-07 | Entscheidungen: Normalisierung akzeptiert (Architektur E2 ergänzt). Nacharbeit an implementer-opus: Listen-Test mit Einrückung, Link-Filter-Test, Fehlerzustand beim Nachladen |
-| 2026-11-07 | Nacharbeit fertig: 80 Tests grün, Lint/Build grün, Initial 285 kB; vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |
+| 2026-11-07 | Nacharbeit fertig: 80 Tests grün, Lint/Build grün, Initial 285 kB; vom Orchestrator verifiziert. Abgeschlossen, Commit `2fc5c4c` |

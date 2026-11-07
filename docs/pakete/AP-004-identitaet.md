@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten von Use-Cases, Endpunkten, Fehlerformat) |
@@ -98,3 +98,8 @@ Use-Case-Klassen, Result/Fehler-Typ, Fehlerformat auf dem Draht, Endpunkt-Gruppe
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: 139 Tests grün (51 Domain, 44 Application, 44 Api). Muster: `IUseCase<TReq,TRes>` + `Result<T>` mit impliziten Konvertierungen, `FieldErrors`, `IAgcoworkDbContext` ohne Repositories, Endpunkte unter `Api/Endpoints/<Modul>`, ProblemDetails mit `code`, `errors[]`, `traceId`. Entscheidungen: Base62-Keys, konstantzeitige Fehlversuche, Session wird pro Request gegen DB geprüft, kein CSRF-Token (begründet), Initialpasswort bei `POST /actors`, `self_lockout`-Schutz. Offen: OpenAPI-Schema für ProblemDetails, Unique-Race → 500, keine Paginierung |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen. Wichtig: Agent mit `email: ""` → 500 statt 400; Cookie-Secure hängt am Host-Header (hinter nginx ohne Host-Weitergabe unsicher); Unique-Race → 500 statt 409 als Muster gefährlich. Hinweise: traceId nicht festgenagelt, Listen-Rückgaben uneinheitlich, Requirement+Handler-Muster nur ohne DI, getrackte Auth-Entitäten, kein Passwort-Reset, zustandslose Cookies/DataProtection-Keys nicht persistiert, fehlende Tests, OpenAPI ohne ProblemDetails-Felder. Sicherheit positiv verifiziert (Hashing, konstantzeitig, keine Enumeration, keine Secrets im Log) |
+| 2026-11-07 | Nacharbeit an implementer-opus: 10 Punkte (E-Mail-Normalisierung, Secure-Policy, 23505→409 zentral, traceId-Assert, Listen einheitlich, Kommentare, AsNoTracking, Tests, Bootstrap-Passwortpolicy, OpenAPI-Transformer) |
+| 2026-11-07 | Nacharbeit fertig: 157 Tests grün, 0 Warnungen; Application-Tests laufen jetzt gegen Testcontainers (Template-DB pro Test), InMemory-Provider entfernt; `SaveChangesOrConflictAsync` + `UniqueConflict` als Muster für 23505→409. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |

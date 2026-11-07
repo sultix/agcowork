@@ -9,10 +9,17 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Agcowork.Application.Tests" />
+    <InternalsVisibleTo Include="Agcowork.Api.Tests" />
   </ItemGroup>
 
 </Project>

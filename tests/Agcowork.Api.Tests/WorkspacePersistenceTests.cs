@@ -1,3 +1,4 @@
+using Agcowork.Application.Common.Persistence;
 using Agcowork.Domain.Workspaces;
 using Agcowork.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -56,7 +57,9 @@ public sealed class WorkspacePersistenceTests(AgcoworkApiFactory factory)
             var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
             db.Workspaces.Add(Workspace.Create(slug, "Second", clock));
 
-            var exception = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync(ct));
+            // AgcoworkDbContext translates unique violations; the provider exception stays the inner exception.
+            var exception = await Assert.ThrowsAsync<UniqueConstraintViolationException>(() => db.SaveChangesAsync(ct));
+            Assert.Equal("ix_workspaces_slug", exception.ConstraintName);
             var postgres = Assert.IsType<PostgresException>(exception.InnerException);
             Assert.Equal(PostgresErrorCodes.UniqueViolation, postgres.SqlState);
             Assert.Equal("ix_workspaces_slug", postgres.ConstraintName);
