@@ -10,14 +10,14 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-004](AP-004-identitaet.md) | Identität: Actors, API-Keys, Login, Auth-Pipeline, Instanz-Endpunkte | 1 | implementer-opus | AP-001 | abgeschlossen | 7680648 |
 | [AP-005](AP-005-tenancy.md) | Tenancy: Workspace, Membership, Tenant-Kontext, Query-Filter, Members-Endpunkte, Isolations-Fixture | 1 | implementer-opus | AP-004 | abgeschlossen | 9ed0093 |
 | [AP-006](AP-006-schema.md) | Spaces, Collections, Property-Schema, Validierung, JSON Schema, Record-Vorlagen | 1 | implementer-opus | AP-005 | abgeschlossen | b0ad4fd |
-| [AP-007](AP-007-records.md) | Records, Revisionen, Activity, optimistische Nebenläufigkeit, append | 1 | implementer-opus | AP-006 | in Arbeit | |
+| [AP-007](AP-007-records.md) | Records, Revisionen, Activity, optimistische Nebenläufigkeit, append | 1 | implementer-opus | AP-006 | im Review | |
 | [AP-008](AP-008-views.md) | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | angelegt | |
 | [AP-009](AP-009-filter-dsl.md) | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007, AP-008 | angelegt | |
 | [AP-010](AP-010-workspace-vorlage.md) | Workspace-Vorlage „Software-Projekt“ und `empty`, Anlage aus Vorlage | 1 | implementer-sonnet | AP-006, AP-008 | angelegt | |
 | AP-011 | MCP-Server: Workspace- und Instanz-Tools, Resources, Auth, Isolationstests | 1 | implementer-opus | AP-009, AP-010 | geplant | |
 | [AP-012](AP-012-editor-bausteine.md) | Frontend: Markdown-Editor und Raw-View als Bausteine | 1 | implementer-opus | AP-002 | abgeschlossen | 2fc5c4c |
 | [AP-013](AP-013-frontend-client-login.md) | Frontend: OpenAPI-Client, Login, Session, Auth-Guard | 1 | implementer-opus | AP-004 | abgeschlossen | 72abfeb |
-| AP-014 | Frontend: Space-Navigation, Collections, Dokument-View verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | geplant | |
+| [AP-014](AP-014-frontend-dokument.md) | Frontend: Space-Navigation, Collections, Record-Liste, Dokument-View, Property-Editoren | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | angelegt | |
 | AP-015 | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, Property-Editoren | 1 | implementer-opus | AP-009, AP-013 | geplant | |
 | [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | 45c5e25 |
 | AP-017 | Frontend: Raw-View, Historie und Aktivitätsfeed verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013 | geplant | |
@@ -29,6 +29,9 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-002 Review | `HealthService` lädt `/health` nur einmal; startet das Backend später, bleibt „nicht erreichbar“ bis zum Reload | Phase 1: Polling oder Klick-Reload im Paket zur Kopfzeile/Statusanzeige |
 | AP-012 Review | `javascript:`-Links filtert Milkdown bereits (Allowlist http/https/mailto/tel/ftp, Test folgt); Markdown-Bilder laden als `<img src>` von fremder Herkunft (Tracking/IP-Leak) | **Vor AP-014 entscheiden**: Bilder nur von eigener Herkunft oder Proxy, sonst Platzhalter |
 | AP-012 Review | Monaco-Adapter ohne Test; `token()` liest nur 6-stellige Hex-Werte; drei verwaiste CSS-Chunks (3×186 kB) im Build | Phase 2: Adapter-Test im Browser (Playwright), Token-Parser erweitern, wenn Tokens auf oklch wechseln |
+| AP-007 Bericht | Activity `Seq` ist Identity: Leser in kurzen Abständen können Events überspringen, deren Transaktion später committet | Phase 2 (SignalR/Outbox): Outbox mit Commit-Reihenfolge oder `pg_current_xact_id`-Fenster |
+| AP-007 Bericht | Migration `AddRecords` braucht Extension `btree_gin` (in postgres:17 enthalten) | Beim Hosting-Entscheid prüfen, ob die gehostete DB sie erlaubt |
+| AP-007 Bericht | `RecordValuesSchemaHook` bereinigt ohne Revision; Update parallel zur Schemaänderung kann entfernten Wert zurückschreiben | Phase 2: Bereinigung als Revision `schema_cleanup` + Collection-Lock während UpdateSchema |
 | AP-006 Review | `UpdateTemplate` und `UpdateSchema` ohne gemeinsames Concurrency-Token: entfernter Key kann im Preset bleiben | AP-007 prüft Presets beim Anlegen erneut; Phase 2 ggf. Token an Templates |
 | AP-006 Bericht | Self-Relations (z. B. `supersedes` in Entscheidungen) brauchen beim Anlegen die eigene Collection-ID | AP-010: Vorlage legt Collection erst ohne Self-Relation an und ergänzt sie per `UpdateSchema`, oder baut die Domain direkt |
 | AP-006 Bericht | Body-Records aus AP-004/005 erscheinen in OpenAPI mit allen Feldern als required | Kleinpaket: Default-Werte an Body-Records (Muster AP-006), danach `schema.d.ts` neu erzeugen |

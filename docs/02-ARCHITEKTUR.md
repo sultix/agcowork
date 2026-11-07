@@ -90,7 +90,7 @@ erDiagram
 
 - Keys `^[a-z][a-z0-9_]{0,62}\z`, unveränderlich; reserviert: `id`, `collection`, `space`, `revision`, `body`; `title` ist immer vorhanden und vom Typ text.
 - Erlaubte Typänderungen: text ↔ markdown, select → multi_select; Relation-Ziel unveränderlich, `multiple` nur false → true. **Destruktive Änderungen** (Feld entfernen, Option-Werte entfernen, `precision` senken, markdown → text) nur mit `confirmRemoval: true`; Entfernen + Neuanlegen desselben Keys im selben Request ist verboten.
-- Erweiterungspunkte: `ICollectionCreatedHook` (Standard-Views) und `ISchemaChangedHook` (Templates, Record-Werte, Views bereinigen) laufen vor `SaveChanges` in derselben Unit of Work. Workspace-Vorlagen müssen Collections über `CreateCollection` anlegen, damit die Hooks laufen.
+- Erweiterungspunkte: `ICollectionCreatedHook` (Standard-Views) und `ISchemaChangedHook` (Templates, Record-Werte, Views bereinigen) laufen vor `SaveChanges` in derselben Unit of Work; `UpdateSchema` öffnet dafür eine Transaktion, damit auch `ExecuteUpdate`-Bereinigungen (Record-Werte) atomar mit der Schemaänderung sind. Workspace-Vorlagen müssen Collections über `CreateCollection` anlegen, damit die Hooks laufen.
 - Scopes: Lesen `read`; Space anlegen/ändern und Collection anlegen `write`; Schema, Collection-Metadaten, Archivieren, Vorlagen pflegen `schema`.
 - relation, actor und berechnete Typen haben keinen Default; Status-Optionen brauchen eine Gruppe; Option-Farben aus fester Palette.
 - Zusammengesetzte Fremdschlüssel über `workspace_id` (Collection → Space, Template → Collection), damit die DB Verweise über Workspace-Grenzen ablehnt.
@@ -171,7 +171,8 @@ Alle Indizes beginnen mit `WorkspaceId`.
   alles plus Owner-Übertragung und Archivieren. Effektive Scopes = Membership-Scopes ∩ Key-Scopes
   (leere Key-Scopes = uneingeschränkt). `instance:admin` impliziert `workspaces:create`.
 - Owner-Invariante (mindestens ein Owner) wird unter `LockWorkspaceAsync` (`SELECT … FOR UPDATE`)
-  geprüft, damit zwei gleichzeitige Herabstufungen nicht beide durchkommen.
+  geprüft, damit zwei gleichzeitige Herabstufungen nicht beide durchkommen. Analog `LockRecordAsync`
+  für Record-Schreibzugriffe (rohes SQL, parametrisiert, mit expliziter `workspace_id`-Bedingung).
 - Indizes auf Tenant-Tabellen beginnen mit `workspace_id`; einzige Ausnahme ist der FK-Index
   `ix_memberships_actor_id` für „meine Workspaces“ (Modelltest prüft alle anderen).
 - Use-Cases prüfen `RequireWritable` (409 bei archiviert) vor `RequireScope`. Die Middleware setzt nur
@@ -352,7 +353,11 @@ revision: 3
 …
 ```
 
-Das ist das Format, das LLMs am besten lesen und schreiben.
+Das ist das Format, das LLMs am besten lesen und schreiben. Umgesetzt (AP-007): feste Felder `id`,
+`collection`, `collection_id`, `space`, `space_id`, `title`, `parent_record_id?`, `archived_at?`,
+`revision`, `created_at`, `updated_at`, `created_by`, `updated_by`; Properties als YAML-Skalare/Listen,
+bei Namenskollision mit einem festen Feld als `properties.<key>`. `GET …/records/{id}?format=markdown`
+liefert `text/markdown`. Rückweg (Frontmatter → Properties) gibt es nicht; Agenten schreiben per PATCH.
 
 ## 5. Backend-Struktur (.NET 10)
 
@@ -407,6 +412,11 @@ Templates), `Records`, `Views`, `Query` (Filter-DSL), `Activity` (Revisions, Eve
 - **Fehlerformat** (RFC 9457, festgenagelt in `ProblemDetailsFormatTests`): `type`, `title`,
   `status`, `code` (maschinenlesbar, immer), `detail` nur bei 400/403/409, `errors[]` mit `field`,
   `code`, `message`, optional `allowed`, dazu `traceId`. 401 ohne Details, 404 ohne Existenzhinweis.
+  409-Konflikte dürfen `ConflictError.Details` tragen, die als Extensions erscheinen (z. B.
+  `revision_mismatch` mit `currentRevision` und `changedKeys`).
+- **Nebenläufigkeit bei Records**: Row-Lock (`LockRecordAsync`) + `revision_no` als Concurrency-Token.
+  Ohne `expectedRevision` gewinnt der letzte Schreiber; parallele `append`s laufen lückenlos durch;
+  `expectedRevision` veraltet → 409 `revision_mismatch`. Idempotenz über `Idempotency-Key` (24 h).
 - **Tests**: Domain-Unit; Application-Tests gegen Testcontainers-Postgres (`PostgresFixture`, Schema
   einmal in Template-DB, pro Test eigene DB per `CREATE DATABASE … TEMPLATE`, Basisklasse `DatabaseTest`);
   Api-Integration mit Testcontainers über `AgcoworkApiFactory` (`CreateAdminClientAsync`, `CreateAgentClientAsync(scopes)`,

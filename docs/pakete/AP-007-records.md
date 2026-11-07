@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | im Review |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-006: Collections-Use-Cases, `PropertyValueValidator`, Endpunkte und Isolationstests; AP-005: `RequireWritable`/`RequireScope`, `LockWorkspaceAsync`; AP-004: Fehler-Muster, `SaveChangesOrConflictAsync` |
@@ -98,3 +98,5 @@ Actor. Updates können eine erwartete Revision mitgeben, damit sich zwei Agenten
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: 627 Tests grün, 0 Warnungen. Row-Lock (`LockRecordAsync`) statt `WHERE revision_no`, damit Appends parallel ohne 409 und ohne Verlust laufen; `revision_no` zusätzlich Concurrency-Token. GIN `(workspace_id, properties jsonb_path_ops)` über `btree_gin`. `RecordValuesSchemaHook` bereinigt Werte per ExecuteUpdate; `UpdateSchema` jetzt in Transaktion. Titel auch aus `properties.title` (Konflikt → 400). `ConflictError.Details` (`currentRevision`, `changedKeys`). Activity-Events für Space/Collection/Member nachgerüstet. Offen: Bereinigung erzeugt keine Revision; `Seq` kann bei parallelen Commits Events überspringen (Phase 2 Outbox); `btree_gin` muss in gehosteter DB verfügbar sein |
+| 2026-11-07 | an reviewer übergeben |
