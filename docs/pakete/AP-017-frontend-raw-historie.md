@@ -52,6 +52,12 @@ nachvollziehen, welcher Agent oder Mensch was wann geändert hat. Damit ist F6
 - Revisionen enthalten Titel, Properties, Body, Actor, Kind, Reason; berechnete Properties nicht.
 - Muster aus AP-014/AP-016; `describeError`; Resources idle ohne Slug.
 
+## Ergänzungen aus AP-014 (Bericht)
+
+- Im Dev-Server wirft Monaco in der Raw-View Konsolenfehler („depends on UNKNOWN service ICodeLensCache“) aus `shared/raw-view/monaco-adapter` (kuratierte Imports). Ursache beheben (fehlende Contribution/Service-Registrierung ergänzen oder Feature abschalten), damit die Konsole sauber ist; Prüfung im Dev- und Prod-Build.
+- `ApiClient` kennt keine Request-Header; für `Idempotency-Key` beim Anlegen (optional hier) müsste er erweitert werden – nur, wenn es in dieses Paket passt, sonst Backlog.
+- Muster aus AP-014: `RecordSaveService` (Save/Konflikt), `ag-property-editor`, `record-pager.ts`, Fixtures in `core/testing/test-utils.ts`.
+
 ## Akzeptanzkriterien
 
 1. Rohdaten-Tab zeigt Properties-JSON, Body-Markdown und Frontmatter-Markdown; Bearbeiten und Speichern beider editierbaren Bereiche funktioniert mit `expectedRevision`; Entfernen eines Keys im JSON löscht ihn serverseitig.

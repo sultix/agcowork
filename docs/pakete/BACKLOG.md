@@ -11,13 +11,13 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-005](AP-005-tenancy.md) | Tenancy: Workspace, Membership, Tenant-Kontext, Query-Filter, Members-Endpunkte, Isolations-Fixture | 1 | implementer-opus | AP-004 | abgeschlossen | 9ed0093 |
 | [AP-006](AP-006-schema.md) | Spaces, Collections, Property-Schema, Validierung, JSON Schema, Record-Vorlagen | 1 | implementer-opus | AP-005 | abgeschlossen | b0ad4fd |
 | [AP-007](AP-007-records.md) | Records, Revisionen, Activity, optimistische Nebenläufigkeit, append | 1 | implementer-opus | AP-006 | abgeschlossen | aa97706 |
-| [AP-008](AP-008-views.md) | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | in Arbeit | |
+| [AP-008](AP-008-views.md) | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | abgeschlossen | (folgt8) |
 | [AP-009](AP-009-filter-dsl.md) | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007, AP-008 | angelegt | |
-| [AP-010](AP-010-workspace-vorlage.md) | Workspace-Vorlage „Software-Projekt“ und `empty`, Anlage aus Vorlage | 1 | implementer-sonnet | AP-006, AP-008 | in Arbeit | |
+| [AP-010](AP-010-workspace-vorlage.md) | Workspace-Vorlage „Software-Projekt“ und `empty`, Anlage aus Vorlage | 1 | implementer-sonnet | AP-006, AP-008 | abgeschlossen | (folgt10) |
 | [AP-011](AP-011-mcp-server.md) | MCP-Server: Workspace- und Instanz-Tools, Resources, Auth, Isolationstests | 1 | implementer-opus | AP-009, AP-010 | angelegt | |
 | [AP-012](AP-012-editor-bausteine.md) | Frontend: Markdown-Editor und Raw-View als Bausteine | 1 | implementer-opus | AP-002 | abgeschlossen | 2fc5c4c |
 | [AP-013](AP-013-frontend-client-login.md) | Frontend: OpenAPI-Client, Login, Session, Auth-Guard | 1 | implementer-opus | AP-004 | abgeschlossen | 72abfeb |
-| [AP-014](AP-014-frontend-dokument.md) | Frontend: Space-Navigation, Collections, Record-Liste, Dokument-View, Property-Editoren | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | in Arbeit | |
+| [AP-014](AP-014-frontend-dokument.md) | Frontend: Space-Navigation, Collections, Record-Liste, Dokument-View, Property-Editoren | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | im Review | |
 | [AP-015](AP-015-frontend-tabelle.md) | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, View-Wechsel, Board | 1 | implementer-opus | AP-009, AP-014 | angelegt | |
 | [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | 45c5e25 |
 | [AP-017](AP-017-frontend-raw-historie.md) | Frontend: Raw-View (bearbeitbar), Historie mit Diff, Aktivitätsfeed | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-014 | angelegt | |

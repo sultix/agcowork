@@ -60,6 +60,7 @@ Produkts („agent-first“) eingelöst.
 - Alle Tools rufen dieselben Use-Cases wie REST; wo REST und MCP abweichen, ist das ein Fehler (Test: `tools/list` enthält genau die dokumentierte Liste; ein Vergleichstest ruft `record_create` per REST und per MCP mit gleichem Input und vergleicht die Ergebnisse).
 - Tenancy-Middleware und `TenantEndpointMetadata`: Kommentar aus AP-005 beachten; der MCP-Endpunkt liegt außerhalb von `/api/v1`.
 - Aspire: Keine neuen Ressourcen nötig.
+- `CreateWorkspace` (AP-010) setzt den Tenant-Kontext im aktuellen Scope auf den neuen Workspace und `TenantContextAccessor` erlaubt nur einmaliges Setzen: `workspace_create` auf `/mcp` muss in einem eigenen DI-Scope laufen (oder der Accessor bekommt ein explizites Reset, das nur dort verwendet wird). Test: zwei `workspace_create` in einer MCP-Session funktionieren.
 
 ## Akzeptanzkriterien
 

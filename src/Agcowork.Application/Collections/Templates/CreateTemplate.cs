@@ -81,7 +81,7 @@ public sealed class CreateTemplate(
             tenant.WorkspaceId, collection!.Id, name, request.Description, preset, request.BodyMarkdown, request.IsDefault, currentActor.Id, timeProvider);
         db.Templates.Add(template);
 
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        await using var transaction = await db.BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
         if (template.IsDefault)
         {
             await TemplateSupport.ClearOtherDefaultsAsync(db, collection.Id, template.Id, cancellationToken).ConfigureAwait(false);

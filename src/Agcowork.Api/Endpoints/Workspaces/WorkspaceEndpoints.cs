@@ -1,6 +1,7 @@
 using Agcowork.Api.Auth;
 using Agcowork.Api.Http;
 using Agcowork.Application.Workspaces;
+using Agcowork.Application.Workspaces.Templates;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Agcowork.Api.Endpoints.Workspaces;
@@ -28,12 +29,23 @@ internal static class WorkspaceEndpoints
             .WithSummary("Create a workspace")
             .WithDescription(
                 "Creates a workspace; the caller becomes its owner. 'slug' (unique, immutable; lowercase letters, digits, single hyphens, "
-                + "max. 63) becomes the URL segment /api/v1/w/{slug}. 'name' is required, 'description' optional. 'templateId' accepts "
-                + "only 'empty' for now (default). Requires workspaces:create (instance:admin implies it). A taken slug yields 409 'slug_taken'.")
+                + "max. 63) becomes the URL segment /api/v1/w/{slug}. 'name' is required, 'description' optional. 'templateId' chooses the "
+                + "starting structure: 'software-projekt' (default when omitted: spaces Produkt, Technik, Notizen with the collections Aufgaben, "
+                + "Analysen, Entscheidungen, Komponenten) or 'empty'; an unknown id yields 400 with the 'allowed' values (see GET /workspace-templates). "
+                + "The template is applied in the same transaction: if it fails, no workspace is created. Requires workspaces:create "
+                + "(instance:admin implies it). A taken slug yields 409 'slug_taken'.")
             .RequireAuthorization(AuthPolicies.WorkspacesCreate)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict);
+
+        api.MapGet("/workspace-templates", ListTemplatesAsync)
+            .WithTags("Workspaces")
+            .WithName("ListWorkspaceTemplates")
+            .WithSummary("List workspace templates")
+            .WithDescription(
+                "The structures a new workspace can start with, for 'templateId' of POST /workspaces: 'id', 'name', 'description' and "
+                + "'isDefault' (the template applied when 'templateId' is omitted). Any authenticated caller.");
 
         return api;
     }
@@ -72,6 +84,14 @@ internal static class WorkspaceEndpoints
     private static async Task<Results<Ok<IReadOnlyList<WorkspaceDto>>, ProblemHttpResult>> ListAsync(ListMyWorkspaces useCase, CancellationToken cancellationToken)
     {
         var result = await useCase.HandleAsync(new ListMyWorkspacesRequest(), cancellationToken);
+        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
+    }
+
+    private static async Task<Results<Ok<IReadOnlyList<WorkspaceTemplateDto>>, ProblemHttpResult>> ListTemplatesAsync(
+        ListWorkspaceTemplates useCase,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.HandleAsync(new ListWorkspaceTemplatesRequest(), cancellationToken);
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }
 

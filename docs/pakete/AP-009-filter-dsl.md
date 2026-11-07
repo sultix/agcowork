@@ -78,6 +78,11 @@ ausführen (Filter + Sorts aus dem View). Die Übersetzung nach SQL nutzt den GI
 - `tests/Agcowork.Application.Tests/Query/SqlQueryTranslatorTests.cs` (Testcontainers)
 - `tests/Agcowork.Api.Tests/Records/{QueryEndpointsTests,QueryIsolationTests}.cs`
 
+## Ergänzungen aus AP-008 (Review)
+
+- `ViewFilterNode` (Domain/Views) ist die Wire- und Speicherform (flaches Record mit `and`/`or`/`prop`/`op`/`value`, unbekannte Schlüssel sind Fehler). Der Parser übersetzt in einen getypten AST (Group/Condition mit Operator-Enum); `ViewDefinitionValidator` wird auf den Parser umgestellt.
+- Filter-Bedingungen auf Werte, die im Schema nicht mehr existieren (z. B. nach Bereinigung übersehen), liefern `not_in_options` mit `allowed`, nie still leere Ergebnisse.
+
 ## Entscheidungen, die der Implementierer treffen darf
 
 - EF-LINQ mit JSON-Funktionen vs. `FromSql`-Fragmente (gemischt erlaubt; parametrisiert ist Pflicht).

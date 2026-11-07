@@ -61,13 +61,13 @@ public sealed class CreateWorkspaceTests(PostgresFixture postgres) : DatabaseTes
     {
         var caller = await SeedCallerAsync(InstanceScope.WorkspacesCreate);
 
-        var result = await Sut(caller).HandleAsync(new CreateWorkspaceRequest("acme", "Acme", TemplateId: "software-projekt"), Ct);
+        var result = await Sut(caller).HandleAsync(new CreateWorkspaceRequest("acme", "Acme", TemplateId: "unknown"), Ct);
 
         var error = Assert.IsType<ValidationError>(result.Error);
         var field = Assert.Single(error.Errors);
         Assert.Equal("templateId", field.Field);
         Assert.Equal(ErrorCodes.NotInOptions, field.Code);
-        Assert.Equal(["empty"], field.Allowed);
+        Assert.Equal(["software-projekt", "empty"], field.Allowed);
     }
 
     [Theory]
@@ -97,7 +97,7 @@ public sealed class CreateWorkspaceTests(PostgresFixture postgres) : DatabaseTes
         Assert.Equal("slug", error.Field);
     }
 
-    private CreateWorkspace Sut(TestActor caller) => new(Db, caller, _clock);
+    private CreateWorkspace Sut(TestActor caller) => Templates.WorkspaceTemplateHost.CreateWorkspace(Db, Tenant, caller, _clock);
 
     private async Task<TestActor> SeedCallerAsync(params string[] instanceScopes)
     {

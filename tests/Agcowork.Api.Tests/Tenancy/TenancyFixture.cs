@@ -131,12 +131,12 @@ public sealed class TenancyFixture
         return await client.SendAsync(request, Ct);
     }
 
-    /// <summary>Creates a workspace with a unique slug (<paramref name="slugPrefix"/>-…) as <paramref name="creator"/>, who becomes owner.</summary>
-    public static async Task<WorkspaceDto> CreateWorkspaceAsync(HttpClient creator, string slugPrefix = "ws")
+    /// <summary>Creates a workspace with a unique slug (<paramref name="slugPrefix"/>-…) as <paramref name="creator"/>, who becomes owner. Starts empty by default so tests control their own structure.</summary>
+    public static async Task<WorkspaceDto> CreateWorkspaceAsync(HttpClient creator, string slugPrefix = "ws", string templateId = "empty")
     {
         ArgumentNullException.ThrowIfNull(creator);
         var slug = $"{slugPrefix}-{Guid.NewGuid():N}"[..Math.Min(slugPrefix.Length + 13, 63)];
-        using var response = await creator.PostAsJsonAsync("/api/v1/workspaces", new { slug, name = $"Workspace {slug}" }, Ct);
+        using var response = await creator.PostAsJsonAsync("/api/v1/workspaces", new { slug, name = $"Workspace {slug}", templateId }, Ct);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<WorkspaceDto>(AgcoworkApiFactory.Json, Ct))!;
     }

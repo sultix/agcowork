@@ -65,12 +65,12 @@ public sealed class WorkspacesEndpointsTests(AgcoworkApiFactory factory)
     {
         using var admin = await factory.CreateAdminClientAsync(Ct);
 
-        using var response = await admin.PostAsJsonAsync("/api/v1/workspaces", new { slug = UniqueSlug("tpl"), name = "T", templateId = "software-projekt" }, Ct);
+        using var response = await admin.PostAsJsonAsync("/api/v1/workspaces", new { slug = UniqueSlug("tpl"), name = "T", templateId = "unknown" }, Ct);
 
         var problem = await ProblemAssert.IsProblemAsync(response, HttpStatusCode.BadRequest, "validation_failed");
         var field = ProblemAssert.Field(problem, "templateId");
         Assert.Equal("not_in_options", field.GetProperty("code").GetString());
-        Assert.Equal(["empty"], field.GetProperty("allowed").EnumerateArray().Select(v => v.GetString()));
+        Assert.Equal(["software-projekt", "empty"], field.GetProperty("allowed").EnumerateArray().Select(v => v.GetString()));
     }
 
     [Fact]

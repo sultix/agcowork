@@ -180,6 +180,9 @@ Alle Indizes beginnen mit `WorkspaceId`.
 - Ein Key mit Workspace- oder Scope-Einschränkung trägt **keine Instanz-Scopes**; sonst könnte er sich
   über `POST /actors/{self}/keys` einen uneingeschränkten Key erzeugen.
 - Eigene Mitgliedschaft darf nur eingeschränkt, nie erweitert werden (409 `self_escalation`).
+- Workspace-Vorlagen laufen nach Anlage des Workspaces im selben Scope mit den **vollen Owner-Scopes**
+  (Key-Scopes werden dafür ignoriert): Die Vorlage ist fester Code, kein Nutzerinhalt. `CreateWorkspace`
+  setzt den Tenant-Kontext; MCP `workspace_create` braucht dafür einen eigenen Scope.
 - Der Interceptor schützt auch die Workspace-Wurzel: Modified/Deleted auf einen anderen Workspace als
   den Tenant wirft. `ExecuteUpdate`/`ExecuteDelete` nie mit `IgnoreQueryFilters` oder `SetProperty(WorkspaceId, …)`.
 - Volltext- und semantische Suche filtern immer auf `WorkspaceId` (Teil des Index).

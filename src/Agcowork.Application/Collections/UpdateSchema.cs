@@ -109,7 +109,7 @@ public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, I
 
         // Exclusive collection lock first (order: collection → record): record writes wait until the new schema and the
         // cleaned values are committed, and a concurrent schema change waits and then sees this one's version.
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        await using var transaction = await db.BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
         await db.LockCollectionAsync(request.CollectionId, cancellationToken).ConfigureAwait(false);
         var collection = await db.Collections.SingleOrDefaultAsync(c => c.Id == request.CollectionId, cancellationToken).ConfigureAwait(false);
         if (collection is null)

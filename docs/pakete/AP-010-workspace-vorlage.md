@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | AP-005 `CreateWorkspace` (Transaktion Workspace + Owner-Membership, Interceptor-Ausnahme für neue Workspaces); AP-006 `CreateCollection`, `UpdateSchema`, `Templates/CreateTemplate` (Use-Cases, die die Vorlage aufruft); `IdentityBootstrapper` (Seed-Stil) |
@@ -76,3 +76,9 @@ und Record-Vorlagen. `empty` bleibt wählbar. Agenten können die verfügbaren V
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-sonnet übergeben |
+| 2026-11-07 | Bericht: 696 Tests grün. Statische Registry `WorkspaceTemplates.All`; Vorlage läuft über Use-Cases im selben Scope (`SetTenant` nach Owner-Membership, eine Transaktion); `BeginOrJoinTransactionAsync` (`JoinableTransaction`) in UpdateSchema/CreateTemplate, damit sie die äußere Transaktion mitnutzen; Option-Werte englisch, Labels deutsch; Standard-Views-Test läuft real (AP-008 schon im Baum). Offen: Tenant bleibt nach CreateWorkspace im Scope gesetzt (MCP `workspace_create` braucht Reset) |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; Tenancy und Transaktion korrekt, Inhalt vollständig. Wichtig: Beschreibungen zitieren Labels statt Option-Werte (`'ersetzt'` vs `superseded`). Hinweise: Vorlagenfehler erscheinen als 400 des Aufrufers; Result-Failure-Rollback ungetestet; Join-Semantik nur dokumentiert; `sprint`-Hinweis ohne Scope; Vorlage läuft mit vollen Owner-Scopes (bewusst); `ApplyAsync(IServiceProvider…)` als Service-Locator (vertretbar); Zusatz-Views aus §2 fehlen |
+| 2026-11-07 | Entscheidungen: `ApplyAsync(IServiceProvider …)` akzeptiert; Vorlage läuft mit vollen Owner-Scopes (Architektur §2a). Nacharbeit an implementer-sonnet: Werte statt Labels, sprint-Hinweis, Vorlagenfehler → 500, Rollback-Test, Join-Kommentar, Zusatz-Views (Board, Galerie, Sortierung) |
+| 2026-11-07 | Nacharbeit fertig: Werte statt Labels + Regex-Test, sprint-Hinweis, Vorlagenfehler → InvalidOperationException mit Rollback-Test, Join-Kommentar, Zusatz-Views (Aufgaben Board, Analysen Galerie, Entscheidungen nach date desc). AP-010-Tests grün; 3 rote Tests gehören zur laufenden AP-008-Nacharbeit. Wartet auf AP-008 für gemeinsamen Verifikationslauf |
+| 2026-11-07 | Verifikationslauf mit AP-008: 726 Tests grün. Abgeschlossen, Commit siehe Backlog |
