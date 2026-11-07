@@ -9,7 +9,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-003](AP-003-aspire-verdrahtung-ci.md) | Aspire-Verdrahtung, CI und README | 0 | implementer-sonnet | AP-001, AP-002 | abgeschlossen | 49ff518 |
 | [AP-004](AP-004-identitaet.md) | Identität: Actors, API-Keys, Login, Auth-Pipeline, Instanz-Endpunkte | 1 | implementer-opus | AP-001 | abgeschlossen | 7680648 |
 | [AP-005](AP-005-tenancy.md) | Tenancy: Workspace, Membership, Tenant-Kontext, Query-Filter, Members-Endpunkte, Isolations-Fixture | 1 | implementer-opus | AP-004 | in Arbeit | |
-| AP-006 | Spaces, Collections, Property-Schema, Validierung, JSON Schema, Record-Vorlagen | 1 | implementer-opus | AP-005 | geplant | |
+| [AP-006](AP-006-schema.md) | Spaces, Collections, Property-Schema, Validierung, JSON Schema, Record-Vorlagen | 1 | implementer-opus | AP-005 | angelegt | |
 | AP-007 | Records, Revisionen, Activity, optimistische Nebenläufigkeit, append | 1 | implementer-opus | AP-006 | geplant | |
 | AP-008 | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | geplant | |
 | AP-009 | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007 | geplant | |
