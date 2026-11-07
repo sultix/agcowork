@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  resource,
+  signal,
+  untracked,
+} from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { ApiClient } from '../../core/api/api-client';
+import type { components } from '../../core/api/generated/schema';
 import { Router, RouterLink } from '@angular/router';
 import {
   FieldTree,
@@ -9,7 +21,6 @@ import {
   required,
   submit,
 } from '@angular/forms/signals';
-import { ApiError } from '../../core/api/api-error';
 import { mapFormErrors } from '../../shared/ui/api-error-text';
 import { FieldErrorsComponent } from '../../shared/ui/field-errors.component';
 import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
@@ -26,11 +37,14 @@ interface CreateModel {
   templateId: string;
 }
 
-/** Templates offered by default; the server may report others in `allowed` of a validation error. */
-const DEFAULT_TEMPLATES = ['empty'];
-const TEMPLATE_LABELS: Record<string, string> = {
-  empty: 'Leer',
-  'software-projekt': 'Software-Projekt',
+type Template = components['schemas']['WorkspaceTemplateDto'];
+
+/** Used when the template list cannot be loaded: the empty workspace always exists. */
+const FALLBACK_TEMPLATE: Template = {
+  id: 'empty',
+  name: 'Leer',
+  description: 'Leerer Workspace ohne Spaces und Collections.',
+  isDefault: true,
 };
 
 /** `/workspaces/new`: create a workspace; on success continue in it. */
@@ -112,10 +126,20 @@ const TEMPLATE_LABELS: Record<string, string> = {
           class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
           [formField]="form.templateId"
         >
-          @for (id of templates(); track id) {
-            <option [value]="id">{{ templateLabel(id) }}</option>
+          @for (template of templates(); track template.id) {
+            <option [value]="template.id">{{ template.name }}</option>
           }
         </select>
+        @if (selectedTemplate()?.description; as description) {
+          <p class="mt-1 text-sm text-muted" data-testid="template-description">
+            {{ description }}
+          </p>
+        }
+        @if (templatesFailed()) {
+          <p class="mt-1 text-sm text-danger" data-testid="template-fallback">
+            Die Vorlagen konnten nicht geladen werden; es steht nur die leere Vorlage zur Verfügung.
+          </p>
+        }
         <div data-testid="template-errors">
           @if (showErrors(form.templateId)) {
             <ag-field-errors [errors]="form.templateId().errors()" />
@@ -134,6 +158,7 @@ const TEMPLATE_LABELS: Record<string, string> = {
   `,
 })
 export class WorkspaceCreateComponent {
+  private readonly api = inject(ApiClient);
   private readonly store = inject(WorkspacesStore);
   private readonly router = inject(Router);
 
@@ -141,7 +166,7 @@ export class WorkspaceCreateComponent {
     slug: '',
     name: '',
     description: '',
-    templateId: 'empty',
+    templateId: '',
   });
 
   protected readonly form = form(this.model, (path) => {
@@ -155,11 +180,31 @@ export class WorkspaceCreateComponent {
     });
   });
 
-  protected readonly templates = signal<readonly string[]>(DEFAULT_TEMPLATES);
+  private readonly templatesResource = resource<Template[], true>({
+    params: () => true,
+    loader: () => firstValueFrom(this.api.get('/workspace-templates')),
+  });
+  protected readonly templatesFailed = computed(() => this.templatesResource.status() === 'error');
+  protected readonly templates = computed<readonly Template[]>(() => {
+    if (this.templatesResource.hasValue()) {
+      return this.templatesResource.value();
+    }
+    return this.templatesFailed() ? [FALLBACK_TEMPLATE] : [];
+  });
+  protected readonly selectedTemplate = computed(() =>
+    this.templates().find((t) => t.id === this.model().templateId),
+  );
   protected readonly formError = signal<string | null>(null);
 
-  protected templateLabel(id: string): string {
-    return TEMPLATE_LABELS[id] ?? id;
+  constructor() {
+    // Preselect the default template once the list is known (or the fallback applies).
+    effect(() => {
+      const list = this.templates();
+      if (list.length > 0 && !list.some((t) => t.id === untracked(this.model).templateId)) {
+        const preferred = list.find((t) => t.isDefault) ?? list[0];
+        this.model.update((m) => ({ ...m, templateId: preferred.id }));
+      }
+    });
   }
 
   protected showErrors(field: FieldTree<string>): boolean {
@@ -177,7 +222,7 @@ export class WorkspaceCreateComponent {
           slug: value.slug,
           name: value.name.trim(),
           description: value.description.trim() || null,
-          templateId: value.templateId,
+          ...(value.templateId ? { templateId: value.templateId } : {}),
         });
         await this.router.navigate(['/w', created.slug]);
         return undefined;
@@ -189,17 +234,8 @@ export class WorkspaceCreateComponent {
           templateId: fields.templateId,
         });
         this.formError.set(formMessage);
-        this.offerAllowedTemplates(ApiError.from(error));
         return fieldErrors;
       }
     });
-  }
-
-  /** A rejected template comes with the allowed ones; make them selectable. */
-  private offerAllowedTemplates(error: ApiError): void {
-    const allowed = error.errorsFor('templateId').flatMap((e) => e.allowed ?? []);
-    if (allowed.length > 0) {
-      this.templates.set(allowed);
-    }
   }
 }
