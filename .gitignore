@@ -1,0 +1,45 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.user
+*.suo
+*.swp
+
+# .NET
+bin/
+obj/
+artifacts/
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+appsettings.*.local.json
+*.local.json
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+out-tsc/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+playwright-report/
+test-results/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pfx
+*.pem
+
+# Claude Code (local only)
+.claude/settings.local.json
