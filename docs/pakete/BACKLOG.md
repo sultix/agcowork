@@ -12,7 +12,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-006](AP-006-schema.md) | Spaces, Collections, Property-Schema, Validierung, JSON Schema, Record-Vorlagen | 1 | implementer-opus | AP-005 | abgeschlossen | b0ad4fd |
 | [AP-007](AP-007-records.md) | Records, Revisionen, Activity, optimistische Nebenläufigkeit, append | 1 | implementer-opus | AP-006 | abgeschlossen | aa97706 |
 | [AP-008](AP-008-views.md) | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | abgeschlossen | 26c830f |
-| [AP-009](AP-009-filter-dsl.md) | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007, AP-008 | abgeschlossen | (folgt) |
+| [AP-009](AP-009-filter-dsl.md) | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007, AP-008 | abgeschlossen | 0189d8a |
 | [AP-010](AP-010-workspace-vorlage.md) | Workspace-Vorlage „Software-Projekt“ und `empty`, Anlage aus Vorlage | 1 | implementer-sonnet | AP-006, AP-008 | abgeschlossen | 7d1faa5 |
 | [AP-011](AP-011-mcp-server.md) | MCP-Server: Workspace- und Instanz-Tools, Resources, Auth, Isolationstests | 1 | implementer-opus | AP-009, AP-010 | in Arbeit | |
 | [AP-012](AP-012-editor-bausteine.md) | Frontend: Markdown-Editor und Raw-View als Bausteine | 1 | implementer-opus | AP-002 | abgeschlossen | 2fc5c4c |
