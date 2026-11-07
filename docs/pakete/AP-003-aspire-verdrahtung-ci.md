@@ -64,4 +64,4 @@ GitHub-Actions-Workflow baut und testet Backend und Frontend.
 | 2026-11-07 | an reviewer übergeben |
 | 2026-11-07 | Orchestrator: AppHost gestartet, Angular unter Aspire im Browser geprüft: Kopfzeile „Backend: ok“, keine Konsolenfehler, `/foo/bar` → `/workspaces`. AK 1–3 damit belegt |
 | 2026-11-07 | Review: Freigabe mit Hinweisen. Wichtig: AK2 unbelegt (→ durch Orchestrator-Lauf erledigt, `ng serve --port 32410` zeigt auch, dass das `--`-Argument korrekt ankommt); HEAD nach AP-001-Commit allein nicht lauffähig (proxy.conf.json gelöscht, angular.json zeigt noch darauf) → mit diesem Commit behoben. Hinweise: ci.yml ohne permissions/timeout, README ohne Connection-String-Name und `npm run lint`, `PORT`-Env überflüssig |
-| 2026-11-07 | Orchestrator: permissions + timeout-minutes in ci.yml, README ergänzt. Abgeschlossen, Commit siehe Backlog |
+| 2026-11-07 | Orchestrator: permissions + timeout-minutes in ci.yml, README ergänzt. Abgeschlossen, Commit `49ff518` |
