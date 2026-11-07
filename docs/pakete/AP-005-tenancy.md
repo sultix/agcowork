@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-004: Use-Case-Klassen, `Result`, ProblemDetails-Format, Endpunkt-Gruppen, `AgcoworkApiFactory` mit `CreateAdminClient`/`CreateAgentClient` |
@@ -95,3 +95,4 @@ unschreibbar macht, und ein Isolations-Testmuster, das alle folgenden Pakete kop
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |
