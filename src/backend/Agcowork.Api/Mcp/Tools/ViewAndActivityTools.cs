@@ -46,7 +46,8 @@ internal static class ViewAndActivityTools
     [McpServerTool(Name = "activity_recent", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description(
         "What happened in the workspace, newest first: who created, changed, appended, archived or restored which record, space, "
-        + "collection or member, with a diff ('old'/'new' per changed field). Filters: spaceId, collectionId, actorId, since, types "
+        + "collection or member, with a diff ('old'/'new' per changed field). targetTitle is the current title (record) or name "
+        + "(space, collection), null if the target no longer exists or is a member or view. Filters: spaceId, collectionId, actorId, since, types "
         + "(allowed: {{activityTypes}}). To keep up with changes, poll from page 1 with cursor, not with since: "
         + "read page 1 and follow 'nextCursor' until you reach the newest 'seq' you already have ('since' can miss events that "
         + "commit late). Paginated with 'limit' (1..200, default 50). Requires read.")]

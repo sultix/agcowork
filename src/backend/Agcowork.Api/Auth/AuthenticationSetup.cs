@@ -90,8 +90,8 @@ internal static class AuthenticationSetup
     }
 
     /// <summary>
-    /// Re-checks the session actor on every request so deactivation and scope changes apply
-    /// immediately instead of at cookie expiry.
+    /// Re-checks the session actor on every request so deactivation, scope changes and password changes
+    /// (which invalidate sessions issued before them) apply immediately instead of at cookie expiry.
     /// </summary>
     private static async Task ValidateSessionAsync(CookieValidatePrincipalContext context)
     {
@@ -102,7 +102,9 @@ internal static class AuthenticationSetup
         }
 
         var useCase = context.HttpContext.RequestServices.GetRequiredService<AuthenticateSession>();
-        var result = await useCase.HandleAsync(new AuthenticateSessionRequest(actorId), context.HttpContext.RequestAborted);
+        var result = await useCase.HandleAsync(
+            new AuthenticateSessionRequest(actorId, SessionCookie.PasswordStamp(context.Properties), context.Properties.IssuedUtc),
+            context.HttpContext.RequestAborted);
         if (result.IsFailure)
         {
             await RejectAsync(context);

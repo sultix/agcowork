@@ -140,4 +140,49 @@ public sealed class ListActivityTests(PostgresFixture postgres) : RecordTestBase
         Assert.Equal([ActivityTypes.SpaceCreated], page.Value.Items.Select(e => e.Type));
         Assert.Equal("Beta-Space", page.Value.Items[0].Diff["name"]!.GetValue<string>());
     }
+    [Fact]
+    public async Task List_TargetTitle_CurrentTitleOfRecordSpaceAndCollection_NullForMembersAndUnknown()
+    {
+        var a = await ArrangeAsync();
+        var record = await CreateRecordAsync(a, "Alter Titel");
+        Assert.True((await UpdateAsync(a, new UpdateRecordRequest(record.Id, Title: "Neuer Titel"))).IsSuccess);
+        Assert.True((await new UpdateMember(Db, a.Tenant, Activity).HandleAsync(new UpdateMemberRequest(a.Seed.MemberOfBoth.Id, "viewer"), Ct)).IsSuccess);
+        Db.ActivityEvents.Add(ActivityEvent.Create(
+            a.Seed.Alpha.Id, ActivityTypes.RecordArchived, a.Seed.AlphaOwner.Id, ActivityTargets.Record, Guid.CreateVersion7(), null, null, null, TimeProvider.System));
+        await Db.SaveChangesAsync(Ct);
+        Db.ChangeTracker.Clear();
+
+        var page = await ListAsync(a, new ListActivityRequest());
+
+        Assert.Null(page.Items[0].TargetTitle); // Target never existed (or was deleted).
+        Assert.Equal((ActivityTypes.MemberUpdated, (string?)null), (page.Items[1].Type, page.Items[1].TargetTitle));
+        Assert.Equal(["Neuer Titel", "Neuer Titel"], page.Items.Where(e => e.TargetId == record.Id).Select(e => e.TargetTitle));
+        Assert.Equal("Aufgaben", Assert.Single(page.Items, e => e.Type == ActivityTypes.CollectionCreated).TargetTitle);
+        Assert.Equal("Produkt", Assert.Single(page.Items, e => e.Type == ActivityTypes.SpaceCreated).TargetTitle);
+    }
+
+    [Fact]
+    public async Task List_TargetTitle_TargetInOtherWorkspace_NotResolved()
+    {
+        var a = await ArrangeAsync();
+        var beta = Enter(a.Seed.Beta, a.Seed.BetaOwner);
+        var betaSpace = await CreateSpaceAsync(beta, a.Seed.BetaOwner, "Beta-Geheim");
+        Db.ChangeTracker.Clear();
+        var betaRecord = await CreateUseCase(beta, a.Seed.BetaOwner).HandleAsync(new CreateRecordRequest(SpaceId: betaSpace.Id, Title: "Geheimer Titel"), Ct);
+        Assert.True(betaRecord.IsSuccess);
+        Enter(a.Seed.Alpha, a.Seed.AlphaOwner);
+        // An Alpha event pointing at Beta's targets (cannot happen through the use cases; guards the title lookup).
+        Db.ActivityEvents.Add(ActivityEvent.Create(
+            a.Seed.Alpha.Id, ActivityTypes.RecordUpdated, a.Seed.AlphaOwner.Id, ActivityTargets.Record, betaRecord.Value.Id, null, null, null, TimeProvider.System));
+        Db.ActivityEvents.Add(ActivityEvent.Create(
+            a.Seed.Alpha.Id, ActivityTypes.SpaceUpdated, a.Seed.AlphaOwner.Id, ActivityTargets.Space, betaSpace.Id, null, null, null, TimeProvider.System));
+        await Db.SaveChangesAsync(Ct);
+        Db.ChangeTracker.Clear();
+
+        var page = await ListAsync(a, new ListActivityRequest(Limit: 2));
+
+        // Both events come from one SaveChanges, so their seq order is not defined.
+        Assert.Equal(new HashSet<Guid> { betaSpace.Id, betaRecord.Value.Id }, page.Items.Select(e => e.TargetId).ToHashSet());
+        Assert.All(page.Items, e => Assert.Null(e.TargetTitle));
+    }
 }

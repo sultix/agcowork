@@ -25,8 +25,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-019](AP-019-ui-fundament-spartan.md) | UI-Fundament: spartan/ui (shadcn), Theme neutral, Shell, Referenz-Migration | UI | implementer-opus | AP-012–AP-017 | abgeschlossen | eda627c |
 | [AP-020](AP-020-ui-migration-verwaltung.md) | UI-Migration: Verwaltung, Spaces, Collections, Aktivität | UI | implementer-sonnet | AP-019 | abgeschlossen | 5463f97 |
 | [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | abgeschlossen | 559d0a2 |
-| [AP-022](AP-022-haertung-backend.md) | Härtung Backend: Passwort ändern/zurücksetzen, Sitzungen entwerten, relation-Hook, OpenAPI-Defaults, Activity-Titel | Härtung | implementer-opus | AP-004–AP-011 | in Arbeit | |
-| [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | angelegt | |
+| [AP-022](AP-022-haertung-backend.md) | Härtung Backend: Passwort ändern/zurücksetzen, Sitzungen entwerten, relation-Hook, OpenAPI-Defaults, Activity-Titel | Härtung | implementer-opus | AP-004–AP-011 | abgeschlossen | |
+| [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | Nacharbeit | |
 | [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | angelegt | |
 | [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | angelegt | |
 | [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | angelegt | |
@@ -36,7 +36,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 
 | Quelle | Hinweis | Entscheidung |
 |---|---|---|
-| AP-019 Review | `npm audit --omit=dev`: kritischer Fund `dompurify` unter `monaco-editor` (bestand schon vor AP-019); `@spartan-ng/cli` bringt Nx und einen high-Fund (`zod`, nur dev) | dompurify → AP-023; CLI-Fund beobachten |
+| AP-019 Review | `npm audit --omit=dev`: kritischer Fund `dompurify` unter `monaco-editor` (bestand schon vor AP-019); `@spartan-ng/cli` bringt Nx und einen high-Fund (`zod`, nur dev) | AP-023: `overrides` dompurify ^3.4.17 beruhigt nur `npm audit`; Monaco 0.57 bündelt eine **eigene Kopie** (`esm/vs/base/browser/dompurify`, 3.4.15), die weiter ausgeliefert wird. Advisories betreffen `IN_PLACE`/`SAFE_FOR_TEMPLATES`/XHTML, Monaco nutzt sie nicht (nicht belegt). Offen: Monaco ≥ 0.58 (bringt 3.4.17), sobald stabil; CLI-Fund beobachten |
 | AP-019 Review | Theme-Aufblitzen beim Laden (Inline-Skript in `index.html`) nicht automatisiert getestet; bei künftiger CSP braucht das Skript Hash/Nonce | Mit dem ersten Playwright-Paket |
 | AP-019 Review | Brain setzt `aria-invalid` fest auf `control.invalid` (schon vor der ersten Eingabe), roter Rahmen erst bei ungültig+berührt; nicht konfigurierbar | Upstream-Issue bei spartan oder eigene Brain-Erweiterung, wenn ein A11y-Paket ansteht |
 | AP-020 Review | Brain-Popover setzt `role="dialog"` am Overlay ohne Label-Input; Name nur als `role="group"` innerhalb | mit dem aria-invalid-Punkt als Upstream-Issue bei spartan |
@@ -56,6 +56,9 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-006 Bericht | Architektur §2 nennt `DefaultTemplateId`, umgesetzt ist `Template.IsDefault`; §4.3 ohne `describe`-Route | Orchestrator zieht Doku nach dem Review nach |
 | AP-011 Review | `collection_describe` ruft zwei Use-Cases ohne gemeinsamen Snapshot; `ListActivity` nicht nach Record filterbar | Activity-Filter `targetId` → AP-024; Use-Case zusammenführen offen |
 | AP-009 Bericht | Nach `relation.multiple` false→true bleiben Skalar-Altwerte stehen; `RecordValuesSchemaHook` greift nicht; nächster PATCH scheitert am Validator | → AP-022 |
+| AP-022 Bericht | `ViewSchemaHook` und `TemplatePresetSchemaHook` behandeln select→multi_select, aber nicht `relation.multiple` false→true (skalare Presets, `eq`-Filter auf Relation) | Kleinpaket Backend, mit der nächsten Schema-Arbeit |
+| AP-022 Review | `PATCH /me/password` und `POST /auth/login` ohne Sperre/Rate-Limit (Brute-Force auf `currentPassword` mit gestohlenem Cookie, Dauer-Logins) | Rate-Limiting-Paket: beide Endpunkte ausdrücklich nennen |
+| AP-022 Nacharbeit | In `McpText` werden Titel außer in `Activity` nicht escaped (`RecordLine` `**{Title}**`) | Kleinpaket MCP-Text, mit dem nächsten MCP-Paket |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |

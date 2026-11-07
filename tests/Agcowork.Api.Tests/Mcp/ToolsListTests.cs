@@ -51,6 +51,7 @@ public sealed class ToolsListTests(AgcoworkApiFactory factory)
         Assert.Contains("record_get", tools.Single(tool => tool.Name == "record_update").Description, StringComparison.Ordinal);
         Assert.Contains("preferred way", tools.Single(tool => tool.Name == "record_append").Description, StringComparison.Ordinal);
         Assert.Contains("not with since", tools.Single(tool => tool.Name == "activity_recent").Description, StringComparison.Ordinal);
+        Assert.Contains("targetTitle is the current title", tools.Single(tool => tool.Name == "activity_recent").Description, StringComparison.Ordinal);
         Assert.Contains("Call this first", tools.Single(tool => tool.Name == "workspace_overview").Description, StringComparison.Ordinal);
     }
 

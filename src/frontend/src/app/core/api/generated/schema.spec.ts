@@ -19,6 +19,7 @@ describe('generated OpenAPI schema', () => {
       email: null,
       instanceScopes: [],
       apiKey: null,
+      mustChangePassword: false,
     };
     const body: LoginBody = { email: 'admin@agcowork.local', password: 'x' };
     const problem: Problem = {

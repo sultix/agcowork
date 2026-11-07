@@ -125,4 +125,44 @@ public sealed class RecordValuesSchemaHookTests(PostgresFixture postgres) : Reco
         Assert.Equal(0, events[1].Diff["affectedRecords"]!.GetValue<int>());
         Assert.Empty(events[1].Diff["cleanedKeys"]!.AsArray());
     }
+    [Fact]
+    public async Task RelationBecomesMultiple_ScalarWrapped_NullMeansNoValue_LaterPatchValidates()
+    {
+        var a = await ArrangeAsync();
+        var first = await CreateRecordAsync(a, "Ziel 1");
+        var second = await CreateRecordAsync(a, "Ziel 2");
+        var decisions = await CreateCollectionAsync(a.Tenant, a.Seed.AlphaOwner, a.SpaceId, "Entscheidungen",
+            new Agcowork.Application.Schema.PropertyDefinitionInput("affects", "Affects", "relation", TargetCollectionId: a.Collection.Id));
+        Db.ChangeTracker.Clear();
+        var linked = await CreateUseCase(a.Tenant, a.Seed.AlphaOwner)
+            .HandleAsync(new CreateRecordRequest(decisions.Id, Title: "Mit Bezug", Properties: Props($$"""{ "affects": "{{first.Id}}" }""")), Ct);
+        Db.ChangeTracker.Clear();
+        var unlinked = await CreateUseCase(a.Tenant, a.Seed.AlphaOwner)
+            .HandleAsync(new CreateRecordRequest(decisions.Id, Title: "Ohne Bezug", Properties: Props("""{ "affects": null }""")), Ct);
+        Db.ChangeTracker.Clear();
+        var nulled = await CreateUseCase(a.Tenant, a.Seed.AlphaOwner)
+            .HandleAsync(new CreateRecordRequest(decisions.Id, Title: "Gespeichertes null"), Ct);
+        Assert.True(linked.IsSuccess && unlinked.IsSuccess && nulled.IsSuccess);
+        // The normalizer never stores null; write one directly to cover data from elsewhere (imports, older versions).
+        IReadOnlyDictionary<string, System.Text.Json.JsonElement> withNull = Props("""{ "affects": null }""");
+        await Db.Records.Where(r => r.Id == nulled.Value.Id).ExecuteUpdateAsync(set => set.SetProperty(r => r.Properties, withNull), Ct);
+
+        await ChangeSchemaAsync(a, new UpdateSchemaRequest(decisions.Id, Update: [new("affects", Multiple: true)]));
+
+        Assert.Equal($"[\"{first.Id}\"]", (await PropertiesAsync(linked.Value.Id))["affects"].GetRawText());
+        Assert.False((await PropertiesAsync(unlinked.Value.Id)).ContainsKey("affects"));
+        // A stored null is dropped like on every other schema change: no value before, no value after.
+        Assert.False((await PropertiesAsync(nulled.Value.Id)).ContainsKey("affects"));
+        var patchNulled = await UpdateAsync(a, new UpdateRecordRequest(nulled.Value.Id, Properties: Props($$"""{ "affects": ["{{second.Id}}"] }""")));
+        Assert.True(patchNulled.IsSuccess, Describe(patchNulled.Error));
+        var titleOnly = await UpdateAsync(a, new UpdateRecordRequest(linked.Value.Id, Title: "Mit Bezug (neu)"));
+        Assert.True(titleOnly.IsSuccess, Describe(titleOnly.Error));
+        var patched = await UpdateAsync(a, new UpdateRecordRequest(linked.Value.Id, Properties: Props($$"""{ "affects": ["{{first.Id}}", "{{second.Id}}"] }""")));
+        Assert.True(patched.IsSuccess, Describe(patched.Error));
+        var schemaChanged = await Db.ActivityEvents.AsNoTracking()
+            .Where(e => e.Type == Domain.Activity.ActivityTypes.CollectionSchemaChanged && e.TargetId == decisions.Id)
+            .SingleAsync(Ct);
+        Assert.Equal(2, schemaChanged.Diff["affectedRecords"]!.GetValue<int>());
+        Assert.Equal("""["affects"]""", schemaChanged.Diff["cleanedKeys"]!.ToJsonString());
+    }
 }

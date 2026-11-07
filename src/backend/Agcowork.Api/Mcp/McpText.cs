@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Agcowork.Application.Activity;
 using Agcowork.Application.Collections;
@@ -13,6 +14,9 @@ namespace Agcowork.Api.Mcp;
 internal static class McpText
 {
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
+
+    // Escapes quotes, backslashes and control characters only; umlauts and emoji stay readable.
+    private static readonly JsonSerializerOptions QuotedText = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     /// <summary>The workspace overview as Markdown: one section per space, one line per collection.</summary>
     public static string Overview(WorkspaceOverviewDto overview, bool includeWorkspace = true)
@@ -191,7 +195,9 @@ internal static class McpText
         text.Append(Invariant, $"{events.Count} event(s), newest first{(nextCursor is null ? "; no further pages" : $"; older ones with cursor \"{nextCursor}\"")}.\n");
         foreach (var e in events)
         {
-            text.Append(Invariant, $"- seq {e.Seq} {e.At:O} {e.Type} {e.TargetType} {e.TargetId} by actor {e.ActorId}\n");
+            // Titles are user and agent input: JSON-quoted, so quotes and line breaks cannot break the one-line format.
+            var title = e.TargetTitle is null ? string.Empty : " " + JsonSerializer.Serialize(e.TargetTitle, QuotedText);
+            text.Append(Invariant, $"- seq {e.Seq} {e.At:O} {e.Type} {e.TargetType}{title} {e.TargetId} by actor {e.ActorId}\n");
         }
 
         return text.ToString();

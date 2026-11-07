@@ -368,6 +368,7 @@ Instanz-Ebene
 GET    /api/v1/me                       GET    /api/v1/workspaces           (eigene Mitgliedschaften)
 POST   /api/v1/workspaces               (Instanz-Admin)
 GET    /api/v1/actors   POST /api/v1/actors   POST /api/v1/actors/{id}/keys   DELETE /api/v1/keys/{id}
+PATCH  /api/v1/me/password             PUT    /api/v1/actors/{id}/password   (Instanz-Admin, Reset)
 
 Workspace-Ebene  (Präfix /api/v1/w/{workspaceSlug})
 GET    /spaces   POST /spaces   GET|PATCH /spaces/{id}   POST /spaces/{id}/archive
@@ -678,6 +679,7 @@ variant="destructive"` bzw. Dropdown-Eintrag `variant="destructive"`.
 - HTTPS verpflichtend außer `localhost`; CORS nur für die eigene UI.
 - Markdown-Rendering sanitisiert (kein rohes HTML aus Agenten-Inhalten).
 - `/health`, `/health/ready` und `/openapi/v1.json` sind in allen Umgebungen ohne Auth erreichbar (Health ohne Details). `/health/ready` öffnet eine DB-Verbindung. Bei öffentlicher Erreichbarkeit: Reverse-Proxy oder Rate-Limit davor, OpenAPI ggf. nur mit Auth.
+- Sitzungen (AP-022): Cookies bleiben zustandslos, tragen aber einen Credential-Stamp `agcowork.password_at` (das `LocalLogin.UpdatedAt`, das zusammen mit dem geprüften bzw. gesetzten Hash gelesen wurde; Mikrosekunden, im verschlüsselten Ticket). `AuthenticateSession` verlangt Gleichheit mit dem aktuellen `UpdatedAt`; Passwortänderung und Admin-Reset entwerten damit alle Sitzungen des Actors, auch einen Login, der parallel zur Änderung noch den alten Hash geprüft hat. Die eigene Änderung stellt ein neues Cookie aus. Cookies ohne Stamp (vor AP-022) fallen auf `IssuedUtc` ≥ `UpdatedAt` zurück. Rehash beim Login ist ein bedingtes Update (`WHERE password_hash = geprüfter Hash`) und ändert `UpdatedAt` nicht. Human ohne LocalLogin → 401 (fail closed; bei OIDC neu regeln). `mustChangePassword` (Bootstrap-Admin, Reset) sperrt serverseitig nichts; die UI erzwingt die Änderung.
 - Slug-Validierung mit `\z` statt `$` (`$` matcht in .NET vor einem abschließenden Zeilenumbruch).
 
 ## 8. Betrieb

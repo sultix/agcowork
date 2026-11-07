@@ -18,6 +18,8 @@ public sealed class OpenApiIdentityTests(AgcoworkApiFactory factory)
             ("/api/v1/auth/login", "post"),
             ("/api/v1/auth/logout", "post"),
             ("/api/v1/me", "get"),
+            ("/api/v1/me/password", "patch"),
+            ("/api/v1/actors/{id}/password", "put"),
             ("/api/v1/actors", "get"),
             ("/api/v1/actors", "post"),
             ("/api/v1/actors/{id}", "get"),
@@ -34,6 +36,41 @@ public sealed class OpenApiIdentityTests(AgcoworkApiFactory factory)
             Assert.False(string.IsNullOrWhiteSpace(operation.GetProperty("summary").GetString()), $"No summary on {method} {path}");
             Assert.False(string.IsNullOrWhiteSpace(operation.GetProperty("description").GetString()), $"No description on {method} {path}");
         }
+    }
+
+    [Theory]
+    [InlineData("UpdateActorBody", "")]
+    [InlineData("CreateApiKeyBody", "")]
+    [InlineData("UpdateMemberBody", "")]
+    [InlineData("UpdateWorkspaceRequest", "")]
+    [InlineData("CreateActorRequest", "kind,name")]
+    [InlineData("AddMemberRequest", "actorId,role")]
+    [InlineData("CreateWorkspaceRequest", "slug,name")]
+    [InlineData("LoginRequest", "email,password")]
+    [InlineData("ChangeOwnPasswordRequest", "currentPassword,newPassword")]
+    [InlineData("ResetPasswordBody", "newPassword")]
+    public async Task OpenApiDocument_RequestBodies_RequireOnlyRealRequiredFields(string schema, string required)
+    {
+        using var client = factory.CreateClient();
+        await using var body = await client.GetStreamAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var document = await JsonDocument.ParseAsync(body, cancellationToken: TestContext.Current.CancellationToken);
+        var definition = document.RootElement.GetProperty("components").GetProperty("schemas").GetProperty(schema);
+
+        var actual = definition.TryGetProperty("required", out var list) ? list.EnumerateArray().Select(e => e.GetString()!).ToArray() : [];
+
+        Assert.Equal(required.Split(',', StringSplitOptions.RemoveEmptyEntries), actual);
+    }
+
+    [Fact]
+    public async Task OpenApiDocument_ResetPasswordBody_MustChangeDefaultsToTrue()
+    {
+        using var client = factory.CreateClient();
+        await using var body = await client.GetStreamAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var document = await JsonDocument.ParseAsync(body, cancellationToken: TestContext.Current.CancellationToken);
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+
+        Assert.True(schemas.GetProperty("ResetPasswordBody").GetProperty("properties").GetProperty("mustChange").GetProperty("default").GetBoolean());
+        Assert.Contains("mustChangePassword", schemas.GetProperty("MeDto").GetProperty("required").EnumerateArray().Select(e => e.GetString()));
     }
 
     [Fact]

@@ -22,6 +22,7 @@ const ME: Me = {
   email: null,
   instanceScopes: [],
   apiKey: null,
+  mustChangePassword: false,
 };
 
 describe('SessionMenuComponent', () => {

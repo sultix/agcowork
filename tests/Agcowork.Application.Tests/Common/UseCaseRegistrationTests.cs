@@ -4,6 +4,7 @@ using Agcowork.Application.Collections.Templates;
 using Agcowork.Application.Identity.Actors;
 using Agcowork.Application.Identity.ApiKeys;
 using Agcowork.Application.Identity.Authentication;
+using Agcowork.Application.Identity.Passwords;
 using Agcowork.Application.Records;
 using Agcowork.Application.Schema;
 using Agcowork.Application.Spaces;
@@ -29,6 +30,7 @@ public sealed class UseCaseRegistrationTests
                 typeof(Login), typeof(AuthenticateSession), typeof(AuthenticateApiKey), typeof(GetMe),
                 typeof(CreateActor), typeof(UpdateActor), typeof(GetActor), typeof(ListActors),
                 typeof(CreateApiKey), typeof(ListApiKeys), typeof(RevokeApiKey),
+                typeof(ChangeOwnPassword), typeof(ResetPassword),
                 typeof(ResolveTenant), typeof(ListMyWorkspaces), typeof(CreateWorkspace), typeof(GetWorkspace),
                 typeof(UpdateWorkspace), typeof(ArchiveWorkspace), typeof(ListMembers), typeof(AddMember),
                 typeof(UpdateMember), typeof(RemoveMember),

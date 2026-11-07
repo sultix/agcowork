@@ -53,6 +53,7 @@ const ME: Me = {
   email: 'admin@agcowork.local',
   instanceScopes: ['instance:admin'],
   apiKey: null,
+  mustChangePassword: false,
 };
 
 describe('ApiClient', () => {

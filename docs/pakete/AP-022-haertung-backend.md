@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | Härtung (vor Phase 2) |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Use-Cases `src/backend/Agcowork.Application/Identity/Actors/UpdateActor.cs`, Endpunkte `src/backend/Agcowork.Api/Endpoints/Identity/`, Hook-Muster select→multi_select in `src/backend/Agcowork.Application/Records/RecordValuesSchemaHook.cs`, Body-Defaults wie `UpdateSpaceBody` in `Endpoints/Spaces/SpaceEndpoints.cs` |
@@ -88,3 +88,9 @@ Menschen können ihr Passwort ändern, Admins können es zurücksetzen, und das 
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: 1042/1042 grün; eigener Cookie-Wert `agcowork.issued_at` (IssuedUtc nur Sekunden), `UpgradeHash` ohne `UpdatedAt`, fail closed ohne LocalLogin, Reset `PUT /actors/{id}/password`; Frontend-Fixtures vom Orchestrator nachgezogen |
+| 2026-11-07 | Review: Freigabe mit Hinweisen – W1 Race Login ↔ Wechsel (Cookie mit altem Passwort überlebt), H2 Lost Update beim Rehash, H5 Titel-Escaping in MCP-Text, H6 null-Rückgabe im Hook; H1 → AP-023, H3 → Backlog (Rate-Limit) |
+| 2026-11-07 | Nacharbeit an implementer-opus: Credential-Stamp statt Ausstellungszeit, bedingter Rehash, H4–H6 |
+| 2026-11-07 | Nacharbeit: Stamp `agcowork.password_at` mit exakter Gleichheit (Race-Test ohne Fix rot), Rehash per bedingtem `ExecuteUpdate`, null-Pfad im Hook zurückgenommen, Titel-Escaping in `McpText.Activity`; 1044/1044 grün; Orchestrator hat Stamp-Prüfung gelesen |
+| 2026-11-07 | abgeschlossen |

@@ -350,6 +350,10 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id");
 
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(512)

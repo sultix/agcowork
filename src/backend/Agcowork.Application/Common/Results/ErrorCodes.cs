@@ -20,6 +20,11 @@ public static class ErrorCodes
     public const string Conflict = "conflict";
     public const string ActorInactive = "actor_inactive";
 
+    // Field codes of password changes (AP-022).
+    public const string InvalidCredentials = "invalid_credentials";
+    public const string Unchanged = "unchanged";
+    public const string NotHuman = "not_human";
+
     // Field codes of schemas and property values (AP-006). Schema rules live in the domain; the codes are shared.
     public const string InvalidType = "invalid_type";
     public const string UnknownProperty = "unknown_property";

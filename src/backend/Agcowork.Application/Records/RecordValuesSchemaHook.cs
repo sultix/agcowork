@@ -13,7 +13,9 @@ namespace Agcowork.Application.Records;
 
 /// <summary>
 /// Keeps stored record values in line with a changed schema (the destructive changes confirmed with
-/// <c>confirmRemoval</c>): removed properties lose their values; select → multi_select wraps the value in an array;
+/// <c>confirmRemoval</c>, plus the widenings): removed properties lose their values; select → multi_select and a relation
+/// becoming <c>multiple</c> wrap the single value in an array (a stored null, which the normalizer never writes, is dropped
+/// like any value the new schema rejects: no value either way);
 /// removed options are dropped (select/status: the value, multi_select: the item); lowered <c>precision</c> rounds numbers
 /// (midpoint away from zero); markdown → text cuts values to the text limit. A value the new schema still rejects is
 /// dropped. Trimming is normalizer behaviour and not done here; nothing is composed from other values.
@@ -87,7 +89,13 @@ public sealed class RecordValuesSchemaHook(IAgcoworkDbContext db) : ISchemaChang
         || change.TypeChanges.Count > 0
         || change.RemovedOptions.Count > 0
         || change.Before.Any(before => change.After.Find(before.Key) is { Type: PropertyType.Number, Precision: { } precision }
-            && (before.Precision is null || precision < before.Precision));
+            && (before.Precision is null || precision < before.Precision))
+        || change.Before.Any(before => BecomesMultiple(change, before.Key));
+
+    /// <summary>A relation that held one reference and now holds several (the only allowed direction, see <c>CollectionSchema.ValidateChange</c>).</summary>
+    private static bool BecomesMultiple(SchemaChange change, string key) =>
+        change.Before.Find(key) is { Type: PropertyType.Relation, Multiple: false }
+        && change.After.Find(key) is { Type: PropertyType.Relation, Multiple: true };
 
     /// <summary>The adjusted values, or null when nothing changes.</summary>
     internal static Dictionary<string, JsonElement>? Adjust(SchemaChange change, IReadOnlyDictionary<string, JsonElement> properties)
@@ -119,7 +127,8 @@ public sealed class RecordValuesSchemaHook(IAgcoworkDbContext db) : ISchemaChang
         }
 
         change.TypeChanges.TryGetValue(key, out var typeChange);
-        if (typeChange is { From: PropertyType.Select, To: PropertyType.MultiSelect } && value.ValueKind == JsonValueKind.String)
+        if ((typeChange is { From: PropertyType.Select, To: PropertyType.MultiSelect } || BecomesMultiple(change, key))
+            && value.ValueKind == JsonValueKind.String)
         {
             value = JsonSerializer.SerializeToElement(new[] { value });
         }

@@ -82,5 +82,7 @@ internal static class MemberEndpoints
     }
 }
 
-/// <summary>Body of <c>PATCH /members/{actorId}</c>; the actor comes from the route.</summary>
-internal sealed record UpdateMemberBody(string? Role, IReadOnlyList<string>? Scopes);
+/// <summary>Body of <c>PATCH /members/{actorId}</c>; the actor comes from the route. Omitted fields stay unchanged.</summary>
+/// <param name="Role">New role: owner, admin, editor or viewer; resets the scopes to the role's defaults unless 'scopes' is sent too.</param>
+/// <param name="Scopes">Narrows the role to a non-empty subset of its scopes.</param>
+internal sealed record UpdateMemberBody(string? Role = null, IReadOnlyList<string>? Scopes = null);

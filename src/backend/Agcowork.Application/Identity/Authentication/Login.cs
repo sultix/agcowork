@@ -14,7 +14,7 @@ public sealed record LoginRequest(string? Email, string? Password);
 /// agent) yields the same <see cref="UnauthorizedError"/> and costs one hash verification.
 /// The adapter establishes the session (cookie).
 /// </summary>
-public sealed class Login(IAgcoworkDbContext db, IPasswordHasher passwordHasher, TimeProvider timeProvider)
+public sealed class Login(IAgcoworkDbContext db, IPasswordHasher passwordHasher)
     : IUseCase<LoginRequest, AuthenticatedActor>
 {
     public async Task<Result<AuthenticatedActor>> HandleAsync(LoginRequest request, CancellationToken cancellationToken)
@@ -35,25 +35,34 @@ public sealed class Login(IAgcoworkDbContext db, IPasswordHasher passwordHasher,
 
         var email = Actor.NormalizeEmail(request.Email!);
         var candidate = await (
-                from actor in db.Actors
-                join login in db.LocalLogins on actor.Id equals login.ActorId
+                from actor in db.Actors.AsNoTracking()
+                join login in db.LocalLogins.AsNoTracking() on actor.Id equals login.ActorId
                 where actor.Email == email && actor.Kind == ActorKind.Human
-                select new { Actor = actor, Login = login })
+                select new { Actor = actor, login.PasswordHash, login.UpdatedAt })
             .SingleOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var verification = passwordHasher.Verify(candidate?.Login.PasswordHash, request.Password!);
+        var verification = passwordHasher.Verify(candidate?.PasswordHash, request.Password!);
         if (candidate is null || verification == PasswordVerification.Failed || !candidate.Actor.IsActive)
         {
             return new UnauthorizedError("Invalid credentials.");
         }
 
+        // Same password, newer hash parameters: not a credential change, so UpdatedAt and other sessions stay. Conditional
+        // on the hash that was verified: if the password changed meanwhile, the rehash is dropped instead of writing the old
+        // password back over the new one.
         if (verification == PasswordVerification.SuccessRehashNeeded)
         {
-            candidate.Login.ChangePasswordHash(passwordHasher.Hash(request.Password!), timeProvider);
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            var verifiedHash = candidate.PasswordHash;
+            var rehashed = passwordHasher.Hash(request.Password!);
+            await db.LocalLogins
+                .Where(l => l.ActorId == candidate.Actor.Id && l.PasswordHash == verifiedHash)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(l => l.PasswordHash, rehashed), cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        return AuthenticatedActor.ForSession(candidate.Actor);
+        // The session is bound to the password state that was verified (read together with its hash), not to "now": a
+        // password change committed while this login was hashing must still end this session.
+        return AuthenticatedActor.ForSession(candidate.Actor, candidate.UpdatedAt);
     }
 }

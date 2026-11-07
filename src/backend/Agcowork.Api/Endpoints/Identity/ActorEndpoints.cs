@@ -1,6 +1,7 @@
 using Agcowork.Api.Auth;
 using Agcowork.Api.Http;
 using Agcowork.Application.Identity.Actors;
+using Agcowork.Application.Identity.Passwords;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Agcowork.Api.Endpoints.Identity;
@@ -51,6 +52,18 @@ internal static class ActorEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
+        actors.MapPut("/{id:guid}/password", ResetPasswordAsync)
+            .WithName("ResetActorPassword")
+            .WithSummary("Set a human's password")
+            .WithDescription(
+                "Sets 'newPassword' (12 to 256 characters) for a human, e.g. when they forgot it; creates the local login if the "
+                + "human has none yet. All existing sessions of that human are signed out (your own too, if you reset yourself; "
+                + "use PATCH /api/v1/me/password for that). 'mustChange' (default true) makes "
+                + "GET /api/v1/me report 'mustChangePassword' so the human picks their own password after logging in. Agents have "
+                + "no password: 400 with code 'not_human' on 'actorId'. Requires instance:admin.")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         return api;
     }
 
@@ -87,7 +100,26 @@ internal static class ActorEndpoints
         var result = await useCase.HandleAsync(request, cancellationToken);
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> ResetPasswordAsync(
+        Guid id,
+        ResetPasswordBody body,
+        ResetPassword useCase,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.HandleAsync(new ResetPasswordRequest(id, body.NewPassword, body.MustChange), cancellationToken);
+        return result.IsSuccess ? TypedResults.NoContent() : result.Error.ToProblem();
+    }
 }
 
-/// <summary>Body of <c>PATCH /actors/{id}</c>; the id comes from the route.</summary>
-internal sealed record UpdateActorBody(string? Name, string? Role, IReadOnlyList<string>? InstanceScopes, bool? IsActive);
+/// <summary>Body of <c>PATCH /actors/{id}</c>; the id comes from the route. Null or omitted leaves a field unchanged.</summary>
+/// <param name="Name">New display name.</param>
+/// <param name="Role">New free-text role; "" clears it.</param>
+/// <param name="InstanceScopes">Replaces the whole set when given.</param>
+/// <param name="IsActive">False deactivates: no login, keys rejected.</param>
+internal sealed record UpdateActorBody(string? Name = null, string? Role = null, IReadOnlyList<string>? InstanceScopes = null, bool? IsActive = null);
+
+/// <summary>Body of <c>PUT /actors/{id}/password</c>; the id comes from the route.</summary>
+/// <param name="NewPassword">The new password, 12 to 256 characters.</param>
+/// <param name="MustChange">Whether the human should replace it after logging in. Default true.</param>
+internal sealed record ResetPasswordBody(string? NewPassword, bool MustChange = true);

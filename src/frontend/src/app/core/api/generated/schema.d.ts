@@ -53,7 +53,7 @@ export interface paths {
         };
         /**
          * Who am I
-         * @description Returns the calling actor (human via session cookie, agent via API key) with its kind and instance scopes. For API-key calls, 'apiKey' holds the key's metadata: prefix, scope and workspace restrictions, expiry. Agents should call this first to check which identity and rights a key carries.
+         * @description Returns the calling actor (human via session cookie, agent via API key) with its kind and instance scopes. For API-key calls, 'apiKey' holds the key's metadata: prefix, scope and workspace restrictions, expiry. 'mustChangePassword' is true when a human still uses the bootstrap password or one an admin set; they should choose their own with PATCH /api/v1/me/password (always false for agents). Agents should call this first to check which identity and rights a key carries.
          */
         get: operations["GetMe"];
         put?: never;
@@ -62,6 +62,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change my password
+         * @description Humans with a session cookie only: sets 'newPassword' (12 to 256 characters) after checking 'currentPassword'. Returns 204 with a fresh session cookie; every other session of the account is signed out. Clears 'mustChangePassword'. A wrong 'currentPassword' yields 400 with code 'invalid_credentials' on that field, the same password again 400 'unchanged'. Agents and API-key calls get 403: they have no password.
+         */
+        patch: operations["ChangeMyPassword"];
         trace?: never;
     };
     "/api/v1/workspace-templates": {
@@ -130,6 +150,26 @@ export interface paths {
          * @description Partial update: omitted or null fields stay unchanged; role "" clears the role; 'instanceScopes' replaces the set. 'isActive': false deactivates the actor: no login, all its API keys are rejected. You cannot deactivate yourself or remove instance:admin from yourself (409 'self_lockout'). Requires instance:admin.
          */
         patch: operations["UpdateActor"];
+        trace?: never;
+    };
+    "/api/v1/actors/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set a human's password
+         * @description Sets 'newPassword' (12 to 256 characters) for a human, e.g. when they forgot it; creates the local login if the human has none yet. All existing sessions of that human are signed out (your own too, if you reset yourself; use PATCH /api/v1/me/password for that). 'mustChange' (default true) makes GET /api/v1/me report 'mustChangePassword' so the human picks their own password after logging in. Agents have no password: 400 with code 'not_human' on 'actorId'. Requires instance:admin.
+         */
+        put: operations["ResetActorPassword"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/actors/{id}/keys": {
@@ -789,7 +829,7 @@ export interface paths {
         };
         /**
          * What happened in the workspace
-         * @description Activity events, newest first: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). Filters: spaceId, collectionId, actorId, since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, member.added, member.updated, member.removed). Paginated with 'limit' (1..200) and 'cursor'. Requires read.
+         * @description Activity events, newest first: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). 'targetTitle' is the current title of the record, or name of the space or collection, null if the target no longer exists (and for members and views). Filters: spaceId, collectionId, actorId, since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, member.added, member.updated, member.removed). Paginated with 'limit' (1..200) and 'cursor'. Requires read.
          */
         get: operations["ListActivity"];
         put?: never;
@@ -834,6 +874,11 @@ export interface components {
              * @description Id of the target; for members the actor id.
              */
             targetId: string;
+            /**
+             * @description The current title of a record, or name of a space or collection, read when the feed is listed (so a renamed
+             *     target shows its new name). Null when the target no longer exists, and for members and views.
+             */
+            targetTitle: null | string;
             /**
              * Format: uuid
              * @description Space of the target, if any.
@@ -911,6 +956,12 @@ export interface components {
             section?: null | string;
             /** @description Why; stored with the revision. */
             reason?: null | string;
+        };
+        ChangeOwnPasswordRequest: {
+            /** @description The password the caller logged in with. */
+            currentPassword: null | string;
+            /** @description The new password, 12 to 256 characters, different from the current one. */
+            newPassword: null | string;
         };
         /** @description Everything an agent needs to work with a collection, in one response. */
         CollectionDescriptionDto: {
@@ -1009,13 +1060,20 @@ export interface components {
             /** @description Subset of `instance:admin`, `workspaces:create`. */
             instanceScopes?: null | string[];
         };
-        /** @description Optional body of `POST /actors/{id}/keys`. */
+        /** @description Optional body of `POST /actors/{id}/keys`; every field is optional. */
         CreateApiKeyBody: {
-            scopes: null | string[];
-            /** Format: uuid */
-            workspaceId: null | string;
-            /** Format: date-time */
-            expiresAt: null | string;
+            /** @description Restriction to a subset of read, write, schema, admin; omitted or empty = the agent's membership rights apply in full. */
+            scopes?: null | string[];
+            /**
+             * Format: uuid
+             * @description Restricts the key to one workspace.
+             */
+            workspaceId?: null | string;
+            /**
+             * Format: date-time
+             * @description Expiry, in the future.
+             */
+            expiresAt?: null | string;
         };
         CreateCollectionRequest: {
             /**
@@ -1132,14 +1190,27 @@ export interface components {
         };
         /** @description The calling actor. ApiKey is set when the call was made with an API key. */
         MeDto: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Actor id.
+             */
             id: string;
+            /** @description human or agent. */
             kind: components["schemas"]["ActorKind"];
+            /** @description Display name. */
             name: string;
+            /** @description Free-text role, not a permission. */
             role: null | string;
+            /** @description Email address; the login of humans. */
             email: null | string;
+            /** @description Effective instance scopes of this call (a restricted key carries none). */
             instanceScopes: string[];
             apiKey: null | components["schemas"]["ApiKeyDto"];
+            /**
+             * @description True when a human still uses the bootstrap password or one an admin reset: they should set their own with
+             *     `PATCH /api/v1/me/password`. Always false for agents.
+             */
+            mustChangePassword: boolean;
         };
         /** @description A member of the workspace. */
         MemberDto: {
@@ -1464,6 +1535,16 @@ export interface components {
             /** @description Latest revisions, newest first; only with `includeHistory`. */
             history?: null | components["schemas"]["RevisionSummaryDto"][];
         };
+        /** @description Body of `PUT /actors/{id}/password`; the id comes from the route. */
+        ResetPasswordBody: {
+            /** @description The new password, 12 to 256 characters. */
+            newPassword: null | string;
+            /**
+             * @description Whether the human should replace it after logging in. Default true.
+             * @default true
+             */
+            mustChange: boolean;
+        };
         /** @description A full revision: the record's content after the change. */
         RevisionDto: {
             /**
@@ -1593,12 +1674,16 @@ export interface components {
              */
             createdAt: string;
         };
-        /** @description Body of `PATCH /actors/{id}`; the id comes from the route. */
+        /** @description Body of `PATCH /actors/{id}`; the id comes from the route. Null or omitted leaves a field unchanged. */
         UpdateActorBody: {
-            name: null | string;
-            role: null | string;
-            instanceScopes: null | string[];
-            isActive: null | boolean;
+            /** @description New display name. */
+            name?: null | string;
+            /** @description New free-text role; "" clears it. */
+            role?: null | string;
+            /** @description Replaces the whole set when given. */
+            instanceScopes?: null | string[];
+            /** @description False deactivates: no login, keys rejected. */
+            isActive?: null | boolean;
         };
         /** @description Body of `PATCH /collections/{collectionId}`; null leaves a field unchanged. */
         UpdateCollectionBody: {
@@ -1607,10 +1692,12 @@ export interface components {
             /** @description New description; cannot be cleared. */
             description?: null | string;
         };
-        /** @description Body of `PATCH /members/{actorId}`; the actor comes from the route. */
+        /** @description Body of `PATCH /members/{actorId}`; the actor comes from the route. Omitted fields stay unchanged. */
         UpdateMemberBody: {
-            role: null | string;
-            scopes: null | string[];
+            /** @description New role: owner, admin, editor or viewer; resets the scopes to the role's defaults unless 'scopes' is sent too. */
+            role?: null | string;
+            /** @description Narrows the role to a non-empty subset of its scopes. */
+            scopes?: null | string[];
         };
         /** @description Body of `PATCH /records/{recordId}`; null leaves a field unchanged. */
         UpdateRecordBody: {
@@ -1932,6 +2019,55 @@ export interface operations {
             };
         };
     };
+    ChangeMyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeOwnPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ListWorkspaceTemplates: {
         parameters: {
             query?: never;
@@ -2170,6 +2306,66 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ResetActorPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

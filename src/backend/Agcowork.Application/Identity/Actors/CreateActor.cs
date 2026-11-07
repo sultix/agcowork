@@ -103,13 +103,9 @@ public sealed class CreateActor(
             {
                 errors.Add("password", ErrorCodes.NotAllowed, "Agents authenticate with API keys and cannot have a password.");
             }
-            else if (request.Password.Length < PasswordPolicy.MinLength)
+            else
             {
-                errors.Add("password", ErrorCodes.TooShort, $"'password' must have at least {PasswordPolicy.MinLength} characters.");
-            }
-            else if (request.Password.Length > PasswordPolicy.MaxLength)
-            {
-                errors.Add("password", ErrorCodes.TooLong, $"'password' must not exceed {PasswordPolicy.MaxLength} characters.");
+                PasswordPolicy.CheckLength(errors, "password", request.Password);
             }
         }
 

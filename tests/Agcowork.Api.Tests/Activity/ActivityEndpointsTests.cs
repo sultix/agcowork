@@ -55,6 +55,25 @@ public sealed class ActivityEndpointsTests(AgcoworkApiFactory factory)
     }
 
     [Fact]
+    public async Task Activity_TargetTitle_CurrentTitleAfterRename()
+    {
+        var owner = await factory.CreateAgentAsync(["workspaces:create"], cancellationToken: Ct);
+        var workspace = await TenancyFixture.CreateWorkspaceAsync(owner.Client, "acttitle");
+        var (space, collection) = await RecordsApi.SeedCollectionAsync(owner.Client, workspace.Slug);
+        var record = await RecordsApi.CreateInAsync(owner.Client, workspace.Slug, collection.Id, "Vorher");
+        using (var patch = await owner.Client.PatchAsJsonAsync(TenancyFixture.Path(workspace.Slug, $"/records/{record.Id}"), new { title = "Nachher" }, Ct))
+        {
+            Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
+        }
+
+        var feed = await owner.Client.GetFromJsonAsync<Page<ActivityEventDto>>(TenancyFixture.Path(workspace.Slug, "/activity"), AgcoworkApiFactory.Json, Ct);
+
+        Assert.Equal(["Nachher", "Nachher"], feed!.Items.Where(e => e.TargetId == record.Id).Select(e => e.TargetTitle));
+        Assert.Equal(collection.Name, feed.Items.Single(e => e.TargetId == collection.Id).TargetTitle);
+        Assert.Equal(space.Name, feed.Items.Single(e => e.TargetId == space.Id).TargetTitle);
+    }
+
+    [Fact]
     public async Task ListActivity_Isolated()
     {
         var t = await TenancyFixture.GetAsync(factory);

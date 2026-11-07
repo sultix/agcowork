@@ -67,5 +67,8 @@ internal static class ApiKeyEndpoints
     }
 }
 
-/// <summary>Optional body of <c>POST /actors/{id}/keys</c>.</summary>
-internal sealed record CreateApiKeyBody(IReadOnlyList<string>? Scopes, Guid? WorkspaceId, DateTimeOffset? ExpiresAt);
+/// <summary>Optional body of <c>POST /actors/{id}/keys</c>; every field is optional.</summary>
+/// <param name="Scopes">Restriction to a subset of read, write, schema, admin; omitted or empty = the agent's membership rights apply in full.</param>
+/// <param name="WorkspaceId">Restricts the key to one workspace.</param>
+/// <param name="ExpiresAt">Expiry, in the future.</param>
+internal sealed record CreateApiKeyBody(IReadOnlyList<string>? Scopes = null, Guid? WorkspaceId = null, DateTimeOffset? ExpiresAt = null);

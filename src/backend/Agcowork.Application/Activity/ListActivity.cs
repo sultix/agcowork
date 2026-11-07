@@ -91,7 +91,60 @@ public sealed class ListActivity(IAgcoworkDbContext db, ITenantContext tenant) :
 
         var events = await query.OrderByDescending(e => e.Seq).Take(limit + 1).ToListAsync(cancellationToken).ConfigureAwait(false);
         var next = events.Count > limit ? Paging.Encode(events[limit - 1].Seq.ToString(CultureInfo.InvariantCulture)) : null;
-        return new Page<ActivityEventDto>([.. events.Take(limit).Select(ActivityEventDto.From)], next);
+        var page = events.Take(limit).ToList();
+        var titles = await ResolveTitlesAsync(page, cancellationToken).ConfigureAwait(false);
+        return new Page<ActivityEventDto>(
+            [.. page.Select(e => ActivityEventDto.From(e, titles.GetValueOrDefault((e.TargetType, e.TargetId))))],
+            next);
+    }
+
+    /// <summary>
+    /// Current titles of the page's records, spaces and collections: at most one query per target type, never one per
+    /// event. The queries run through the tenant filter, so a target outside the workspace stays unresolved (null), like
+    /// a deleted one. Archived targets still exist and keep their title.
+    /// </summary>
+    private async Task<Dictionary<(string Type, Guid Id), string>> ResolveTitlesAsync(IReadOnlyList<ActivityEvent> events, CancellationToken cancellationToken)
+    {
+        var titles = new Dictionary<(string Type, Guid Id), string>();
+        List<Guid> Ids(string targetType) => [.. events.Where(e => e.TargetType == targetType).Select(e => e.TargetId).Distinct()];
+
+        if (Ids(ActivityTargets.Record) is [_, ..] recordIds)
+        {
+            foreach (var record in await db.Records.AsNoTracking()
+                         .Where(r => recordIds.Contains(r.Id))
+                         .Select(r => new { r.Id, r.Title })
+                         .ToListAsync(cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                titles[(ActivityTargets.Record, record.Id)] = record.Title;
+            }
+        }
+
+        if (Ids(ActivityTargets.Space) is [_, ..] spaceIds)
+        {
+            foreach (var space in await db.Spaces.AsNoTracking()
+                         .Where(s => spaceIds.Contains(s.Id))
+                         .Select(s => new { s.Id, s.Name })
+                         .ToListAsync(cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                titles[(ActivityTargets.Space, space.Id)] = space.Name;
+            }
+        }
+
+        if (Ids(ActivityTargets.Collection) is [_, ..] collectionIds)
+        {
+            foreach (var collection in await db.Collections.AsNoTracking()
+                         .Where(c => collectionIds.Contains(c.Id))
+                         .Select(c => new { c.Id, c.Name })
+                         .ToListAsync(cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                titles[(ActivityTargets.Collection, collection.Id)] = collection.Name;
+            }
+        }
+
+        return titles;
     }
 
     private static long? ParseSeq(string position) =>

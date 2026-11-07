@@ -14,5 +14,6 @@ internal sealed class LocalLoginConfiguration : IEntityTypeConfiguration<LocalLo
         builder.HasOne<Actor>().WithOne().HasForeignKey<LocalLogin>(l => l.ActorId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(l => l.PasswordHash).HasMaxLength(512).IsRequired();
         builder.Property(l => l.UpdatedAt).IsRequired();
+        builder.Property(l => l.MustChangePassword).IsRequired();
     }
 }

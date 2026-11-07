@@ -137,6 +137,8 @@ internal sealed class TestActor : ICurrentActor
 
     public static TestActor Admin(Guid? id = null) => new(id ?? Guid.CreateVersion7(), ActorKind.Human, [InstanceScope.Admin]);
 
+    public static TestActor Human(Guid? id = null, params string[] scopes) => new(id ?? Guid.CreateVersion7(), ActorKind.Human, scopes);
+
     public static TestActor Agent(Guid? id = null, params string[] scopes) => new(id ?? Guid.CreateVersion7(), ActorKind.Agent, scopes);
 
     /// <summary>The same actor calling with an API key that carries the given restrictions.</summary>

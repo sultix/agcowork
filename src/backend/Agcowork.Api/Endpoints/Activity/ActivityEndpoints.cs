@@ -17,7 +17,9 @@ internal static class ActivityEndpoints
             .WithSummary("What happened in the workspace")
             .WithDescription(
                 "Activity events, newest first: who changed which record, space, collection or member, with a diff ('old'/'new' per "
-                + "changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). Filters: spaceId, "
+                + "changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). 'targetTitle' is the "
+                + "current title of the record, or name of the space or collection, null if the target no longer exists (and for "
+                + "members and views). Filters: spaceId, "
                 + "collectionId, actorId, since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, "
                 + "record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, "
                 + "collection.created, collection.updated, collection.schema_changed, collection.archived, member.added, "

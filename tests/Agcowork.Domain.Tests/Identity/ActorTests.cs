@@ -114,5 +114,39 @@ public sealed class ActorTests
 
         Assert.Equal(human.Id, login.ActorId);
         Assert.Equal(Now, login.UpdatedAt);
+        Assert.False(login.MustChangePassword);
+    }
+
+    [Fact]
+    public void LocalLoginChangePassword_MovesUpdatedAtAndSetsFlag()
+    {
+        var login = LocalLogin.Create(Actor.CreateHuman("Ada", "ada@example.com", null, [], _clock), "hash", _clock, mustChangePassword: true);
+        _clock.Advance(TimeSpan.FromMinutes(1));
+
+        login.ChangePassword("new-hash", mustChangePassword: false, _clock);
+
+        Assert.Equal(("new-hash", Now.AddMinutes(1), false), (login.PasswordHash, login.UpdatedAt, login.MustChangePassword));
+    }
+
+    [Fact]
+    public void LocalLoginChangePassword_TruncatesToMicroseconds()
+    {
+        var login = LocalLogin.Create(Actor.CreateHuman("Ada", "ada@example.com", null, [], _clock), "hash", _clock);
+        _clock.Advance(TimeSpan.FromTicks(12_345_678));
+
+        login.ChangePassword("new-hash", mustChangePassword: false, _clock);
+
+        Assert.Equal(Now.AddTicks(12_345_670), login.UpdatedAt);
+    }
+
+    [Fact]
+    public void LocalLoginRequirePasswordChange_SetsFlagOnly()
+    {
+        var login = LocalLogin.Create(Actor.CreateHuman("Ada", "ada@example.com", null, [], _clock), "hash", _clock);
+        _clock.Advance(TimeSpan.FromMinutes(1));
+
+        login.RequirePasswordChange();
+
+        Assert.Equal(("hash", Now, true), (login.PasswordHash, login.UpdatedAt, login.MustChangePassword));
     }
 }

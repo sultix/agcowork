@@ -389,6 +389,25 @@ public sealed class WorkspaceToolsTests(AgcoworkApiFactory factory)
 
         Assert.Equal("record.created", first.GetProperty("type").GetString());
         Assert.Equal(record.Id, first.GetProperty("targetId").GetGuid());
+        Assert.Equal("Aktivität", first.GetProperty("targetTitle").GetString());
         Assert.Contains("record.created", McpClientFixture.Text(result), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ActivityRecent_AfterRename_TargetTitleIsCurrentTitle()
+    {
+        var (_, client) = await ConnectAsync();
+        await using var connection = client;
+        var tasks = await CollectionAsync(client, "Aufgaben");
+        var record = await CreateTaskAsync(client, tasks.Id, "Alter Name");
+        await McpClientFixture.OkAsync<RecordDto>(client, "record_update", new { recordId = record.Id, title = "Neuer \"Name\" für Ä" });
+
+        var result = await McpClientFixture.CallAsync(client, "activity_recent", new { collectionId = tasks.Id });
+        var items = McpClientFixture.Ok(result).GetProperty("items").EnumerateArray().Where(e => e.GetProperty("targetId").GetGuid() == record.Id).ToList();
+
+        Assert.Equal(2, items.Count);
+        Assert.All(items, e => Assert.Equal("Neuer \"Name\" für Ä", e.GetProperty("targetTitle").GetString()));
+        // JSON-quoted in the text: inner quotes escaped, umlauts kept.
+        Assert.Contains("record \"Neuer \\\"Name\\\" für Ä\" ", McpClientFixture.Text(result), StringComparison.Ordinal);
     }
 }

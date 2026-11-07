@@ -20,6 +20,7 @@ const ME: Me = {
   email: 'admin@agcowork.local',
   instanceScopes: ['instance:admin'],
   apiKey: null,
+  mustChangePassword: false,
 };
 const UNAUTHORIZED = { status: 401, statusText: 'Unauthorized' } as const;
 

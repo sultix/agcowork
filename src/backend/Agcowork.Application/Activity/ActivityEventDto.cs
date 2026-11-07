@@ -14,6 +14,10 @@ namespace Agcowork.Application.Activity;
 /// <param name="ActorId">Who did it.</param>
 /// <param name="TargetType">record, space, collection or member.</param>
 /// <param name="TargetId">Id of the target; for members the actor id.</param>
+/// <param name="TargetTitle">
+/// The current title of a record, or name of a space or collection, read when the feed is listed (so a renamed
+/// target shows its new name). Null when the target no longer exists, and for members and views.
+/// </param>
 /// <param name="SpaceId">Space of the target, if any.</param>
 /// <param name="CollectionId">Collection of the target, if any.</param>
 /// <param name="Diff">
@@ -28,12 +32,15 @@ public sealed record ActivityEventDto(
     Guid ActorId,
     string TargetType,
     Guid TargetId,
+    string? TargetTitle,
     Guid? SpaceId,
     Guid? CollectionId,
     JsonObject Diff,
     DateTimeOffset At)
 {
-    public static ActivityEventDto From(ActivityEvent activity)
+    /// <param name="activity">The stored event.</param>
+    /// <param name="targetTitle">Current title of the target, if resolved.</param>
+    public static ActivityEventDto From(ActivityEvent activity, string? targetTitle = null)
     {
         ArgumentNullException.ThrowIfNull(activity);
         return new ActivityEventDto(
@@ -43,6 +50,7 @@ public sealed record ActivityEventDto(
             activity.ActorId,
             activity.TargetType,
             activity.TargetId,
+            targetTitle,
             activity.SpaceId,
             activity.CollectionId,
             (JsonObject)activity.Diff.DeepClone(),

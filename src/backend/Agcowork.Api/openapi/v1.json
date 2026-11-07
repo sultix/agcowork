@@ -81,7 +81,7 @@
           "Me"
         ],
         "summary": "Who am I",
-        "description": "Returns the calling actor (human via session cookie, agent via API key) with its kind and instance scopes. For API-key calls, 'apiKey' holds the key's metadata: prefix, scope and workspace restrictions, expiry. Agents should call this first to check which identity and rights a key carries.",
+        "description": "Returns the calling actor (human via session cookie, agent via API key) with its kind and instance scopes. For API-key calls, 'apiKey' holds the key's metadata: prefix, scope and workspace restrictions, expiry. 'mustChangePassword' is true when a human still uses the bootstrap password or one an admin set; they should choose their own with PATCH /api/v1/me/password (always false for agents). Agents should call this first to check which identity and rights a key carries.",
         "operationId": "GetMe",
         "responses": {
           "401": {
@@ -100,6 +100,61 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/password": {
+      "patch": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Change my password",
+        "description": "Humans with a session cookie only: sets 'newPassword' (12 to 256 characters) after checking 'currentPassword'. Returns 204 with a fresh session cookie; every other session of the account is signed out. Clears 'mustChangePassword'. A wrong 'currentPassword' yields 400 with code 'invalid_credentials' on that field, the same password again 400 'unchanged'. Agents and API-key calls get 403: they have no password.",
+        "operationId": "ChangeMyPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeOwnPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -400,6 +455,82 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actors/{id}/password": {
+      "put": {
+        "tags": [
+          "Actors"
+        ],
+        "summary": "Set a human's password",
+        "description": "Sets 'newPassword' (12 to 256 characters) for a human, e.g. when they forgot it; creates the local login if the human has none yet. All existing sessions of that human are signed out (your own too, if you reset yourself; use PATCH /api/v1/me/password for that). 'mustChange' (default true) makes GET /api/v1/me report 'mustChangePassword' so the human picks their own password after logging in. Agents have no password: 400 with code 'not_human' on 'actorId'. Requires instance:admin.",
+        "operationId": "ResetActorPassword",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4201,7 +4332,7 @@
           "Activity"
         ],
         "summary": "What happened in the workspace",
-        "description": "Activity events, newest first: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). Filters: spaceId, collectionId, actorId, since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, member.added, member.updated, member.removed). Paginated with 'limit' (1..200) and 'cursor'. Requires read.",
+        "description": "Activity events, newest first: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). 'targetTitle' is the current title of the record, or name of the space or collection, null if the target no longer exists (and for members and views). Filters: spaceId, collectionId, actorId, since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, member.added, member.updated, member.removed). Paginated with 'limit' (1..200) and 'cursor'. Requires read.",
         "operationId": "ListActivity",
         "parameters": [
           {
@@ -4330,6 +4461,7 @@
           "actorId",
           "targetType",
           "targetId",
+          "targetTitle",
           "spaceId",
           "collectionId",
           "diff",
@@ -4368,6 +4500,13 @@
             "type": "string",
             "description": "Id of the target; for members the actor id.",
             "format": "uuid"
+          },
+          "targetTitle": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The current title of a record, or name of a space or collection, read when the feed is listed (so a renamed\ntarget shows its new name). Null when the target no longer exists, and for members and views."
           },
           "spaceId": {
             "type": [
@@ -4584,6 +4723,29 @@
           }
         },
         "description": "Body of `POST /records/{recordId}/append`."
+      },
+      "ChangeOwnPasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The password the caller logged in with."
+          },
+          "newPassword": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The new password, 12 to 256 characters, different from the current one."
+          }
+        }
       },
       "CollectionDescriptionDto": {
         "required": [
@@ -4815,11 +4977,6 @@
         }
       },
       "CreateApiKeyBody": {
-        "required": [
-          "scopes",
-          "workspaceId",
-          "expiresAt"
-        ],
         "type": "object",
         "properties": {
           "scopes": {
@@ -4829,13 +4986,15 @@
             ],
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Restriction to a subset of read, write, schema, admin; omitted or empty = the agent's membership rights apply in full."
           },
           "workspaceId": {
             "type": [
               "null",
               "string"
             ],
+            "description": "Restricts the key to one workspace.",
             "format": "uuid"
           },
           "expiresAt": {
@@ -4843,10 +5002,11 @@
               "null",
               "string"
             ],
+            "description": "Expiry, in the future.",
             "format": "date-time"
           }
         },
-        "description": "Optional body of `POST /actors/{id}/keys`."
+        "description": "Optional body of `POST /actors/{id}/keys`; every field is optional."
       },
       "CreateCollectionRequest": {
         "required": [
@@ -5205,37 +5365,44 @@
           "role",
           "email",
           "instanceScopes",
-          "apiKey"
+          "apiKey",
+          "mustChangePassword"
         ],
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
+            "description": "Actor id.",
             "format": "uuid"
           },
           "kind": {
+            "description": "human or agent.",
             "$ref": "#/components/schemas/ActorKind"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Display name."
           },
           "role": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Free-text role, not a permission."
           },
           "email": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Email address; the login of humans."
           },
           "instanceScopes": {
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Effective instance scopes of this call (a restricted key carries none)."
           },
           "apiKey": {
             "oneOf": [
@@ -5243,9 +5410,14 @@
                 "type": "null"
               },
               {
+                "description": "Metadata of the key used, for API-key calls.",
                 "$ref": "#/components/schemas/ApiKeyDto"
               }
             ]
+          },
+          "mustChangePassword": {
+            "type": "boolean",
+            "description": "True when a human still uses the bootstrap password or one an admin reset: they should set their own with\n`PATCH /api/v1/me/password`. Always false for agents."
           }
         },
         "description": "The calling actor. ApiKey is set when the call was made with an API key."
@@ -6121,6 +6293,27 @@
         },
         "description": "A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoints (AP-009)."
       },
+      "ResetPasswordBody": {
+        "required": [
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The new password, 12 to 256 characters."
+          },
+          "mustChange": {
+            "type": "boolean",
+            "description": "Whether the human should replace it after logging in. Default true.",
+            "default": true
+          }
+        },
+        "description": "Body of `PUT /actors/{id}/password`; the id comes from the route."
+      },
       "RevisionDto": {
         "required": [
           "recordId",
@@ -6373,25 +6566,21 @@
         "description": "A record template of a collection."
       },
       "UpdateActorBody": {
-        "required": [
-          "name",
-          "role",
-          "instanceScopes",
-          "isActive"
-        ],
         "type": "object",
         "properties": {
           "name": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "New display name."
           },
           "role": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "New free-text role; \"\" clears it."
           },
           "instanceScopes": {
             "type": [
@@ -6400,16 +6589,18 @@
             ],
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Replaces the whole set when given."
           },
           "isActive": {
             "type": [
               "null",
               "boolean"
-            ]
+            ],
+            "description": "False deactivates: no login, keys rejected."
           }
         },
-        "description": "Body of `PATCH /actors/{id}`; the id comes from the route."
+        "description": "Body of `PATCH /actors/{id}`; the id comes from the route. Null or omitted leaves a field unchanged."
       },
       "UpdateCollectionBody": {
         "type": "object",
@@ -6432,17 +6623,14 @@
         "description": "Body of `PATCH /collections/{collectionId}`; null leaves a field unchanged."
       },
       "UpdateMemberBody": {
-        "required": [
-          "role",
-          "scopes"
-        ],
         "type": "object",
         "properties": {
           "role": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "New role: owner, admin, editor or viewer; resets the scopes to the role's defaults unless 'scopes' is sent too."
           },
           "scopes": {
             "type": [
@@ -6451,10 +6639,11 @@
             ],
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Narrows the role to a non-empty subset of its scopes."
           }
         },
-        "description": "Body of `PATCH /members/{actorId}`; the actor comes from the route."
+        "description": "Body of `PATCH /members/{actorId}`; the actor comes from the route. Omitted fields stay unchanged."
       },
       "UpdateRecordBody": {
         "type": "object",

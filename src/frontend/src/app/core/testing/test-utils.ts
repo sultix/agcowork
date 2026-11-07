@@ -22,6 +22,7 @@ export const ADMIN_ME: Me = {
   email: 'admin@agcowork.local',
   instanceScopes: ['instance:admin'],
   apiKey: null,
+  mustChangePassword: false,
 };
 
 export const MEMBER_ME: Me = { ...ADMIN_ME, name: 'Mia', instanceScopes: [] };
@@ -205,6 +206,7 @@ export function activityEvent(
     spaceId: SPACE_ID,
     collectionId: COLLECTION_ID,
     at: '2026-11-07T11:00:00Z',
+    targetTitle: null,
     ...overrides,
     diff: (overrides.diff ?? {}) as never,
   };

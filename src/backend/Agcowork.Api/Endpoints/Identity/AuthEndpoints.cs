@@ -43,10 +43,7 @@ internal static class AuthEndpoints
             return result.Error.ToProblem();
         }
 
-        await httpContext.SignInAsync(
-            AuthSchemes.Cookie,
-            ActorClaims.ToPrincipal(result.Value, AuthSchemes.Cookie),
-            new AuthenticationProperties { IsPersistent = true });
+        await SessionCookie.SignInAsync(httpContext, result.Value);
         return TypedResults.NoContent();
     }
 
