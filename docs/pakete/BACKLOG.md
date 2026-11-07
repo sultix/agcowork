@@ -14,13 +14,13 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-008](AP-008-views.md) | Views: CRUD, Standard-Views (table, raw) je Collection | 1 | implementer-sonnet | AP-006 | in Arbeit | |
 | [AP-009](AP-009-filter-dsl.md) | Filter-DSL, Sortierung, Cursor-Paginierung, Abfrage-Endpunkt | 1 | implementer-opus | AP-007, AP-008 | angelegt | |
 | [AP-010](AP-010-workspace-vorlage.md) | Workspace-Vorlage „Software-Projekt“ und `empty`, Anlage aus Vorlage | 1 | implementer-sonnet | AP-006, AP-008 | in Arbeit | |
-| AP-011 | MCP-Server: Workspace- und Instanz-Tools, Resources, Auth, Isolationstests | 1 | implementer-opus | AP-009, AP-010 | geplant | |
+| [AP-011](AP-011-mcp-server.md) | MCP-Server: Workspace- und Instanz-Tools, Resources, Auth, Isolationstests | 1 | implementer-opus | AP-009, AP-010 | angelegt | |
 | [AP-012](AP-012-editor-bausteine.md) | Frontend: Markdown-Editor und Raw-View als Bausteine | 1 | implementer-opus | AP-002 | abgeschlossen | 2fc5c4c |
 | [AP-013](AP-013-frontend-client-login.md) | Frontend: OpenAPI-Client, Login, Session, Auth-Guard | 1 | implementer-opus | AP-004 | abgeschlossen | 72abfeb |
 | [AP-014](AP-014-frontend-dokument.md) | Frontend: Space-Navigation, Collections, Record-Liste, Dokument-View, Property-Editoren | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-016 | in Arbeit | |
-| AP-015 | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, Property-Editoren | 1 | implementer-opus | AP-009, AP-013 | geplant | |
+| [AP-015](AP-015-frontend-tabelle.md) | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, View-Wechsel, Board | 1 | implementer-opus | AP-009, AP-014 | angelegt | |
 | [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | 45c5e25 |
-| AP-017 | Frontend: Raw-View, Historie und Aktivitätsfeed verdrahtet | 1 | implementer-sonnet | AP-007, AP-012, AP-013 | geplant | |
+| [AP-017](AP-017-frontend-raw-historie.md) | Frontend: Raw-View (bearbeitbar), Historie mit Diff, Aktivitätsfeed | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-014 | angelegt | |
 
 ## Zurückgestellte Review-Hinweise
 
