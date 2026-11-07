@@ -15,6 +15,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Realtime transport internals (slow receivers, origin checks) are tested directly (AP-024). -->
+    <InternalsVisibleTo Include="Agcowork.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Agcowork.Infrastructure\Agcowork.Infrastructure.csproj" />
     <ProjectReference Include="..\Agcowork.ServiceDefaults\Agcowork.ServiceDefaults.csproj" />
   </ItemGroup>

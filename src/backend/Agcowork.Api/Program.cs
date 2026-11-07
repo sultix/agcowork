@@ -4,6 +4,7 @@ using Agcowork.Api.Auth;
 using Agcowork.Api.Endpoints;
 using Agcowork.Api.Http;
 using Agcowork.Api.Mcp;
+using Agcowork.Api.Realtime;
 using Agcowork.Api.Tenancy;
 using Agcowork.Application;
 using Agcowork.Infrastructure;
@@ -11,6 +12,10 @@ using Agcowork.Infrastructure.Persistence;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Build-time OpenAPI generation (Microsoft.Extensions.ApiDescription.Server) starts the host
+// via GetDocument.Insider without a database; skip migrations, bootstrap and the realtime dispatcher there.
+var generatingOpenApi = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
 builder.AddServiceDefaults();
 
@@ -52,6 +57,7 @@ builder.Services.AddOpenApi(options => options
     .AddOperationTransformer<WorkspaceSlugOpenApiTransformer>());
 builder.Services.AddAgcoworkAuthentication(builder.Environment);
 builder.Services.AddAgcoworkMcp();
+builder.Services.AddAgcoworkRealtime(startDispatcher: !generatingOpenApi);
 
 var app = builder.Build();
 
@@ -67,6 +73,7 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<TenantResolutionMiddleware>();
+app.UseAgcoworkRealtime();
 
 app.MapOpenApi();
 if (app.Environment.IsDevelopment())
@@ -77,10 +84,9 @@ if (app.Environment.IsDevelopment())
 app.MapDefaultEndpoints();
 app.MapApiV1();
 app.MapAgcoworkMcp();
+app.MapAgcoworkRealtime();
 
-// Build-time OpenAPI generation (Microsoft.Extensions.ApiDescription.Server) starts the host
-// via GetDocument.Insider without a database; skip migrations and bootstrap there.
-if (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name != "GetDocument.Insider")
+if (!generatingOpenApi)
 {
     await app.Services.ApplyMigrationsAsync();
     await app.Services.BootstrapIdentityAsync();

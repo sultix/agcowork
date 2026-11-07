@@ -9,4 +9,9 @@ const target =
 module.exports = {
   '/api': { target, secure: false, changeOrigin: true },
   '/health': { target, secure: false, changeOrigin: true },
+  // Realtime hub (SignalR, AP-024): negotiate, WebSocket upgrade, long polling. A regular expression (leading ^) so the
+  // SPA routes under /w/ stay with the dev server; it is matched against the URL including the query string.
+  // changeOrigin false: the API compares the browser's Origin with Host for cookie connections, so Host must stay
+  // the dev server's host:port.
+  '^/w/[^/?]+/hub(/negotiate)?/?(\\?.*)?$': { target, secure: false, changeOrigin: false, ws: true },
 };

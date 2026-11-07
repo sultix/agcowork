@@ -4,7 +4,11 @@ using Agcowork.Domain.Activity;
 namespace Agcowork.Application.Activity;
 
 /// <summary>One entry of the activity feed.</summary>
-/// <param name="Seq">Position in the workspace's log (monotonic); the feed is ordered by it, newest first.</param>
+/// <param name="Seq">
+/// Number of the event in the log, assigned when it was written (not when it committed). The newest-first feed is ordered by
+/// it; forward reading (<c>afterSeq</c>) and realtime delivery use commit-safe order (transaction order), in which a lower seq
+/// can follow a higher one. Not a cursor: continue forward reading with <c>lastSeq</c>.
+/// </param>
 /// <param name="Id">Event id.</param>
 /// <param name="Type">
 /// What happened: record.created, record.updated, record.appended, record.archived, record.restored, space.created,

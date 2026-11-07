@@ -829,7 +829,7 @@ export interface paths {
         };
         /**
          * What happened in the workspace
-         * @description Activity events, newest first: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). 'targetTitle' is the current title of the record, or name of the space or collection, null if the target no longer exists (and for members and views). Filters: spaceId, collectionId, actorId, since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, member.added, member.updated, member.removed). Paginated with 'limit' (1..200) and 'cursor'. Requires read.
+         * @description Activity events: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). 'targetTitle' is the current title of the record, or name of the space or collection, null if the target no longer exists (and for members and views). Filters: spaceId, collectionId, actorId, targetId (the history of one record, space or collection), since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, view.created, view.updated, view.deleted, member.added, member.updated, member.removed). Two modes. Without afterSeq: newest first, paginated with 'limit' (1..200) and 'cursor' (nextCursor of the previous page); for a look back ('what happened since yesterday?'). With afterSeq: forward, in commit-safe order (transaction order), only events that are final; for keeping up with changes. Start with afterSeq=0 (whole log) or with 'lastSeq' of a newest-first response (from now on), then call again with the 'lastSeq' of each response; with a full page call again at once, otherwise poll. Only lastSeq is a safe cursor: never pass the seq of an item, it can skip events. This never skips an event, even when transactions commit in another order than their seq: a lower seq can follow a higher one, and lastSeq is the seq of the last event, not always the highest. Do not poll with 'since': 'at' is taken before the commit, so an event can appear later with an 'at' before your last poll. afterSeq and cursor do not combine. Requires read.
          */
         get: operations["ListActivity"];
         put?: never;
@@ -848,7 +848,9 @@ export interface components {
         ActivityEventDto: {
             /**
              * Format: int64
-             * @description Position in the workspace's log (monotonic); the feed is ordered by it, newest first.
+             * @description Number of the event in the log, assigned when it was written (not when it committed). The newest-first feed is ordered by
+             *     it; forward reading (`afterSeq`) and realtime delivery use commit-safe order (transaction order), in which a lower seq
+             *     can follow a higher one. Not a cursor: continue forward reading with `lastSeq`.
              */
             seq: number | string;
             /**
@@ -899,6 +901,21 @@ export interface components {
              * @description When it happened (UTC).
              */
             at: string;
+        };
+        /** @description One page of the activity feed. */
+        ActivityPage: {
+            /** @description The events of this page: newest first, or with `afterSeq` in commit-safe order (transaction order, oldest first). */
+            items: components["schemas"]["ActivityEventDto"][];
+            /** @description Newest first only: cursor of the next (older) page, null on the last page. Always null with `afterSeq`. */
+            nextCursor: null | string;
+            /**
+             * Format: int64
+             * @description Where to continue reading forward: pass it unchanged as `afterSeq`; it is the only safe cursor (the `seq` of an item
+             *     is not). With `afterSeq`: the seq of the last event of this page, or where the read started when there was nothing new.
+             *     Newest first: the newest final event of the workspace. It is not always the highest seq: events come in commit-safe order
+             *     (transaction order), and an event with a lower seq can follow one with a higher seq.
+             */
+            lastSeq: number | string;
         };
         /** @description Actor as seen by administrators and by the actor itself. */
         ActorDto: {
@@ -1237,13 +1254,6 @@ export interface components {
              * @description When the member was added (UTC).
              */
             createdAt: string;
-        };
-        /** @description One page of a list. Pass NextCursor as `cursor` to get the next page. */
-        PageOfActivityEventDto: {
-            /** @description The entries of this page. */
-            items: components["schemas"]["ActivityEventDto"][];
-            /** @description Opaque cursor of the next page; null on the last page. */
-            nextCursor: null | string;
         };
         /** @description One page of a list. Pass NextCursor as `cursor` to get the next page. */
         PageOfRecordDto: {
@@ -5067,6 +5077,10 @@ export interface operations {
                 types?: string[];
                 limit?: number | string;
                 cursor?: string;
+                /** @description Read forward after this position: 0 for the whole log, otherwise 'lastSeq' of the previous response. */
+                afterSeq?: number | string;
+                /** @description Only events of this target: record, space, collection or view id; for members the actor id. */
+                targetId?: string;
             };
             header?: never;
             path: {
@@ -5083,7 +5097,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOfActivityEventDto"];
+                    "application/json": components["schemas"]["ActivityPage"];
                 };
             };
             /** @description Bad Request */

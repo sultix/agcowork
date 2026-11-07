@@ -1,6 +1,5 @@
 using Agcowork.Application.Activity;
 using Agcowork.Application.Collections;
-using Agcowork.Application.Common.Paging;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Records;
 using Agcowork.Application.Spaces;
@@ -12,7 +11,7 @@ namespace Agcowork.Application.Tests.Activity;
 
 public sealed class ListActivityTests(PostgresFixture postgres) : RecordTestBase(postgres)
 {
-    private async Task<Page<ActivityEventDto>> ListAsync(Arranged a, ListActivityRequest request)
+    private async Task<ActivityPage> ListAsync(Arranged a, ListActivityRequest request)
     {
         var result = await new ListActivity(Db, a.Tenant).HandleAsync(request, Ct);
         Assert.True(result.IsSuccess, Describe(result.Error));

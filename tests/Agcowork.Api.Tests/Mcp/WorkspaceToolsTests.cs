@@ -410,4 +410,34 @@ public sealed class WorkspaceToolsTests(AgcoworkApiFactory factory)
         // JSON-quoted in the text: inner quotes escaped, umlauts kept.
         Assert.Contains("record \"Neuer \\\"Name\\\" für Ä\" ", McpClientFixture.Text(result), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task ActivityRecent_AfterSeqAndTargetId_ForwardLikeRest()
+    {
+        var (_, client) = await ConnectAsync();
+        await using var connection = client;
+        var tasks = await CollectionAsync(client, "Aufgaben");
+        var first = await CreateTaskAsync(client, tasks.Id, "Vorwärts eins");
+        var second = await CreateTaskAsync(client, tasks.Id, "Vorwärts zwei");
+        await McpClientFixture.OkAsync<RecordDto>(client, "record_update", new { recordId = first.Id, title = "Vorwärts eins neu" });
+
+        var newestFirst = await McpClientFixture.CallAsync(client, "activity_recent", new { limit = 1 });
+        var start = McpClientFixture.Ok(newestFirst).GetProperty("lastSeq").GetInt64();
+        Assert.Contains($"afterSeq {start}", McpClientFixture.Text(newestFirst), StringComparison.Ordinal);
+
+        var history = await McpClientFixture.CallAsync(client, "activity_recent", new { afterSeq = 0, targetId = first.Id });
+        var items = McpClientFixture.Ok(history).GetProperty("items").EnumerateArray().ToList();
+        Assert.Equal(["record.created", "record.updated"], items.Select(e => e.GetProperty("type").GetString()));
+        Assert.All(items, e => Assert.Equal("Vorwärts eins neu", e.GetProperty("targetTitle").GetString()));
+        Assert.Equal(items[^1].GetProperty("seq").GetInt64(), McpClientFixture.Ok(history).GetProperty("lastSeq").GetInt64());
+        Assert.Contains("in commit-safe order (transaction order); continue with afterSeq", McpClientFixture.Text(history), StringComparison.Ordinal);
+
+        var later = await CreateTaskAsync(client, tasks.Id, "Später");
+        var forward = McpClientFixture.Ok(await McpClientFixture.CallAsync(client, "activity_recent", new { afterSeq = start }));
+        Assert.Equal(later.Id, Assert.Single(forward.GetProperty("items").EnumerateArray()).GetProperty("targetId").GetGuid());
+        Assert.NotEqual(second.Id, later.Id);
+
+        var invalid = McpClientFixture.Error(await McpClientFixture.CallAsync(client, "activity_recent", new { afterSeq = long.MaxValue }), 400, "validation_failed");
+        Assert.Equal("afterSeq", invalid.GetProperty("errors")[0].GetProperty("field").GetString());
+    }
 }

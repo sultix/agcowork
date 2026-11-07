@@ -91,4 +91,73 @@ public sealed class ActivityEndpointsTests(AgcoworkApiFactory factory)
 
         Assert.DoesNotContain(feed!.Items, e => e.TargetId == beta.Id || e.CollectionId == betaCollection.Id);
     }
+
+    [Fact]
+    public async Task Activity_AfterSeq_ForwardAscendingWithLimitAndLastSeq_TargetIdFilter()
+    {
+        var owner = await factory.CreateAgentAsync(["workspaces:create"], cancellationToken: Ct);
+        var workspace = await TenancyFixture.CreateWorkspaceAsync(owner.Client, "actfwd");
+        var (_, collection) = await RecordsApi.SeedCollectionAsync(owner.Client, workspace.Slug);
+        var first = await RecordsApi.CreateInAsync(owner.Client, workspace.Slug, collection.Id, "Erste");
+        var second = await RecordsApi.CreateInAsync(owner.Client, workspace.Slug, collection.Id, "Zweite");
+        using (var patch = await owner.Client.PatchAsJsonAsync(TenancyFixture.Path(workspace.Slug, $"/records/{first.Id}"), new { title = "Erste neu" }, Ct))
+        {
+            Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
+        }
+
+        string Feed(string query) => TenancyFixture.Path(workspace.Slug, $"/activity{query}");
+        var newestFirst = (await owner.Client.GetFromJsonAsync<ActivityPage>(Feed(string.Empty), AgcoworkApiFactory.Json, Ct))!;
+        var seen = new List<ActivityEventDto>();
+        var lastSeq = 0L;
+        ActivityPage page;
+        do
+        {
+            page = (await owner.Client.GetFromJsonAsync<ActivityPage>(Feed($"?afterSeq={lastSeq}&limit=2"), AgcoworkApiFactory.Json, Ct))!;
+            Assert.True(page.Items.Count <= 2);
+            Assert.Null(page.NextCursor);
+            seen.AddRange(page.Items);
+            lastSeq = page.LastSeq;
+        }
+        while (page.Items.Count > 0);
+
+        Assert.Equal(newestFirst.Items.Select(e => e.Seq).Reverse(), seen.Select(e => e.Seq));
+        Assert.Equal(seen[^1].Seq, lastSeq);
+        Assert.Equal(lastSeq, newestFirst.LastSeq);
+        Assert.Equal("Erste neu", seen.Single(e => e.Type == "record.updated").TargetTitle);
+
+        var history = (await owner.Client.GetFromJsonAsync<ActivityPage>(Feed($"?afterSeq=0&targetId={first.Id}"), AgcoworkApiFactory.Json, Ct))!;
+        Assert.Equal(["record.created", "record.updated"], history.Items.Select(e => e.Type));
+        var newestFirstHistory = (await owner.Client.GetFromJsonAsync<ActivityPage>(Feed($"?targetId={second.Id}"), AgcoworkApiFactory.Json, Ct))!;
+        Assert.Equal(second.Id, Assert.Single(newestFirstHistory.Items).TargetId);
+    }
+
+    [Fact]
+    public async Task Activity_AfterSeq_InvalidOrForeign_400WithField()
+    {
+        var t = await TenancyFixture.GetAsync(factory);
+        var (_, betaCollection) = await RecordsApi.SeedCollectionAsync(t.BetaOwner.Client, t.Beta.Slug);
+        await RecordsApi.CreateInAsync(t.BetaOwner.Client, t.Beta.Slug, betaCollection.Id);
+        var betaSeq = (await t.BetaOwner.Client.GetFromJsonAsync<ActivityPage>(TenancyFixture.Path(t.Beta.Slug, "/activity?limit=1"), AgcoworkApiFactory.Json, Ct))!.Items[0].Seq;
+
+        async Task<string> FieldCodeAsync(string query, string field)
+        {
+            using var response = await t.AlphaOwner.Client.GetAsync(new Uri(TenancyFixture.Path(t.Alpha.Slug, $"/activity{query}"), UriKind.Relative), Ct);
+            var problem = await ProblemAssert.IsProblemAsync(response, HttpStatusCode.BadRequest, "validation_failed");
+            return ProblemAssert.Field(problem, field).GetProperty("code").GetString()!;
+        }
+
+        Assert.Equal("out_of_range", await FieldCodeAsync("?afterSeq=-1", "afterSeq"));
+        Assert.Equal("not_allowed", await FieldCodeAsync("?afterSeq=0&cursor=MQ", "cursor"));
+        Assert.Equal("invalid_cursor", await FieldCodeAsync($"?afterSeq={long.MaxValue}", "afterSeq"));
+        // A seq of another workspace is unknown here, exactly like one that does not exist.
+        Assert.Equal("invalid_cursor", await FieldCodeAsync($"?afterSeq={betaSeq}", "afterSeq"));
+    }
+
+    [Fact]
+    public async Task ListActivity_AfterSeqAndTargetId_Isolated()
+    {
+        var t = await TenancyFixture.GetAsync(factory);
+        await t.AssertIsolatedAsync(HttpMethod.Get, "/activity?afterSeq=0", homeStatus: HttpStatusCode.OK);
+        await t.AssertIsolatedAsync(HttpMethod.Get, $"/activity?targetId={t.Alpha.Id}", homeStatus: HttpStatusCode.OK);
+    }
 }

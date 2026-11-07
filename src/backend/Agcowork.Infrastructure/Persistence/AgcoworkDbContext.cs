@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Tenancy;
 using Agcowork.Domain.Activity;
@@ -11,6 +12,8 @@ using Agcowork.Domain.Spaces;
 using Agcowork.Domain.Views;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
 namespace Agcowork.Infrastructure.Persistence;
@@ -120,6 +123,18 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
         // GIN indexes over (workspace_id, properties): btree_gin provides the GIN operator class for uuid (trusted extension).
         modelBuilder.HasPostgresExtension("btree_gin");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AgcoworkDbContext).Assembly);
+
+        // ActivityLog.StableHorizon(): the oldest running transaction of the query's snapshot (AP-024). The snapshot itself
+        // never leaves the database; its mapping only satisfies the SQL tree.
+        modelBuilder.HasDbFunction(typeof(ActivityLog).GetMethod(nameof(ActivityLog.StableHorizon))!)
+            .HasStoreType("xid8")
+            .HasTranslation(_ => new SqlFunctionExpression(
+                "pg_snapshot_xmin",
+                [new SqlFunctionExpression("pg_current_snapshot", [], nullable: false, argumentsPropagateNullability: [], typeof(string), new StringTypeMapping("pg_snapshot", dbType: null))],
+                nullable: false,
+                argumentsPropagateNullability: [false],
+                typeof(ulong),
+                new ULongTypeMapping("xid8")));
 
         // Convention: every tenant entity is filtered, without opt-in per configuration.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()

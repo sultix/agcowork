@@ -45,12 +45,18 @@ internal static class ViewAndActivityTools
 
     [McpServerTool(Name = "activity_recent", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description(
-        "What happened in the workspace, newest first: who created, changed, appended, archived or restored which record, space, "
-        + "collection or member, with a diff ('old'/'new' per changed field). targetTitle is the current title (record) or name "
-        + "(space, collection), null if the target no longer exists or is a member or view. Filters: spaceId, collectionId, actorId, since, types "
-        + "(allowed: {{activityTypes}}). To keep up with changes, poll from page 1 with cursor, not with since: "
-        + "read page 1 and follow 'nextCursor' until you reach the newest 'seq' you already have ('since' can miss events that "
-        + "commit late). Paginated with 'limit' (1..200, default 50). Requires read.")]
+        "What happened in the workspace: who created, changed, appended, archived or restored which record, space, collection or "
+        + "member, with a diff ('old'/'new' per changed field). targetTitle is the current title (record) or name (space, "
+        + "collection), null if the target no longer exists or is a member or view. Filters: spaceId, collectionId, actorId, "
+        + "targetId (the history of one record, space or collection), since, types (allowed: {{activityTypes}}). "
+        + "Two modes. Without afterSeq: newest first, paginated with 'limit' (1..200, default 50) and 'cursor'; for a look back. "
+        + "With afterSeq: forward in commit-safe order (transaction order), only final events; to keep up with changes. Start "
+        + "with afterSeq=0 (whole log) or with lastSeq of a newest-first call (from now on), then always call again with the "
+        + "lastSeq of the previous result (full page: call again at once). Only lastSeq is a safe cursor: never pass the seq of an "
+        + "item, it can skip events. This never skips an event, even when changes commit in another order than their seq: a lower "
+        + "seq can follow a higher one, so keep lastSeq as given instead of computing the highest seq yourself. "
+        + "Keep up with afterSeq, not with since: 'at' is taken before the commit, so an event can appear later with an 'at' "
+        + "before your last poll. afterSeq and cursor do not combine. Requires read.")]
     public static async Task<CallToolResult> Recent(
         ListActivity useCase,
         McpOutput output,
@@ -60,10 +66,14 @@ internal static class ViewAndActivityTools
         [Description("Only events at or after this time, ISO 8601, e.g. 2026-11-06T00:00:00Z. For a one-off look back only; see the tool description.")] DateTimeOffset? since = null,
         [Description("Only events of these types (see the tool description).")] IReadOnlyList<string>? types = null,
         [Description("Page size 1..200, default 50.")] int? limit = null,
-        [Description("nextCursor of the previous page, unchanged.")] string? cursor = null,
+        [Description("Newest first: nextCursor of the previous page, unchanged.")] string? cursor = null,
+        [Description("Forward reading: 0 for the whole log, otherwise lastSeq of the previous result, unchanged (never the seq of an item).")] long? afterSeq = null,
+        [Description("Only events of this target: record, space, collection or view id; for members the actor id.")] Guid? targetId = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await useCase.HandleAsync(new ListActivityRequest(spaceId, collectionId, actorId, since, types, limit, cursor), cancellationToken);
-        return output.From(result, page => McpText.Activity(page.Items, page.NextCursor));
+        var result = await useCase.HandleAsync(
+            new ListActivityRequest(spaceId, collectionId, actorId, since, types, limit, cursor, afterSeq, targetId),
+            cancellationToken);
+        return output.From(result, page => McpText.Activity(page, forward: afterSeq is not null));
     }
 }

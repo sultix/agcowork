@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten von SignalR und Hintergrunddiensten); Tenancy-Muster `src/backend/Agcowork.Api/Tenancy/`, Activity `src/backend/Agcowork.Application/Activity/` |
@@ -86,3 +86,9 @@ Menschen sehen Änderungen von Agenten und anderen Menschen live, ohne neu zu la
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-08 | Bericht: 1069 Tests grün; **Korrektur des Pakets**: Vorwärtslesen nach (`xact_id`, `seq`), weil eine Transaktion mit früher xid eine höhere Seq zuerst committen kann (Test belegt Verlust bei reiner Seq-Ordnung); keine eigene Outbox-Tabelle, Polling 250 ms, Entzug vor jeder Zustellung geprüft, `ActivityPage` mit `lastSeq` |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – Lückenfreiheit bestätigt (auch Savepoints, PG 17); wichtig: langsamer Empfänger blockiert Dispatcher, Rennfenster Seite/Head im Rückblick, keine Origin-Prüfung am Hub (CSWSH); Hinweise: Kommentar/Doku zu Item-seq, Zeilenvergleich statt OR, Wortlaut „commit order“, leere Scopes im RealtimeTenant, Backoff |
+| 2026-11-08 | Nacharbeit an implementer-opus (alle Punkte); AP-025 parallel gestartet |
+| 2026-11-08 | Nacharbeit: Postausgang pro Verbindung mit Sende-Timeout, Head vor Seite (Test ohne Fix rot), Origin-Prüfung für Cookie-Verbindungen (GET ohne Origin erlaubt, weil Browser ihn same-origin weglassen und Lax-Cookies cross-site dort nicht mitgehen), Backoff, Wortlaut; 1087/1087 grün |
+| 2026-11-08 | abgeschlossen |

@@ -7,7 +7,8 @@ namespace Agcowork.Api.Tenancy;
 /// <summary>
 /// Marks endpoints that run inside a workspace (<c>/api/v1/w/{workspaceSlug}/…</c>): only these get a tenant.
 /// Every other workspace-bound entry point must carry it too, in particular the MCP endpoint
-/// (<c>/w/{workspaceSlug}/mcp</c>, outside <c>/api/v1</c>, AP-011), and its route must name the slug
+/// (<c>/w/{workspaceSlug}/mcp</c>, outside <c>/api/v1</c>, AP-011) and the realtime hub (<c>/w/{workspaceSlug}/hub</c>,
+/// AP-024), and its route must name the slug
 /// <see cref="SlugRouteValue"/>; otherwise its use cases run without a tenant and see no data.
 /// </summary>
 internal sealed class TenantEndpointMetadata

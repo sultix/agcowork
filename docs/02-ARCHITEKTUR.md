@@ -162,7 +162,7 @@ Alle Indizes beginnen mit `WorkspaceId`.
    Vorlagen). `ExecuteUpdate`/`ExecuteDelete` umgehen den Interceptor, nicht den Filter.
 5. Pro Transaktion `SET LOCAL app.workspace_id = …`; PostgreSQL **Row-Level-Security**
    verwirft alles andere (Phase 2, zweites Netz unabhängig von EF).
-6. SignalR-Verbindungen treten der Gruppe `ws:{WorkspaceId}` bei; Events gehen nur dorthin.
+6. SignalR-Hub `/w/{slug}/hub` (Cookie oder Bearer, AP-024). Negotiate und Transport laufen durch `TenantResolutionMiddleware` und `RealtimeConnectMiddleware` (`read` Pflicht, sonst 403); unbekannt oder fremd → 404. Die Verbindung tritt der Gruppe `ws:{WorkspaceId}` bei, Events gehen nur dorthin. Vor jeder Zustellung prüft der Dispatcher jede Verbindung des Workspaces erneut (Mitgliedschaft mit `read`, Actor aktiv, Key gültig und nicht auf einen anderen Workspace eingeschränkt, Passwort-Stamp der Session); entzogene Verbindungen werden getrennt.
 
 **Weitere Regeln**
 
@@ -325,7 +325,7 @@ Regeln:
 | `comment_add(recordId, markdown, parentCommentId?)` | Kommentieren |
 | `history_get(recordId, limit?)` | Revisionen (Activity je Record über `activity_recent`, Phase 2 filterbar nach Record) |
 | `view_create(collectionId, type, name, filter?, sorts?, groupBy?, visibleProperties?)` | Ansicht für Menschen anlegen |
-| `activity_recent(spaceId?, since?, actorId?)` | „Was ist seit gestern passiert?“ |
+| `activity_recent(spaceId?, collectionId?, actorId?, targetId?, since?, types?, afterSeq?, limit?, cursor?)` | Rückblick („Was ist seit gestern passiert?“, absteigend) oder lückenloses Mitlesen mit `afterSeq`/`lastSeq` (AP-024) |
 
 Instanz-Ebene (Endpunkt `/mcp`, ohne Workspace; nur für Agenten mit Instanz-Rechten sinnvoll):
 
@@ -489,15 +489,14 @@ Templates), `Records`, `Views`, `Query` (Filter-DSL), `Activity` (Revisions, Eve
 - **Properties-Validierung** zentral im Application Layer anhand des Collection-Schemas;
   gleicher Code für REST, MCP, UI.
 - **Revisionen**: vollständiger Snapshot (einfach, robust), Diff wird für das ActivityEvent berechnet.
-- **Outbox-Pattern**: Domain-Events werden transaktional gespeichert und danach an SignalR
-  (und später Webhooks) ausgeliefert.
+- **Outbox-Pattern** (AP-024): `activity_events` ist die Outbox; das Ereignis wird in derselben Transaktion wie die Änderung geschrieben. Wer vorwärts liest (Dispatcher, `afterSeq`), liest nur stabile Ereignisse (`xact_id < pg_snapshot_xmin(pg_current_snapshot())`) und sortiert nach (`xact_id`, `seq`), nicht nach `seq` allein: Eine Transaktion mit früher xid kann eine höhere Seq vor einer niedrigeren committen. `afterSeq` ist die Seq eines Ereignisses, der Server schlägt seine Position nach; `lastSeq` ist immer weiterzugeben (kann kleiner sein als vorher gesehene Seqs). Der Dispatcher (`BackgroundService`) pollt alle 250 ms instanzweit über `ix_activity_events_xact_id_seq` (Ausnahme von der workspace_id-Indexregel), hält den Cursor im Speicher (Start beim Kopf, kein Nachliefern) und stellt höchstens einmal zu. Eine lange schreibende Transaktion im PostgreSQL-Cluster verzögert Zustellung und Vorwärtslesen (Betrieb: `idle_in_transaction_session_timeout`). Single-Instance: Mehrere API-Instanzen brauchen einen SignalR-Backplane. Zustellung pro Verbindung über einen begrenzten Postausgang (256) mit Sende-Timeout (`Agcowork:Realtime:SendTimeout`, Standard 5 s): Ein Client, der nicht liest, wird getrennt und hält niemanden auf. Nur `lastSeq` ist ein sicherer Cursor, nicht die `seq` einzelner Ereignisse aus dem Rückblick.
 - **Suche**: generierte `tsvector`-Spalte aus Titel + Body + Text-Properties, GIN-Index.
   Semantik später via pgvector + Embedding-Provider hinter einem Interface.
 - **Auth-Pipeline**: Bearer-Key → Actor als ClaimsPrincipal; Cookie-Login für Menschen;
   danach Tenancy-Middleware → Membership → Scopes. Gleiche Authorization-Policies für alle
   Adapter (`CanRead(space)`, `CanWrite(space)`, `WorkspaceAdmin`, `InstanceAdmin`).
 - **Keine Retry-Execution-Strategy** (`DisableRetry = true` bei `EnrichNpgsqlDbContext`). Use-Cases dürfen `BeginTransactionAsync` direkt verwenden, z. B. für Revision + Record in einer Transaktion. Transiente Verbindungsfehler fängt der AppHost (`WaitFor`) bzw. später der Betrieb ab; sollte Retry doch nötig werden, gilt verbindlich `CreateExecutionStrategy().ExecuteAsync(...)` um jede Transaktion.
-- **Reihenfolge nie über die Id**: UUIDv7 ist innerhalb derselben Millisekunde nicht monoton. Wer Reihenfolge braucht (Revisionen, Activity), sortiert nach `CreatedAt` plus laufender Nummer.
+- **Reihenfolge nie über die Id**: UUIDv7 ist innerhalb derselben Millisekunde nicht monoton. Wer Reihenfolge braucht (Revisionen, Activity), sortiert nach `CreatedAt` plus laufender Nummer. Vorwärtslesende auf Activity sortieren nach (`xact_id`, `seq`).
 - **Persistenz-Muster** (aus AP-001, für alle weiteren Pakete): Provider-Konfiguration an genau einer Stelle (`AgcoworkDbContextOptions.Configure`), gemeinsam für Laufzeit und Design-Time; Connection-String lazy auflösen, damit Tests den Container ohne Service-Override einhängen; Unique-Tests prüfen SqlState und Constraint-Namen.
 - **Tenancy in EF Core**: Interface `ITenantEntity { WorkspaceId }`, ein Global Query Filter
   per Konvention für alle Implementierungen, `SaveChanges`-Interceptor setzt `WorkspaceId`
@@ -680,11 +679,12 @@ variant="destructive"` bzw. Dropdown-Eintrag `variant="destructive"`.
 - Markdown-Rendering sanitisiert (kein rohes HTML aus Agenten-Inhalten).
 - `/health`, `/health/ready` und `/openapi/v1.json` sind in allen Umgebungen ohne Auth erreichbar (Health ohne Details). `/health/ready` öffnet eine DB-Verbindung. Bei öffentlicher Erreichbarkeit: Reverse-Proxy oder Rate-Limit davor, OpenAPI ggf. nur mit Auth.
 - Sitzungen (AP-022): Cookies bleiben zustandslos, tragen aber einen Credential-Stamp `agcowork.password_at` (das `LocalLogin.UpdatedAt`, das zusammen mit dem geprüften bzw. gesetzten Hash gelesen wurde; Mikrosekunden, im verschlüsselten Ticket). `AuthenticateSession` verlangt Gleichheit mit dem aktuellen `UpdatedAt`; Passwortänderung und Admin-Reset entwerten damit alle Sitzungen des Actors, auch einen Login, der parallel zur Änderung noch den alten Hash geprüft hat. Die eigene Änderung stellt ein neues Cookie aus. Cookies ohne Stamp (vor AP-022) fallen auf `IssuedUtc` ≥ `UpdatedAt` zurück. Rehash beim Login ist ein bedingtes Update (`WHERE password_hash = geprüfter Hash`) und ändert `UpdatedAt` nicht. Human ohne LocalLogin → 401 (fail closed; bei OIDC neu regeln). `mustChangePassword` (Bootstrap-Admin, Reset) sperrt serverseitig nichts; die UI erzwingt die Änderung.
+- Hub gegen Cross-Site WebSocket Hijacking (AP-024): Cookie-Verbindungen brauchen einen `Origin`, dessen `host:port` dem `Host` des Requests entspricht oder der in `Agcowork:Realtime:AllowedOrigins` steht (WebSocket-Handshake und Nicht-GET ohne Origin → 403; Bearer ungeprüft). Proxys reichen deshalb den Host mit Port durch (`nginx`: `Host $http_host`, Dev-Proxy `changeOrigin: false`).
 - Slug-Validierung mit `\z` statt `$` (`$` matcht in .NET vor einem abschließenden Zeilenumbruch).
 
 ## 8. Betrieb
 
-- **Lokal**: `dotnet run --project src/backend/Agcowork.AppHost` startet alles (Aspire). Alternativ `docker compose up -d --build` (Betreiber-Weg, AP-018): drei Container (`postgres`, `api`, `web` = Nginx mit Angular-Build), nur Port 8080 veröffentlicht; Nginx leitet `/api/`, `/health*`, `/openapi/`, `/mcp` und `/w/{slug}/mcp` (ungepuffert, Streamable HTTP) an die API, alles andere an die SPA. Ohne TLS setzt Compose `Agcowork:Cookies:SecurePolicy=SameAsRequest`; Standard außerhalb Development ist `Always`.
+- **Lokal**: `dotnet run --project src/backend/Agcowork.AppHost` startet alles (Aspire). Alternativ `docker compose up -d --build` (Betreiber-Weg, AP-018): drei Container (`postgres`, `api`, `web` = Nginx mit Angular-Build), nur Port 8080 veröffentlicht; Nginx leitet `/api/`, `/health*`, `/openapi/`, `/mcp` und `/w/{slug}/mcp` (ungepuffert, Streamable HTTP) sowie `/w/{slug}/hub` (WebSocket-Upgrade, Timeout 1 h) an die API, alles andere an die SPA. Ohne TLS setzt Compose `Agcowork:Cookies:SecurePolicy=SameAsRequest`; Standard außerhalb Development ist `Always`.
 - **Daten**: ein Postgres-Volume; Backup = `pg_dump`; zusätzlich täglicher Markdown-Export pro Workspace (git-freundlich, ein Ordner je Workspace).
 - **Workspace-Lebenszyklus**: Anlegen durch Instanz-Admin (optional aus Vorlage), Archivieren (read-only), Löschen nur nach Export.
 - **Migrationen**: EF Core, beim Start angewendet (Single-Instance).

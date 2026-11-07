@@ -116,4 +116,22 @@ public sealed class McpIsolationTests(AgcoworkApiFactory factory)
         Assert.Equal(1, unchanged.Revision);
         Assert.Null(unchanged.ArchivedAt);
     }
+
+    [Fact]
+    public async Task ActivityRecent_AfterSeq_Isolated_ForeignSeqUnknown()
+    {
+        var t = await TenancyFixture.GetAsync(factory);
+        var (_, betaCollection) = await RecordsApi.SeedCollectionAsync(t.BetaOwner.Client, t.Beta.Slug);
+        var betaRecord = await RecordsApi.CreateInAsync(t.BetaOwner.Client, t.Beta.Slug, betaCollection.Id);
+        await using var betaClient = await McpClientFixture.ConnectAsync(factory, t.BetaOwner.Key, t.Beta.Slug);
+        var betaSeq = McpClientFixture.Ok(await McpClientFixture.CallAsync(betaClient, "activity_recent", new { limit = 1 })).GetProperty("items")[0].GetProperty("seq").GetInt64();
+        await using var alphaOwner = await McpClientFixture.ConnectAsync(factory, t.AlphaOwner.Key, t.Alpha.Slug);
+
+        await McpClientFixture.AssertToolIsolatedAsync(t, alphaOwner, "activity_recent", new { afterSeq = 0, targetId = betaRecord.Id });
+
+        var history = McpClientFixture.Ok(await McpClientFixture.CallAsync(alphaOwner, "activity_recent", new { afterSeq = 0, targetId = betaRecord.Id }));
+        Assert.Empty(history.GetProperty("items").EnumerateArray());
+        var foreign = McpClientFixture.Error(await McpClientFixture.CallAsync(alphaOwner, "activity_recent", new { afterSeq = betaSeq }), 400, "validation_failed");
+        Assert.Equal("invalid_cursor", foreign.GetProperty("errors")[0].GetProperty("code").GetString());
+    }
 }

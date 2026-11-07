@@ -5,7 +5,9 @@ namespace Agcowork.Domain.Activity;
 
 /// <summary>
 /// One entry of the append-only activity log of a workspace: who did what to which target, with a diff.
-/// Ordered by <see cref="Seq"/> (assigned by the database, monotonic), never by the id (architecture §5).
+/// Ordered by <see cref="Seq"/> (assigned by the database, monotonic), never by the id (architecture §5). Readers that move
+/// forward through the log (realtime delivery, <c>afterSeq</c>) use the commit-safe order (<see cref="XactId"/>, <see cref="Seq"/>)
+/// instead, because <see cref="Seq"/> is assigned on insert, not on commit.
 /// </summary>
 public sealed class ActivityEvent : ITenantEntity
 {
@@ -50,6 +52,14 @@ public sealed class ActivityEvent : ITenantEntity
 
     /// <summary>Position in the workspace's log, assigned on insert (identity column). Use it for order and cursors.</summary>
     public long Seq { get; private set; }
+
+    /// <summary>
+    /// Id of the database transaction that wrote the event, assigned on insert (<c>pg_current_xact_id()</c>); 0 for events
+    /// written before AP-024. Every transaction that is still running, or has not started yet, has an id of at least the
+    /// oldest running one (<c>pg_snapshot_xmin</c>). Events with a smaller id are therefore final (committed or never will
+    /// be), and every event that becomes visible later sorts behind them in (<see cref="XactId"/>, <see cref="Seq"/>).
+    /// </summary>
+    public ulong XactId { get; private set; }
 
     /// <summary>One of <see cref="ActivityTypes"/>, e.g. <c>record.updated</c>.</summary>
     public string Type { get; private set; }

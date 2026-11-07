@@ -51,6 +51,9 @@ Wer einen Workspace offen hat, sieht Änderungen anderer (vor allem von Agenten)
 - Phase-1-Blocker waren Datenverlust-Pfade (Overwrite-Body, Konfliktdialog-Fokus). Jede Live-Aktualisierung, die lokale Eingaben verwerfen könnte, braucht einen Test, der ohne die Schutzlogik rot wäre.
 - `ActivityEventDto` enthält `seq`, `type`, `actorId`, `targetType`, `targetId`, `spaceId`, `collectionId`, `diff`, `targetTitle`. Actor-Namen kommen aus dem vorhandenen Members-Store.
 - Eine Verbindung pro Browser-Tab genügt; mehrere Tabs sind unabhängig.
+- Hub-Vertrag aus AP-024: `/w/{slug}/hub`, Cookie, Server → Client nur `activity` (ActivityEventDto), Client → Server nur `Ping`. JSON wie REST: `null`-Felder fehlen (z. B. `targetTitle` bei Member-/View-Ereignissen), also `undefined` wie `null` behandeln. Zustellung höchstens einmal, keine Nachlieferung alter Ereignisse beim Verbinden.
+- Nachholen nach Wiederverbindung über `GET /activity?afterSeq=<lastSeq>`: Die Antwort liefert in Commit-Reihenfolge (eine kleinere `seq` kann nach einer größeren kommen) und `lastSeq`, das immer als nächster `afterSeq` weitergegeben wird. Dedupe nach `seq` als Menge, nicht über „größte gesehene seq“. Startpunkt: `lastSeq` aus der ersten (absteigenden) Feed-Seite.
+- Entzogene Rechte trennen die Verbindung serverseitig; Reconnect liefert dann 404/403, darauf nicht endlos neu verbinden (Status `offline`).
 
 ## Akzeptanzkriterien
 

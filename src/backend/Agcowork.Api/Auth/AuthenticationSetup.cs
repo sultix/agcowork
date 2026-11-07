@@ -15,8 +15,10 @@ namespace Agcowork.Api.Auth;
 /// <remarks>
 /// No anti-CSRF token: the cookie is SameSite=Lax (not sent on cross-site POST/PATCH/DELETE),
 /// state-changing endpoints accept JSON only (a cross-origin JSON request needs a CORS preflight,
-/// and no CORS is configured), and GET endpoints have no side effects. Revisit if CORS is opened
-/// or if sibling subdomains become untrusted (SameSite treats them as same-site).
+/// and no CORS is configured), and GET endpoints have no side effects. WebSocket handshakes are not
+/// covered by CORS: the realtime hub checks the Origin of cookie connections itself
+/// (<c>Realtime.RealtimeOriginPolicy</c>, AP-024). Revisit if CORS is opened or if sibling subdomains
+/// become untrusted (SameSite treats them as same-site, the hub's origin check does not).
 /// </remarks>
 internal static class AuthenticationSetup
 {

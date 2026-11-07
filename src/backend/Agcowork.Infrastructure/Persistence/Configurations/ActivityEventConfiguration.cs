@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Agcowork.Infrastructure.Persistence.Configurations;
 
 /// <remarks>
-/// Tenant table, append-only. <c>seq</c> is an identity column (bigint): the order of the feed and its cursor. No foreign
-/// keys on targets: events outlive what they describe and point at different tables.
+/// Tenant table, append-only. <c>seq</c> is an identity column (bigint): the order of the newest-first feed and its cursor.
+/// <c>xact_id</c> (<c>xid8</c>, default <c>pg_current_xact_id()</c>) is the writing transaction; (<c>xact_id</c>, <c>seq</c>) is
+/// the commit-safe order of forward readers (<c>Application.Activity.ActivityLog</c>). The table is its own outbox: the realtime
+/// dispatcher reads it directly. No foreign keys on targets: events outlive what they describe and point at different tables.
 /// </remarks>
 internal sealed class ActivityEventConfiguration : IEntityTypeConfiguration<ActivityEvent>
 {
@@ -24,6 +26,16 @@ internal sealed class ActivityEventConfiguration : IEntityTypeConfiguration<Acti
         builder.HasIndex(e => new { e.WorkspaceId, e.ActorId, e.Seq });
         builder.HasIndex(e => new { e.WorkspaceId, e.SpaceId, e.Seq });
         builder.HasIndex(e => new { e.WorkspaceId, e.TargetId, e.Seq });
+
+        // Forward reading in commit-safe order: per workspace (afterSeq) and instance-wide for the realtime dispatcher. The
+        // second one is a documented exception to "tenant indexes start with workspace_id": the dispatcher polls all
+        // workspaces at once and must not scan the table when nothing happened.
+        builder.Property(e => e.XactId)
+            .HasColumnType("xid8")
+            .HasDefaultValueSql("pg_current_xact_id()")
+            .ValueGeneratedOnAdd();
+        builder.HasIndex(e => new { e.WorkspaceId, e.XactId, e.Seq });
+        builder.HasIndex(e => new { e.XactId, e.Seq });
 
         builder.Property(e => e.Type).HasMaxLength(ActivityEvent.TypeMaxLength).IsRequired();
         builder.Property(e => e.ActorId).IsRequired();

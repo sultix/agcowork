@@ -188,11 +188,21 @@ internal static class McpText
     }
 
     /// <summary>Activity events newest first.</summary>
-    public static string Activity(IReadOnlyList<ActivityEventDto> events, string? nextCursor)
+    public static string Activity(ActivityPage page, bool forward)
     {
-        ArgumentNullException.ThrowIfNull(events);
+        ArgumentNullException.ThrowIfNull(page);
+        var events = page.Items;
         var text = new StringBuilder();
-        text.Append(Invariant, $"{events.Count} event(s), newest first{(nextCursor is null ? "; no further pages" : $"; older ones with cursor \"{nextCursor}\"")}.\n");
+        if (forward)
+        {
+            text.Append(Invariant, $"{events.Count} event(s) in commit-safe order (transaction order); continue with afterSeq {page.LastSeq} (lastSeq, not an item's seq).\n");
+        }
+        else
+        {
+            text.Append(Invariant, $"{events.Count} event(s), newest first{(page.NextCursor is null ? "; no further pages" : $"; older ones with cursor \"{page.NextCursor}\"")}; ");
+            text.Append(Invariant, $"to follow new events from here, read forward with afterSeq {page.LastSeq}.\n");
+        }
+
         foreach (var e in events)
         {
             // Titles are user and agent input: JSON-quoted, so quotes and line breaks cannot break the one-line format.

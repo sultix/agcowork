@@ -1,4 +1,5 @@
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Common;
 using Agcowork.Domain.Workspaces;
 using Agcowork.Infrastructure.Persistence;
@@ -153,6 +154,12 @@ public sealed class TenantInterceptorTests(AgcoworkApiFactory factory)
             {
                 // Documented exception: the convention FK index memberships.actor_id serves "my workspaces" (instance level).
                 if (entityType.ClrType == typeof(Membership) && index.Properties is [{ Name: nameof(Membership.ActorId) }])
+                {
+                    continue;
+                }
+
+                // Documented exception (AP-024): the realtime dispatcher reads all workspaces forward by (xact_id, seq).
+                if (entityType.ClrType == typeof(ActivityEvent) && index.Properties is [{ Name: nameof(ActivityEvent.XactId) }, { Name: nameof(ActivityEvent.Seq) }])
                 {
                     continue;
                 }

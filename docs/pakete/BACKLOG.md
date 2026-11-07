@@ -26,9 +26,9 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-020](AP-020-ui-migration-verwaltung.md) | UI-Migration: Verwaltung, Spaces, Collections, Aktivität | UI | implementer-sonnet | AP-019 | abgeschlossen | 5463f97 |
 | [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | abgeschlossen | 559d0a2 |
 | [AP-022](AP-022-haertung-backend.md) | Härtung Backend: Passwort ändern/zurücksetzen, Sitzungen entwerten, relation-Hook, OpenAPI-Defaults, Activity-Titel | Härtung | implementer-opus | AP-004–AP-011 | abgeschlossen | 183275b |
-| [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | abgeschlossen | |
-| [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | in Arbeit | |
-| [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | angelegt | |
+| [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | abgeschlossen | 6e837db |
+| [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | abgeschlossen | |
+| [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | in Arbeit | |
 | [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | angelegt | |
 | [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | angelegt | |
 
@@ -59,6 +59,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-022 Bericht | `ViewSchemaHook` und `TemplatePresetSchemaHook` behandeln select→multi_select, aber nicht `relation.multiple` false→true (skalare Presets, `eq`-Filter auf Relation) | Kleinpaket Backend, mit der nächsten Schema-Arbeit |
 | AP-022 Review | `PATCH /me/password` und `POST /auth/login` ohne Sperre/Rate-Limit (Brute-Force auf `currentPassword` mit gestohlenem Cookie, Dauer-Logins) | Rate-Limiting-Paket: beide Endpunkte ausdrücklich nennen |
 | AP-022 Nacharbeit | In `McpText` werden Titel außer in `Activity` nicht escaped (`RecordLine` `**{Title}**`) | Kleinpaket MCP-Text, mit dem nächsten MCP-Paket |
+| AP-024 Bericht | Hängende/„idle in transaction“-Transaktion im Cluster hält Vorwärtslesen und Realtime instanzweit an | Betrieb: `idle_in_transaction_session_timeout` in Compose/Hosting setzen |
+| AP-024 Bericht | Dev-Proxy (`proxy.conf.js`) leitet `/w/{slug}/mcp` nicht weiter; `dotnet-ef` 10.0.11 vs. Runtime 10.0.14 | Kleinigkeit, beim nächsten Tooling-Paket |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |

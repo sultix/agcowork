@@ -77,11 +77,20 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("workspace_id");
 
+                    b.Property<ulong>("XactId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("xid8")
+                        .HasColumnName("xact_id")
+                        .HasDefaultValueSql("pg_current_xact_id()");
+
                     b.HasKey("Id")
                         .HasName("pk_activity_events");
 
                     b.HasIndex("WorkspaceId", "Seq")
                         .HasDatabaseName("ix_activity_events_workspace_id_seq");
+
+                    b.HasIndex("XactId", "Seq")
+                        .HasDatabaseName("ix_activity_events_xact_id_seq");
 
                     b.HasIndex("WorkspaceId", "ActorId", "Seq")
                         .HasDatabaseName("ix_activity_events_workspace_id_actor_id_seq");
@@ -94,6 +103,9 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("WorkspaceId", "TargetId", "Seq")
                         .HasDatabaseName("ix_activity_events_workspace_id_target_id_seq");
+
+                    b.HasIndex("WorkspaceId", "XactId", "Seq")
+                        .HasDatabaseName("ix_activity_events_workspace_id_xact_id_seq");
 
                     b.ToTable("activity_events", (string)null);
                 });
