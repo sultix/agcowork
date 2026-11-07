@@ -75,4 +75,4 @@ Postgres und die API startet. Jedes spätere Backend-Paket baut auf dieser Struk
 | 2026-11-07 | Review: Freigabe mit Hinweisen. Wichtig: Slug-Regex `$` lässt „acme\n“ durch (→ `\z`); Aspire-Retry-Strategie aktiv, Entscheidung nötig. Hinweise: AK6 formal nicht erfüllt (Aspire-SDK-Version in global.json, akzeptiert wegen NU1009); Health/OpenAPI in Production offen; Port 5000; UUIDv7 nicht innerhalb einer ms monoton |
 | 2026-11-07 | Entscheidungen: AK6-Abweichung akzeptiert. Retry-Strategie wird deaktiviert (`DisableRetry = true`), Architektur §5 ergänzt; Einzeiler folgt nach AP-003. Nacharbeit an implementer-opus: Slug-Regex + Tests |
 | 2026-11-07 | Nacharbeit fertig: `\z`-Regex, 20 Tests grün. Commit folgt nach AP-003, weil AP-003 AppHost.cs und launchSettings.json bereits verändert hat (diese zwei Dateien tragen im AP-001-Commit schon AP-003-Stand) |
-| 2026-11-07 | Orchestrator: `DisableRetry = true` gesetzt, Build und 20 Tests selbst verifiziert; abgeschlossen, Commit siehe Backlog |
+| 2026-11-07 | Orchestrator: `DisableRetry = true` gesetzt, Build und 20 Tests selbst verifiziert; abgeschlossen, Commit `7d47dcb` |

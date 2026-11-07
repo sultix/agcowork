@@ -2,12 +2,12 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 0 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | `src/Agcowork.AppHost/` aus AP-001 (Postgres + Api), `src/Agcowork.Web/package.json` aus AP-002 |
 | Abhängig von | AP-001, AP-002 |
-| Betroffene Pfade | `src/Agcowork.AppHost/`, `src/Agcowork.Web/proxy.conf.json`, `.github/workflows/ci.yml`, `README.md` |
+| Betroffene Pfade | `src/Agcowork.AppHost/`, `src/Agcowork.Api/Properties/launchSettings.json`, `Directory.Packages.props`, `src/Agcowork.Web/proxy.conf.js` (ersetzt `proxy.conf.json`), `src/Agcowork.Web/angular.json`, `.github/workflows/ci.yml`, `README.md` |
 | Architektur-Bezug | `02-ARCHITEKTUR.md` §8 Betrieb; `CLAUDE.md` Befehle |
 
 ## Ziel
@@ -33,6 +33,8 @@ GitHub-Actions-Workflow baut und testet Backend und Frontend.
 - Es gibt noch kein GitHub-Remote. Der Workflow kann lokal nicht ausgeführt werden; er wird syntaktisch geprüft (`actionlint` per `npx`, falls verfügbar, sonst sorgfältig gegengelesen) und beim ersten Push verifiziert.
 - Aspire verteilt Ports dynamisch; der Angular-Proxy darf keinen festen Port annehmen.
 - **Port 5000 ist auf dem Entwicklungs-Mac vom AirPlay-Empfänger belegt** (antwortet mit 403). Der Fallback in `proxy.conf.json` muss auf einen freien Port wechseln (z. B. 5180), und die Api sollte in `launchSettings.json` denselben Port nutzen, damit `npm start` auch ohne Aspire funktioniert.
+- Deshalb: Api-Ports in `src/Agcowork.Api/Properties/launchSettings.json` auf **5180 (http) / 5181 (https)** umstellen und den Proxy-Fallback in `proxy.conf.json` auf `http://localhost:5180`. Unter Aspire kommt der Port ohnehin dynamisch.
+- **Schlüsselbund-Dialog:** Beim ersten `dotnet run --project src/Agcowork.AppHost` fragt macOS nach Zugriff auf das Dev-Zertifikat (DCP-TLS). Ohne Klick hängt der Start unbegrenzt. Ins README: Dialog einmal mit „Immer erlauben“ bestätigen; Notlösung `ASPIRE_DCP_USE_DEVELOPER_CERTIFICATE=false`. Die Variable nicht ins Repo eintragen.
 - Die Angular-CLI hat `src/Agcowork.Web/.vscode/` erzeugt. Nicht einchecken: Eintrag in der Root-`.gitignore` ist bereits vorhanden (`.vscode/`).
 
 ## Akzeptanzkriterien
@@ -57,3 +59,9 @@ GitHub-Actions-Workflow baut und testet Backend und Frontend.
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-07 | Kontext ergänzt (Ports, Schlüsselbund); an implementer-sonnet übergeben |
+| 2026-11-07 | Bericht: Aspire.Hosting.JavaScript, `web`-Ressource mit npm install, proxy.conf.js liest `services__api__http__0`, Ports 5180/5181, ci.yml (backend/frontend), README. Build/Tests grün, AppHost-Lauf mit Proxy-Durchgriff auf /health/ready verifiziert. Nicht geprüft: Kopfzeile im Browser, ci.yml maschinell |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Orchestrator: AppHost gestartet, Angular unter Aspire im Browser geprüft: Kopfzeile „Backend: ok“, keine Konsolenfehler, `/foo/bar` → `/workspaces`. AK 1–3 damit belegt |
+| 2026-11-07 | Review: Freigabe mit Hinweisen. Wichtig: AK2 unbelegt (→ durch Orchestrator-Lauf erledigt, `ng serve --port 32410` zeigt auch, dass das `--`-Argument korrekt ankommt); HEAD nach AP-001-Commit allein nicht lauffähig (proxy.conf.json gelöscht, angular.json zeigt noch darauf) → mit diesem Commit behoben. Hinweise: ci.yml ohne permissions/timeout, README ohne Connection-String-Name und `npm run lint`, `PORT`-Env überflüssig |
+| 2026-11-07 | Orchestrator: permissions + timeout-minutes in ci.yml, README ergänzt. Abgeschlossen, Commit siehe Backlog |
