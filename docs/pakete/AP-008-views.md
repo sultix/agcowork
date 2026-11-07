@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | **AP-006 `Collections/Templates`** (Use-Cases Create/Update/Delete/List an einer Collection, Endpunkte, Isolationstests) – Views sind strukturell dasselbe: ein Kind-Objekt einer Collection mit JSON-Inhalt |
@@ -83,3 +83,8 @@ rendert aus diesen Objekten.
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-sonnet übergeben |
+| 2026-11-07 | Bericht: 713 Tests grün (65 neu). `DefaultViewsHook` (table „Tabelle“ Default, raw „Rohdaten“, System), `ViewSchemaHook` (Bereinigung, `affectedViews` im Event), Sperr-Reihenfolge Collection shared → View. Wire-Feld `groupBy`; `NeedsAttention` berechnet; System-View-Typ nicht änderbar; Default-Löschung macht Tabelle zum Default; kein `view.created` für Standard-Views |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; Tenancy und Sperr-Reihenfolge korrekt, Record-Form für AP-009 geeignet. Wichtig: unbekannte Filter-Schlüssel heben den Filter still auf; entfernte Optionen bleiben in Filterwerten. Hinweise: eigene Transaktion statt Join (kollidiert mit AP-010-Vorlage), `value` bei is_empty akzeptiert, Tests für SetDefault-Race und archivierten Workspace fehlen, DeleteView-Kommentar, `groupBy` Whitespace, `null`-Felder im JSON |
+| 2026-11-07 | Nacharbeit an implementer-sonnet (7 Punkte, Join-Transaktion zuerst) |
+| 2026-11-07 | Nacharbeit fertig: 726 Tests grün. Join-Transaktion in allen View-Schreibern, unbekannte Filter-Schlüssel → `unknown_property` mit `allowed`, Filterwerte-Bereinigung (`View.RewriteConditions`), `is_*` ohne value, SetDefault-Race-Test, archivierter Workspace, `WhenWritingNull` global. Vom Orchestrator mit Frontend verifiziert. Abgeschlossen, Commit siehe Backlog |

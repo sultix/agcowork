@@ -114,6 +114,9 @@ public static class ActivityTypes
     public const string CollectionUpdated = "collection.updated";
     public const string CollectionSchemaChanged = "collection.schema_changed";
     public const string CollectionArchived = "collection.archived";
+    public const string ViewCreated = "view.created";
+    public const string ViewUpdated = "view.updated";
+    public const string ViewDeleted = "view.deleted";
     public const string MemberAdded = "member.added";
     public const string MemberUpdated = "member.updated";
     public const string MemberRemoved = "member.removed";
@@ -123,6 +126,7 @@ public static class ActivityTypes
         RecordCreated, RecordUpdated, RecordAppended, RecordArchived, RecordRestored,
         SpaceCreated, SpaceUpdated, SpaceArchived,
         CollectionCreated, CollectionUpdated, CollectionSchemaChanged, CollectionArchived,
+        ViewCreated, ViewUpdated, ViewDeleted,
         MemberAdded, MemberUpdated, MemberRemoved,
     ];
 }
@@ -133,6 +137,7 @@ public static class ActivityTargets
     public const string Record = "record";
     public const string Space = "space";
     public const string Collection = "collection";
+    public const string View = "view";
 
     /// <summary>A membership; the target id is the member's actor id.</summary>
     public const string Member = "member";

@@ -8,6 +8,7 @@ using Agcowork.Application.Records;
 using Agcowork.Application.Schema;
 using Agcowork.Application.Spaces;
 using Agcowork.Application.Tenancy;
+using Agcowork.Application.Views;
 using Agcowork.Application.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -64,8 +65,10 @@ public sealed class UseCaseRegistrationTests
         }
 
         var hooks = services.Where(d => d.ServiceType == typeof(ISchemaChangedHook)).ToList();
-        Assert.Equal([typeof(TemplatePresetSchemaHook), typeof(RecordValuesSchemaHook)], hooks.Select(h => h.ImplementationType));
+        Assert.Equal([typeof(TemplatePresetSchemaHook), typeof(RecordValuesSchemaHook), typeof(ViewSchemaHook)], hooks.Select(h => h.ImplementationType));
         Assert.All(hooks, h => Assert.Equal(ServiceLifetime.Scoped, h.Lifetime));
+        var created = Assert.Single(services, d => d.ServiceType == typeof(ICollectionCreatedHook));
+        Assert.Equal((typeof(DefaultViewsHook), ServiceLifetime.Scoped), (created.ImplementationType, created.Lifetime));
         Assert.Equal(
             "Agcowork.Application.Schema.RecordRelationTargetChecker",
             Assert.Single(services, d => d.ServiceType == typeof(IRelationTargetChecker)).ImplementationType?.FullName);

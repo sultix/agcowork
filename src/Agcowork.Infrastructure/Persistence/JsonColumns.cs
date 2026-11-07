@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Agcowork.Domain.Collections.Schema;
+using Agcowork.Domain.Views;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -54,6 +55,34 @@ internal static class JsonColumns
             (a, b) => a!.ToJsonString(Options) == b!.ToJsonString(Options),
             diff => StringComparer.Ordinal.GetHashCode(diff.ToJsonString(Options)),
             diff => (JsonObject)diff.DeepClone());
+
+    /// <summary>Filter DSL of views (nullable column: null = no filter).</summary>
+    public static ValueConverter<ViewFilterNode?, string> ViewFilterConverter { get; } =
+        new(filter => JsonSerializer.Serialize(filter, Options), json => JsonSerializer.Deserialize<ViewFilterNode>(json, Options)!);
+
+    public static ValueComparer<ViewFilterNode?> ViewFilterComparer { get; } =
+        new(
+            (a, b) => JsonSerializer.Serialize(a, Options) == JsonSerializer.Serialize(b, Options),
+            filter => StringComparer.Ordinal.GetHashCode(JsonSerializer.Serialize(filter, Options)),
+            filter => JsonSerializer.Deserialize<ViewFilterNode>(JsonSerializer.Serialize(filter, Options), Options)!);
+
+    public static ValueConverter<IReadOnlyList<ViewSort>, string> ViewSortsConverter { get; } =
+        new(sorts => JsonSerializer.Serialize(sorts, Options), json => JsonSerializer.Deserialize<List<ViewSort>>(json, Options)!);
+
+    public static ValueComparer<IReadOnlyList<ViewSort>> ViewSortsComparer { get; } =
+        new(
+            (a, b) => a!.SequenceEqual(b!),
+            sorts => sorts.Aggregate(0, (hash, sort) => HashCode.Combine(hash, sort)),
+            sorts => sorts.ToList());
+
+    public static ValueConverter<IReadOnlyList<string>, string> StringListConverter { get; } =
+        new(list => JsonSerializer.Serialize(list, Options), json => JsonSerializer.Deserialize<List<string>>(json, Options)!);
+
+    public static ValueComparer<IReadOnlyList<string>> StringListComparer { get; } =
+        new(
+            (a, b) => a!.SequenceEqual(b!),
+            list => list.Aggregate(0, (hash, item) => HashCode.Combine(hash, item)),
+            list => list.ToList());
 
     public static string SerializeSchema(IReadOnlyList<PropertyDefinition> schema) =>
         JsonSerializer.Serialize(new SchemaDocument(SchemaFormatVersion, [.. schema]), Options);

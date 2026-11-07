@@ -25,8 +25,12 @@ builder.EnrichNpgsqlDbContext<AgcoworkDbContext>(settings =>
 });
 
 // Enums travel as snake_case strings ("human", "agent").
+// Nulls are omitted, so optional members (filter nodes, DTOs) appear only when set.
 builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)));
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 
 // Every error response is ProblemDetails with a machine-readable "code" (see ProblemDetailsMapping).
 builder.Services.AddProblemDetails(options =>

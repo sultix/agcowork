@@ -8,6 +8,7 @@ using Agcowork.Domain.Common;
 using Agcowork.Domain.Identity;
 using Agcowork.Domain.Records;
 using Agcowork.Domain.Spaces;
+using Agcowork.Domain.Views;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -36,6 +37,8 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
     public DbSet<Collection> Collections => Set<Collection>();
 
     public DbSet<Template> Templates => Set<Template>();
+
+    public DbSet<View> Views => Set<View>();
 
     public DbSet<Record> Records => Set<Record>();
 

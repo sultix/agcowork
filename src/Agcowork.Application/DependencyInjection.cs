@@ -6,6 +6,7 @@ using Agcowork.Application.Common;
 using Agcowork.Application.Records;
 using Agcowork.Application.Schema;
 using Agcowork.Application.Tenancy;
+using Agcowork.Application.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -33,6 +34,10 @@ public static class DependencyInjection
         services.TryAddScoped<ISchemaProvider, SchemaProvider>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<ISchemaChangedHook, TemplatePresetSchemaHook>());
         services.TryAddEnumerable(ServiceDescriptor.Scoped<ISchemaChangedHook, RecordValuesSchemaHook>());
+
+        // Views (AP-008): standard views with every collection; schema changes clean up view references.
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<ICollectionCreatedHook, DefaultViewsHook>());
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<ISchemaChangedHook, ViewSchemaHook>());
 
         // Activity log (AP-007): events are added by the writing use cases and saved with their change.
         services.TryAddScoped<IActivityRecorder, ActivityRecorder>();

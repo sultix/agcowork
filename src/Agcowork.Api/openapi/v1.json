@@ -107,6 +107,41 @@
         }
       }
     },
+    "/api/v1/workspace-templates": {
+      "get": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "List workspace templates",
+        "description": "The structures a new workspace can start with, for 'templateId' of POST /workspaces: 'id', 'name', 'description' and 'isDefault' (the template applied when 'templateId' is omitted). Any authenticated caller.",
+        "operationId": "ListWorkspaceTemplates",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkspaceTemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/actors": {
       "get": {
         "tags": [
@@ -624,7 +659,7 @@
           "Workspaces"
         ],
         "summary": "Create a workspace",
-        "description": "Creates a workspace; the caller becomes its owner. 'slug' (unique, immutable; lowercase letters, digits, single hyphens, max. 63) becomes the URL segment /api/v1/w/{slug}. 'name' is required, 'description' optional. 'templateId' accepts only 'empty' for now (default). Requires workspaces:create (instance:admin implies it). A taken slug yields 409 'slug_taken'.",
+        "description": "Creates a workspace; the caller becomes its owner. 'slug' (unique, immutable; lowercase letters, digits, single hyphens, max. 63) becomes the URL segment /api/v1/w/{slug}. 'name' is required, 'description' optional. 'templateId' chooses the starting structure: 'software-projekt' (default when omitted: spaces Produkt, Technik, Notizen with the collections Aufgaben, Analysen, Entscheidungen, Komponenten) or 'empty'; an unknown id yields 400 with the 'allowed' values (see GET /workspace-templates). The template is applied in the same transaction: if it fails, no workspace is created. Requires workspaces:create (instance:admin implies it). A taken slug yields 409 'slug_taken'.",
         "operationId": "CreateWorkspace",
         "requestBody": {
           "content": {
@@ -2615,6 +2650,488 @@
         }
       }
     },
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/views": {
+      "get": {
+        "tags": [
+          "Views"
+        ],
+        "summary": "List the views of a collection",
+        "description": "Views of the collection by sortOrder, then name. Every collection has the system views 'Tabelle' (table, default) and 'Rohdaten' (raw). A view says how records are presented: type, filter, sorts, groupBy and visibleProperties. 'needsAttention': true marks a board whose groupBy property was removed from the schema. Requires read.",
+        "operationId": "ListViews",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ViewDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Views"
+        ],
+        "summary": "Create a view",
+        "description": "Creates a view. Required: 'name' (unique in the collection, max. 100 characters) and 'type' (table, board, gallery, list, document, raw; timeline and calendar are not available yet). A board also needs 'groupBy': the key of a select or status property. 'filter' uses the filter DSL: { \"and\": [ … ] } or { \"or\": [ … ] } groups of conditions { \"prop\", \"op\", \"value\" }; ops: eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty, is_not_empty ('in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). 'sorts': [ { \"prop\", \"dir\": \"asc\"|\"desc\" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover. All property keys must exist in the collection schema. 'isDefault': true makes it the default view. Invalid input: 400 with 'errors[]' and 'allowed' values. Requires write.",
+        "operationId": "CreateView",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateViewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/views/{viewId}": {
+      "get": {
+        "tags": [
+          "Views"
+        ],
+        "summary": "Get a view",
+        "description": "One view with filter, sorts, groupBy, visibleProperties, isDefault, isSystem and needsAttention. Requires read.",
+        "operationId": "GetView",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "viewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Views"
+        ],
+        "summary": "Update a view",
+        "description": "Partial update; omitted fields stay unchanged. 'filter' and 'sorts' replace the old values ('filter': {} and 'sorts': [] remove them); 'groupBy': \"\" and 'cardCoverProperty': \"\" clear them; 'visibleProperties': [] shows all properties. A board always keeps a 'groupBy'. System views (table, raw) can be renamed and configured but keep their type. Use POST …/default to change the default view. Requires write.",
+        "operationId": "UpdateView",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "viewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateViewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Views"
+        ],
+        "summary": "Delete a view",
+        "description": "Deletes the view; records are not affected. System views (table, raw) cannot be deleted: 409 'system_view'. Deleting the default view makes the first remaining view the default. Requires write.",
+        "operationId": "DeleteView",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "viewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/views/{viewId}/default": {
+      "post": {
+        "tags": [
+          "Views"
+        ],
+        "summary": "Make a view the default",
+        "description": "Makes the view the default of its collection; the previous default stops being one, exactly one default remains. Idempotent. Requires write.",
+        "operationId": "SetDefaultView",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "viewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/w/{workspaceSlug}/records": {
       "get": {
         "tags": [
@@ -4356,6 +4873,92 @@
         },
         "description": "Body of `POST /collections/{collectionId}/templates`."
       },
+      "CreateViewBody": {
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Display name, unique in the collection, max. 100 characters."
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "table, board, gallery, list, document or raw. A board needs groupBy."
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Filter DSL: { \"and\": [ { \"prop\", \"op\", \"value\" }, … ] } or \"or\". Omit for all records.",
+                "$ref": "#/components/schemas/ViewFilterNode"
+              }
+            ]
+          },
+          "sorts": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ViewSortInput"
+            },
+            "description": "[ { \"prop\", \"dir\": \"asc\"|\"desc\" } ]."
+          },
+          "groupBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of a select/status property; board columns. Required for boards."
+          },
+          "visibleProperties": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Keys of the properties shown; empty or omitted = all."
+          },
+          "cardCoverProperty": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Gallery: key of the cover property."
+          },
+          "isDefault": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Make it the collection's default view."
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Position among the views; default: last.",
+            "format": "int32"
+          }
+        },
+        "description": "Body of `POST /collections/{collectionId}/views`."
+      },
       "CreateWorkspaceRequest": {
         "required": [
           "slug",
@@ -4389,7 +4992,7 @@
               "null",
               "string"
             ],
-            "description": "Structure to start with. Only `empty` for now (also the default when omitted)."
+            "description": "Structure to start with: `software-projekt` (default when omitted) or `empty`. See GET /workspace-templates."
           }
         }
       },
@@ -5706,6 +6309,81 @@
         },
         "description": "Body of `PATCH /collections/{collectionId}/templates/{templateId}`; null leaves a field unchanged."
       },
+      "UpdateViewBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New display name."
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New type (not for system views)."
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New complete filter; {} removes it.",
+                "$ref": "#/components/schemas/ViewFilterNode"
+              }
+            ]
+          },
+          "sorts": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ViewSortInput"
+            },
+            "description": "New complete sort list; [] removes the sorting."
+          },
+          "groupBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New grouping key; \"\" removes it (not for boards)."
+          },
+          "visibleProperties": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "New complete list of visible keys; [] shows all."
+          },
+          "cardCoverProperty": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New cover key; \"\" removes it."
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "New position among the views.",
+            "format": "int32"
+          }
+        },
+        "description": "Body of `PATCH /views/{viewId}`; null leaves a field unchanged."
+      },
       "UpdateWorkspaceRequest": {
         "type": "object",
         "properties": {
@@ -5725,6 +6403,210 @@
           }
         },
         "description": "Partial update: null leaves a field unchanged."
+      },
+      "ViewDto": {
+        "required": [
+          "id",
+          "collectionId",
+          "name",
+          "type",
+          "filter",
+          "sorts",
+          "groupBy",
+          "visibleProperties",
+          "cardCoverProperty",
+          "isDefault",
+          "isSystem",
+          "sortOrder",
+          "needsAttention",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "View id.",
+            "format": "uuid"
+          },
+          "collectionId": {
+            "type": "string",
+            "description": "Collection the view belongs to.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name, unique within the collection."
+          },
+          "type": {
+            "type": "string",
+            "description": "table, board, gallery, list, document or raw."
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Filter DSL (and/or groups of { prop, op, value } conditions); null = all records.",
+                "$ref": "#/components/schemas/ViewFilterNode"
+              }
+            ]
+          },
+          "sorts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ViewSort"
+            },
+            "description": "Sort criteria in order: { prop, dir (asc|desc) }."
+          },
+          "groupBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of the select/status property that groups the records (board columns). Required for boards."
+          },
+          "visibleProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Keys of the properties shown; empty = all."
+          },
+          "cardCoverProperty": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Gallery: key of the property used as card cover."
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "The collection's default view; exactly one per collection."
+          },
+          "isSystem": {
+            "type": "boolean",
+            "description": "Standard view (table, raw): cannot be deleted, type cannot change."
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Position among the collection's views.",
+            "format": "int32"
+          },
+          "needsAttention": {
+            "type": "boolean",
+            "description": "true when a board lost its groupBy property because the property was removed from the schema; set a new groupBy."
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Actor that created the view.",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A view of a collection: how its records are presented."
+      },
+      "ViewFilterNode": {
+        "type": "object",
+        "properties": {
+          "and": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ViewFilterNode"
+            },
+            "description": "All children must match."
+          },
+          "or": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ViewFilterNode"
+            },
+            "description": "At least one child must match."
+          },
+          "prop": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Condition: key of a schema property."
+          },
+          "op": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Condition: eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty or is_not_empty."
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Condition: comparison value; a list for in/nin, omitted for is_empty/is_not_empty.",
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          }
+        },
+        "description": "One node of the filter DSL (architecture §3), shared by REST, MCP and storage: either a group\n(`{ \"and\": [ … ] }` / `{ \"or\": [ … ] }`) or a condition (`{ \"prop\", \"op\", \"value\" }`).\nExactly one of the three shapes is set; ViewFilterOperators lists the operators.\nThe structure is checked by the application layer; translation to SQL is a separate concern."
+      },
+      "ViewSort": {
+        "required": [
+          "prop",
+          "dir"
+        ],
+        "type": "object",
+        "properties": {
+          "prop": {
+            "type": "string",
+            "description": "Key of a schema property."
+          },
+          "dir": {
+            "type": "string",
+            "description": "`asc` or `desc`."
+          }
+        },
+        "description": "One sort criterion of a view."
+      },
+      "ViewSortInput": {
+        "required": [
+          "prop",
+          "dir"
+        ],
+        "type": "object",
+        "properties": {
+          "prop": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of a schema property."
+          },
+          "dir": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "`asc` or `desc`."
+          }
+        },
+        "description": "One sort criterion as sent by a caller."
       },
       "WorkspaceDto": {
         "required": [
@@ -5800,6 +6682,34 @@
           "owner"
         ],
         "description": "Role of a member in a workspace. Determines the default scopes (see IReadOnlyList&lt;string&gt; WorkspaceScope.ForRole(WorkspaceRole role))."
+      },
+      "WorkspaceTemplateDto": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "isDefault"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Value for `templateId`."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "description": {
+            "type": "string",
+            "description": "What the template creates."
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Applied when `templateId` is omitted."
+          }
+        },
+        "description": "A workspace template one can pass as `templateId` when creating a workspace."
       }
     }
   },
@@ -5811,13 +6721,13 @@
       "name": "Me"
     },
     {
+      "name": "Workspaces"
+    },
+    {
       "name": "Actors"
     },
     {
       "name": "API keys"
-    },
-    {
-      "name": "Workspaces"
     },
     {
       "name": "Members"
@@ -5830,6 +6740,9 @@
     },
     {
       "name": "Templates"
+    },
+    {
+      "name": "Views"
     },
     {
       "name": "Records"

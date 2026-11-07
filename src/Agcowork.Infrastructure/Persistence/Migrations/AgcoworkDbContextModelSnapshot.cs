@@ -611,6 +611,94 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                     b.ToTable("spaces", (string)null);
                 });
 
+            modelBuilder.Entity("Agcowork.Domain.Views.View", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CardCoverProperty")
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("card_cover_property");
+
+                    b.Property<Guid>("CollectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("collection_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Filter")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("filter");
+
+                    b.Property<string>("GroupByProperty")
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("group_by_property");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Sorts")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sorts");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("type");
+
+                    b.Property<string>("VisibleProperties")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("visible_properties");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_views");
+
+                    b.HasIndex("WorkspaceId", "CollectionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_views_default")
+                        .HasFilter("is_default");
+
+                    b.HasIndex("WorkspaceId", "CollectionId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_views_workspace_id_collection_id_name");
+
+                    b.HasIndex("WorkspaceId", "CollectionId", "SortOrder")
+                        .HasDatabaseName("ix_views_workspace_id_collection_id_sort_order");
+
+                    b.ToTable("views", (string)null);
+                });
+
             modelBuilder.Entity("Agcowork.Domain.Workspaces.Membership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -825,6 +913,17 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_spaces_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Views.View", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Collections.Collection", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "CollectionId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_views_collections_workspace_id_collection_id");
                 });
 
             modelBuilder.Entity("Agcowork.Domain.Workspaces.Membership", b =>

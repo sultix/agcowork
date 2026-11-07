@@ -4,6 +4,7 @@ using Agcowork.Domain.Collections;
 using Agcowork.Domain.Identity;
 using Agcowork.Domain.Records;
 using Agcowork.Domain.Spaces;
+using Agcowork.Domain.Views;
 using Agcowork.Domain.Workspaces;
 using Agcowork.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,8 @@ internal sealed class RacingDbContext(AgcoworkDbContext inner, Func<Task> before
     public DbSet<Collection> Collections => inner.Collections;
 
     public DbSet<Template> Templates => inner.Templates;
+
+    public DbSet<View> Views => inner.Views;
 
     public DbSet<Record> Records => inner.Records;
 

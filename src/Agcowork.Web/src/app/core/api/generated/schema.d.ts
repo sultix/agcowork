@@ -64,6 +64,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspace-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List workspace templates
+         * @description The structures a new workspace can start with, for 'templateId' of POST /workspaces: 'id', 'name', 'description' and 'isDefault' (the template applied when 'templateId' is omitted). Any authenticated caller.
+         */
+        get: operations["ListWorkspaceTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/actors": {
         parameters: {
             query?: never;
@@ -171,7 +191,7 @@ export interface paths {
         put?: never;
         /**
          * Create a workspace
-         * @description Creates a workspace; the caller becomes its owner. 'slug' (unique, immutable; lowercase letters, digits, single hyphens, max. 63) becomes the URL segment /api/v1/w/{slug}. 'name' is required, 'description' optional. 'templateId' accepts only 'empty' for now (default). Requires workspaces:create (instance:admin implies it). A taken slug yields 409 'slug_taken'.
+         * @description Creates a workspace; the caller becomes its owner. 'slug' (unique, immutable; lowercase letters, digits, single hyphens, max. 63) becomes the URL segment /api/v1/w/{slug}. 'name' is required, 'description' optional. 'templateId' chooses the starting structure: 'software-projekt' (default when omitted: spaces Produkt, Technik, Notizen with the collections Aufgaben, Analysen, Entscheidungen, Komponenten) or 'empty'; an unknown id yields 400 with the 'allowed' values (see GET /workspace-templates). The template is applied in the same transaction: if it fails, no workspace is created. Requires workspaces:create (instance:admin implies it). A taken slug yields 409 'slug_taken'.
          */
         post: operations["CreateWorkspace"];
         delete?: never;
@@ -498,6 +518,78 @@ export interface paths {
          * @description Partial update; omitted fields stay unchanged. 'propertiesPreset' and 'bodyMarkdown' replace the old values; 'isDefault': true moves the default flag to this template. Requires schema.
          */
         patch: operations["UpdateTemplate"];
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/collections/{collectionId}/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the views of a collection
+         * @description Views of the collection by sortOrder, then name. Every collection has the system views 'Tabelle' (table, default) and 'Rohdaten' (raw). A view says how records are presented: type, filter, sorts, groupBy and visibleProperties. 'needsAttention': true marks a board whose groupBy property was removed from the schema. Requires read.
+         */
+        get: operations["ListViews"];
+        put?: never;
+        /**
+         * Create a view
+         * @description Creates a view. Required: 'name' (unique in the collection, max. 100 characters) and 'type' (table, board, gallery, list, document, raw; timeline and calendar are not available yet). A board also needs 'groupBy': the key of a select or status property. 'filter' uses the filter DSL: { "and": [ … ] } or { "or": [ … ] } groups of conditions { "prop", "op", "value" }; ops: eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty, is_not_empty ('in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). 'sorts': [ { "prop", "dir": "asc"|"desc" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover. All property keys must exist in the collection schema. 'isDefault': true makes it the default view. Invalid input: 400 with 'errors[]' and 'allowed' values. Requires write.
+         */
+        post: operations["CreateView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/views/{viewId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a view
+         * @description One view with filter, sorts, groupBy, visibleProperties, isDefault, isSystem and needsAttention. Requires read.
+         */
+        get: operations["GetView"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a view
+         * @description Deletes the view; records are not affected. System views (table, raw) cannot be deleted: 409 'system_view'. Deleting the default view makes the first remaining view the default. Requires write.
+         */
+        delete: operations["DeleteView"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a view
+         * @description Partial update; omitted fields stay unchanged. 'filter' and 'sorts' replace the old values ('filter': {} and 'sorts': [] remove them); 'groupBy': "" and 'cardCoverProperty': "" clear them; 'visibleProperties': [] shows all properties. A board always keeps a 'groupBy'. System views (table, raw) can be renamed and configured but keep their type. Use POST …/default to change the default view. Requires write.
+         */
+        patch: operations["UpdateView"];
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/views/{viewId}/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a view the default
+         * @description Makes the view the default of its collection; the previous default stops being one, exactly one default remains. Idempotent. Requires write.
+         */
+        post: operations["SetDefaultView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/w/{workspaceSlug}/records": {
@@ -959,6 +1051,29 @@ export interface components {
             /** @description Make it the collection's default template. */
             isDefault?: null | boolean;
         };
+        /** @description Body of `POST /collections/{collectionId}/views`. */
+        CreateViewBody: {
+            /** @description Display name, unique in the collection, max. 100 characters. */
+            name: null | string;
+            /** @description table, board, gallery, list, document or raw. A board needs groupBy. */
+            type: null | string;
+            filter?: null | components["schemas"]["ViewFilterNode"];
+            /** @description [ { "prop", "dir": "asc"|"desc" } ]. */
+            sorts?: null | components["schemas"]["ViewSortInput"][];
+            /** @description Key of a select/status property; board columns. Required for boards. */
+            groupBy?: null | string;
+            /** @description Keys of the properties shown; empty or omitted = all. */
+            visibleProperties?: null | string[];
+            /** @description Gallery: key of the cover property. */
+            cardCoverProperty?: null | string;
+            /** @description Make it the collection's default view. */
+            isDefault?: null | boolean;
+            /**
+             * Format: int32
+             * @description Position among the views; default: last.
+             */
+            sortOrder?: null | number | string;
+        };
         CreateWorkspaceRequest: {
             /** @description URL segment, unique, immutable: lowercase letters, digits, single hyphens, max. 63 characters. */
             slug: null | string;
@@ -966,7 +1081,7 @@ export interface components {
             name: null | string;
             /** @description What the workspace is for, max. 2000 characters. Agents read it. */
             description?: null | string;
-            /** @description Structure to start with. Only `empty` for now (also the default when omitted). */
+            /** @description Structure to start with: `software-projekt` (default when omitted) or `empty`. See GET /workspace-templates. */
             templateId?: null | string;
         };
         JsonElement: unknown;
@@ -1461,12 +1576,111 @@ export interface components {
             /** @description true makes it the default; false removes the flag. */
             isDefault?: null | boolean;
         };
+        /** @description Body of `PATCH /views/{viewId}`; null leaves a field unchanged. */
+        UpdateViewBody: {
+            /** @description New display name. */
+            name?: null | string;
+            /** @description New type (not for system views). */
+            type?: null | string;
+            filter?: null | components["schemas"]["ViewFilterNode"];
+            /** @description New complete sort list; [] removes the sorting. */
+            sorts?: null | components["schemas"]["ViewSortInput"][];
+            /** @description New grouping key; "" removes it (not for boards). */
+            groupBy?: null | string;
+            /** @description New complete list of visible keys; [] shows all. */
+            visibleProperties?: null | string[];
+            /** @description New cover key; "" removes it. */
+            cardCoverProperty?: null | string;
+            /**
+             * Format: int32
+             * @description New position among the views.
+             */
+            sortOrder?: null | number | string;
+        };
         /** @description Partial update: null leaves a field unchanged. */
         UpdateWorkspaceRequest: {
             /** @description New display name. */
             name?: null | string;
             /** @description New description; an empty string clears it. */
             description?: null | string;
+        };
+        /** @description A view of a collection: how its records are presented. */
+        ViewDto: {
+            /**
+             * Format: uuid
+             * @description View id.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Collection the view belongs to.
+             */
+            collectionId: string;
+            /** @description Display name, unique within the collection. */
+            name: string;
+            /** @description table, board, gallery, list, document or raw. */
+            type: string;
+            filter: null | components["schemas"]["ViewFilterNode"];
+            /** @description Sort criteria in order: { prop, dir (asc|desc) }. */
+            sorts: components["schemas"]["ViewSort"][];
+            /** @description Key of the select/status property that groups the records (board columns). Required for boards. */
+            groupBy: null | string;
+            /** @description Keys of the properties shown; empty = all. */
+            visibleProperties: string[];
+            /** @description Gallery: key of the property used as card cover. */
+            cardCoverProperty: null | string;
+            /** @description The collection's default view; exactly one per collection. */
+            isDefault: boolean;
+            /** @description Standard view (table, raw): cannot be deleted, type cannot change. */
+            isSystem: boolean;
+            /**
+             * Format: int32
+             * @description Position among the collection's views.
+             */
+            sortOrder: number | string;
+            /** @description true when a board lost its groupBy property because the property was removed from the schema; set a new groupBy. */
+            needsAttention: boolean;
+            /**
+             * Format: uuid
+             * @description Actor that created the view.
+             */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @description Creation time (UTC).
+             */
+            createdAt: string;
+        };
+        /**
+         * @description One node of the filter DSL (architecture §3), shared by REST, MCP and storage: either a group
+         *     (`{ "and": [ … ] }` / `{ "or": [ … ] }`) or a condition (`{ "prop", "op", "value" }`).
+         *     Exactly one of the three shapes is set; ViewFilterOperators lists the operators.
+         *     The structure is checked by the application layer; translation to SQL is a separate concern.
+         */
+        ViewFilterNode: {
+            /** @description All children must match. */
+            and?: null | components["schemas"]["ViewFilterNode"][];
+            /** @description At least one child must match. */
+            or?: null | components["schemas"]["ViewFilterNode"][];
+            /** @description Condition: key of a schema property. */
+            prop?: null | string;
+            /** @description Condition: eq, neq, in, nin, contains, starts_with, gt, gte, lt, lte, is_empty or is_not_empty. */
+            op?: null | string;
+            value?: null | components["schemas"]["JsonElement"];
+        };
+        /** @description One sort criterion of a view. */
+        ViewSort: {
+            /** @description Key of a schema property. */
+            prop: string;
+            /** @description `asc` or `desc`. */
+            dir: string;
+        };
+        /** @description One sort criterion as sent by a caller. */
+        ViewSortInput: {
+            /** @description Key of a schema property. */
+            prop: null | string;
+            /** @description `asc` or `desc`. */
+            dir: null | string;
         };
         /** @description A workspace as seen by the caller. */
         WorkspaceDto: {
@@ -1506,6 +1720,17 @@ export interface components {
          * @enum {unknown}
          */
         WorkspaceRole: "viewer" | "editor" | "admin" | "owner";
+        /** @description A workspace template one can pass as `templateId` when creating a workspace. */
+        WorkspaceTemplateDto: {
+            /** @description Value for `templateId`. */
+            id: string;
+            /** @description Display name. */
+            name: string;
+            /** @description What the template creates. */
+            description: string;
+            /** @description Applied when `templateId` is omitted. */
+            isDefault: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -1598,6 +1823,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListWorkspaceTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceTemplateDto"][];
                 };
             };
             /** @description Unauthorized */
@@ -3438,6 +3692,354 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListViews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViewDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateViewBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViewDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViewDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateViewBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViewDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetDefaultView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViewDto"];
                 };
             };
             /** @description Unauthorized */

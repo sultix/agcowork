@@ -3,6 +3,7 @@ using Agcowork.Domain.Collections;
 using Agcowork.Domain.Identity;
 using Agcowork.Domain.Records;
 using Agcowork.Domain.Spaces;
+using Agcowork.Domain.Views;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -42,6 +43,8 @@ public interface IAgcoworkDbContext
     DbSet<Collection> Collections { get; }
 
     DbSet<Template> Templates { get; }
+
+    DbSet<View> Views { get; }
 
     DbSet<Record> Records { get; }
 
