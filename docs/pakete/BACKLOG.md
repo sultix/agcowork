@@ -21,6 +21,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-015](AP-015-frontend-tabelle.md) | Frontend: Tabellen-View mit Inline-Edit, Filter-Leiste, View-Wechsel, Board | 1 | implementer-opus | AP-009, AP-014 | abgeschlossen | dafa127 |
 | [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | 45c5e25 |
 | [AP-017](AP-017-frontend-raw-historie.md) | Frontend: Raw-View (bearbeitbar), Historie mit Diff, Aktivitätsfeed | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-014 | abgeschlossen | 7492762 |
+| [AP-018](AP-018-docker-compose.md) | Docker Compose für den lokalen Start ohne Aspire (Postgres, API, Nginx + Angular) | Betrieb | implementer-sonnet | AP-011 | in Arbeit | |
 
 ## Zurückgestellte Review-Hinweise
 
