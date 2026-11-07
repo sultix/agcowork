@@ -1,12 +1,28 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideActivity,
+  lucideHouse,
+  lucideSearch,
+  lucideSettings,
+  lucideUsers,
+} from '@ng-icons/lucide';
+import { HlmBreadcrumbImports } from '@spartan-ng/helm/breadcrumb';
+import { HlmSeparator } from '@spartan-ng/helm/separator';
+import {
+  HlmSidebarImports,
+  HlmSidebarService,
+  provideHlmSidebarConfig,
+} from '@spartan-ng/helm/sidebar';
+import { HlmTooltip } from '@spartan-ng/helm/tooltip';
 import { BackendStatus, HealthService } from '../../core/api/health.service';
-import { ThemeService } from '../../core/theme/theme.service';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { ADMIN_ROLES, WorkspacesStore } from '../workspaces/workspaces.store';
 import { WorkspaceTreeComponent } from '../spaces/workspace-tree.component';
 import { WorkspaceSwitcherComponent } from '../workspaces/workspace-switcher.component';
 import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
+import { ThemeToggleComponent } from '../../shared/ui/theme-toggle.component';
 
 const STATUS_LABELS: Record<BackendStatus, string> = {
   checking: 'wird geprüft',
@@ -14,93 +30,161 @@ const STATUS_LABELS: Record<BackendStatus, string> = {
   unreachable: 'nicht erreichbar',
 };
 
-/** Layout for everything under `/w/:workspaceSlug`: sidebar, header and content outlet. */
+const STATUS_DOTS: Record<BackendStatus, string> = {
+  checking: 'bg-muted-foreground/50',
+  ok: 'bg-success',
+  unreachable: 'bg-destructive',
+};
+
+interface NavItem {
+  readonly path: string;
+  readonly label: string;
+  readonly icon: string;
+  readonly exact: boolean;
+}
+
+/**
+ * Layout for everything under `/w/:workspaceSlug`: collapsible Helm sidebar (workspace switcher,
+ * navigation, space tree), header (sidebar toggle, breadcrumb, backend status, theme, session) and
+ * the content outlet.
+ */
 @Component({
   selector: 'ag-workspace-shell',
   imports: [
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
+    NgIcon,
+    HlmBreadcrumbImports,
+    HlmSeparator,
+    HlmSidebarImports,
+    HlmTooltip,
     SessionMenuComponent,
+    ThemeToggleComponent,
     WorkspaceSwitcherComponent,
     WorkspaceTreeComponent,
   ],
+  providers: [
+    provideIcons({ lucideActivity, lucideHouse, lucideSearch, lucideSettings, lucideUsers }),
+    // Helm's sidebar service is root-provided and reads its config from the root injector, so the
+    // shell provides its own instance together with the config. The keyboard shortcut is off:
+    // the service listens for Mod+B on window without checking defaultPrevented, which would also
+    // collapse the sidebar while Milkdown applies bold.
+    HlmSidebarService,
+    provideHlmSidebarConfig({ sidebarKeyboardShortcut: '' }),
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex min-h-screen">
-      <aside class="w-56 shrink-0 border-r border-border bg-surface p-4">
-        <ag-workspace-switcher [slug]="slug()" />
-        <nav class="mt-6 flex flex-col gap-1 text-sm">
-          @for (item of nav(); track item.path) {
-            <a
-              [routerLink]="item.path"
-              routerLinkActive="bg-surface-hover text-fg"
-              [routerLinkActiveOptions]="{ exact: item.exact }"
-              class="rounded-md px-2 py-1 text-muted hover:bg-surface-hover"
-              >{{ item.label }}</a
-            >
-          }
-        </nav>
-        <div class="mt-6 border-t border-border pt-4">
-          <ag-workspace-tree />
+    <div hlmSidebarWrapper>
+      <hlm-sidebar
+        collapsible="icon"
+        srOnlySheetTitle="Navigation"
+        srOnlySheetDescription="Workspace-Navigation und Spaces"
+      >
+        <div hlmSidebarHeader>
+          <ag-workspace-switcher [slug]="slug()" />
         </div>
-      </aside>
-      <div class="flex min-w-0 flex-1 flex-col">
-        <header class="flex items-center justify-between border-b border-border px-6 py-3">
-          <span class="text-sm text-muted">Workspace {{ slug() }}</span>
-          <div class="flex items-center gap-4 text-sm">
-            <span data-testid="backend-status" [class]="statusClass()">
-              Backend: {{ statusLabel() }}
-            </span>
-            <button
-              type="button"
-              class="rounded-md border border-border px-2 py-1 hover:bg-surface-hover"
-              (click)="theme.cycle()"
+        <div hlmSidebarContent>
+          <div hlmSidebarGroup>
+            <nav aria-label="Workspace">
+              <ul hlmSidebarMenu>
+                @for (item of nav(); track item.path) {
+                  <li hlmSidebarMenuItem>
+                    <a
+                      hlmSidebarMenuButton
+                      [routerLink]="item.path"
+                      routerLinkActive
+                      #link="routerLinkActive"
+                      [routerLinkActiveOptions]="{ exact: item.exact }"
+                      ariaCurrentWhenActive="page"
+                      [isActive]="link.isActive"
+                      [tooltip]="item.label"
+                      data-testid="nav-link"
+                    >
+                      <ng-icon [name]="item.icon" />
+                      <span>{{ item.label }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            </nav>
+          </div>
+          <div hlmSidebarGroup>
+            <div hlmSidebarGroupLabel>Spaces</div>
+            <ag-workspace-tree />
+          </div>
+        </div>
+      </hlm-sidebar>
+
+      <main hlmSidebarInset class="min-w-0">
+        <header
+          class="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4"
+        >
+          <!-- Icon and screen-reader text come from the Helm trigger's own template. -->
+          <button
+            hlmSidebarTrigger
+            srOnlyText="Seitenleiste ein- oder ausklappen"
+            aria-label="Seitenleiste ein- oder ausklappen"
+          ></button>
+          <hlm-separator orientation="vertical" class="mr-1 h-4 self-center" />
+          <nav hlmBreadcrumb aria-label="Workspace-Pfad" class="min-w-0">
+            <ol hlmBreadcrumbList>
+              <li hlmBreadcrumbItem>
+                <span hlmBreadcrumbPage class="truncate" data-testid="header-workspace">{{
+                  workspaceName()
+                }}</span>
+              </li>
+            </ol>
+          </nav>
+          <div class="ml-auto flex items-center gap-1">
+            <span
+              class="inline-flex size-9 items-center justify-center rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              tabindex="0"
+              role="status"
+              data-testid="backend-status"
+              [attr.data-status]="health.status()"
+              [hlmTooltip]="statusText()"
             >
-              Theme: {{ theme.mode() }}
-            </button>
+              <span class="size-2 rounded-full" [class]="statusDot()" aria-hidden="true"></span>
+              <span class="sr-only">{{ statusText() }}</span>
+            </span>
+            <ag-theme-toggle />
             <ag-session-menu />
           </div>
         </header>
-        <main class="min-w-0 flex-1">
+        <div class="min-w-0 flex-1">
           <router-outlet />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   `,
 })
 export class WorkspaceShellComponent {
   private readonly workspace = inject(WorkspaceContext);
-  private readonly health = inject(HealthService);
-  protected readonly theme = inject(ThemeService);
+  protected readonly health = inject(HealthService);
 
   protected readonly slug = this.workspace.slug;
 
   private readonly workspaces = inject(WorkspacesStore);
 
+  protected readonly workspaceName = computed(
+    () => this.workspaces.find(this.slug())?.name ?? this.slug() ?? '',
+  );
+
   /** "Einstellungen" is offered to admins and owners only. */
-  protected readonly nav = computed(() => {
+  protected readonly nav = computed<readonly NavItem[]>(() => {
     const role = this.workspaces.find(this.slug())?.role;
     return [
-      { path: '.', label: 'Start', exact: true },
-      { path: 'search', label: 'Suche', exact: false },
-      { path: 'activity', label: 'Aktivität', exact: false },
-      { path: 'settings/members', label: 'Mitglieder', exact: false },
+      { path: '.', label: 'Start', icon: 'lucideHouse', exact: true },
+      { path: 'search', label: 'Suche', icon: 'lucideSearch', exact: false },
+      { path: 'activity', label: 'Aktivität', icon: 'lucideActivity', exact: false },
+      { path: 'settings/members', label: 'Mitglieder', icon: 'lucideUsers', exact: false },
       ...(role && ADMIN_ROLES.includes(role)
-        ? [{ path: 'settings', label: 'Einstellungen', exact: true }]
+        ? [{ path: 'settings', label: 'Einstellungen', icon: 'lucideSettings', exact: true }]
         : []),
     ];
   });
 
-  protected readonly statusLabel = computed(() => STATUS_LABELS[this.health.status()]);
-  protected readonly statusClass = computed(() => {
-    switch (this.health.status()) {
-      case 'ok':
-        return 'text-success';
-      case 'unreachable':
-        return 'text-danger';
-      default:
-        return 'text-muted';
-    }
-  });
+  protected readonly statusText = computed(() => `Backend: ${STATUS_LABELS[this.health.status()]}`);
+  protected readonly statusDot = computed(() => STATUS_DOTS[this.health.status()]);
 }

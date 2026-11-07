@@ -1,48 +1,114 @@
 import { TestBed } from '@angular/core/testing';
-import { THEME_STORAGE_KEY, ThemeService } from './theme.service';
+import { DARK_CLASS, THEME_STORAGE_KEY, ThemeMode, ThemeService } from './theme.service';
 
 describe('ThemeService', () => {
   const root = document.documentElement;
+  const view = document.defaultView as Window;
+
+  /** Fake `matchMedia` for `(prefers-color-scheme: dark)`; `change(…)` simulates a system switch. */
+  function fakeSystem(dark: boolean): { change(dark: boolean): void } {
+    let listener: ((event: MediaQueryListEvent) => void) | undefined;
+    const media = {
+      matches: dark,
+      addEventListener: (_: string, fn: (event: MediaQueryListEvent) => void) => (listener = fn),
+    };
+    Object.defineProperty(view, 'matchMedia', { configurable: true, value: () => media });
+    onTestFinished(() => {
+      delete (view as Partial<Window>).matchMedia;
+    });
+    return { change: (value) => listener?.({ matches: value } as MediaQueryListEvent) };
+  }
+
+  const isDarkClass = () => root.classList.contains(DARK_CLASS);
 
   beforeEach(() => {
     localStorage.clear();
-    root.removeAttribute('data-theme');
+    root.classList.remove(DARK_CLASS);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
-    root.removeAttribute('data-theme');
+    root.classList.remove(DARK_CLASS);
   });
 
-  it('cycle_ThroughModes_SetsOrRemovesDataThemeAndPersists', () => {
+  it.each<[ThemeMode, boolean, boolean]>([
+    ['system', false, false],
+    ['system', true, true],
+    ['light', false, false],
+    ['light', true, false],
+    ['dark', false, true],
+    ['dark', true, true],
+  ])('setMode_%s_SystemDark_%s_DarkClassIs_%s', (mode, systemDark, expected) => {
+    fakeSystem(systemDark);
     const theme = TestBed.inject(ThemeService);
-    TestBed.tick();
-    expect(theme.mode()).toBe('system');
-    expect(root.hasAttribute('data-theme')).toBe(false);
 
-    theme.cycle();
+    theme.setMode(mode);
     TestBed.tick();
-    expect(root.getAttribute('data-theme')).toBe('light');
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
 
-    theme.cycle();
+    expect(isDarkClass()).toBe(expected);
+    expect(theme.isDark()).toBe(expected);
+  });
+
+  it('setMode_Explicit_PersistsAndSystemRemovesStoredValue', () => {
+    const theme = TestBed.inject(ThemeService);
+
+    theme.setMode('dark');
     TestBed.tick();
-    expect(root.getAttribute('data-theme')).toBe('dark');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
 
-    theme.cycle();
+    theme.setMode('light');
     TestBed.tick();
-    expect(root.hasAttribute('data-theme')).toBe(false);
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+
+    theme.setMode('system');
+    TestBed.tick();
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
   });
 
-  it('mode_StoredValue_IsRestored', () => {
+  it('systemChange_InSystemMode_TogglesDarkClassAtRuntime', () => {
+    const system = fakeSystem(false);
+    const theme = TestBed.inject(ThemeService);
+    TestBed.tick();
+    expect(isDarkClass()).toBe(false);
+
+    system.change(true);
+    TestBed.tick();
+    expect(isDarkClass()).toBe(true);
+    expect(theme.isDark()).toBe(true);
+
+    system.change(false);
+    TestBed.tick();
+    expect(isDarkClass()).toBe(false);
+  });
+
+  it('systemChange_InExplicitMode_IsIgnored', () => {
+    const system = fakeSystem(false);
+    const theme = TestBed.inject(ThemeService);
+    theme.setMode('light');
+    TestBed.tick();
+
+    system.change(true);
+    TestBed.tick();
+
+    expect(isDarkClass()).toBe(false);
+    expect(theme.isDark()).toBe(false);
+  });
+
+  it('mode_StoredValue_IsRestoredAndApplied', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
     const theme = TestBed.inject(ThemeService);
     TestBed.tick();
+
     expect(theme.mode()).toBe('dark');
-    expect(root.getAttribute('data-theme')).toBe('dark');
+    expect(isDarkClass()).toBe(true);
+  });
+
+  it('mode_StoredGarbage_FallsBackToSystem', () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'purple');
+    const theme = TestBed.inject(ThemeService);
+
+    expect(theme.mode()).toBe('system');
   });
 
   it('mode_StorageThrows_FallsBackToSystemWithoutError', () => {
@@ -57,39 +123,15 @@ describe('ThemeService', () => {
     TestBed.tick();
     expect(theme.mode()).toBe('system');
 
-    theme.cycle();
+    theme.setMode('dark');
     expect(() => TestBed.tick()).not.toThrow();
-    expect(root.getAttribute('data-theme')).toBe('light');
-  });
-
-  it('isDark_ResolvesModeAndSystemPreference', () => {
-    let listener: ((event: MediaQueryListEvent) => void) | undefined;
-    const media = {
-      matches: true,
-      addEventListener: (_: string, fn: (event: MediaQueryListEvent) => void) => (listener = fn),
-    };
-    const view = document.defaultView as Window;
-    Object.defineProperty(view, 'matchMedia', { configurable: true, value: () => media });
-    onTestFinished(() => {
-      delete (view as Partial<Window>).matchMedia;
-    });
-
-    const theme = TestBed.inject(ThemeService);
-    expect(theme.isDark()).toBe(true);
-
-    listener?.({ matches: false } as MediaQueryListEvent);
-    expect(theme.isDark()).toBe(false);
-
-    theme.mode.set('dark');
-    expect(theme.isDark()).toBe(true);
-    theme.mode.set('light');
-    expect(theme.isDark()).toBe(false);
+    expect(isDarkClass()).toBe(true);
   });
 
   it('isDark_WithoutMatchMedia_FollowsExplicitModeOnly', () => {
     const theme = TestBed.inject(ThemeService);
     expect(theme.isDark()).toBe(false);
-    theme.mode.set('dark');
+    theme.setMode('dark');
     expect(theme.isDark()).toBe(true);
   });
 });

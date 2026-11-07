@@ -154,8 +154,10 @@ describe('RecordDocumentComponent', () => {
   });
 
   const root = () => harness.routeNativeElement as HTMLElement;
+  // Overlays (e.g. the confirm dialog) render into the CDK overlay container in <body>.
   const q = <T extends HTMLElement = HTMLElement>(id: string) =>
-    root().querySelector<T>(`[data-testid="${id}"]`);
+    root().querySelector<T>(`[data-testid="${id}"]`) ??
+    document.body.querySelector<T>(`[data-testid="${id}"]`);
   const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
   const row = (key: string) => root().querySelector<HTMLElement>(`[data-key="${key}"]`)!;
   const isBody = (e: FakeMarkdownEngine) => !!e.root.closest('[data-testid="record-body"]');

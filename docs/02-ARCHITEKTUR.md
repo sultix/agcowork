@@ -542,7 +542,119 @@ SignalR-Gruppe gewechselt.
 - **Raw**: Monaco, umschaltbar JSON ↔ Markdown+Frontmatter, optional editierbar mit Validierung.
 - **Property-Editoren**: eine Komponente pro Typ, von Table, Document und Filter-Builder gemeinsam genutzt.
 - **Live**: SignalR-Client aktualisiert Signals; Konflikte (fremde Revision) werden angezeigt statt überschrieben.
-- **Theming**: Tailwind mit Design-Tokens, Hell/Dunkel.
+- **Theming**: siehe „Theming“ unten.
+
+### Theming
+
+- **Optik und Bausteine von shadcn/ui** über den Angular-Port **spartan/ui** (AP-019): Brain-Primitives
+  (`@spartan-ng/brain`, Verhalten, Fokus, ARIA) als Abhängigkeit, gestylte Helm-Komponenten als Code im
+  Repo (siehe „UI-Bausteine“). Tailwind CSS v4, Icons ausschließlich Lucide (`@ng-icons/lucide`).
+- **Theme „neutral“** von shadcn in `src/styles.css`: oklch-Variablen (`--background`, `--foreground`,
+  `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--border`,
+  `--input`, `--ring`, `--radius`, `--chart-*`, `--sidebar-*`) für hell (`:root`) und dunkel (`:root.dark`).
+  Die Zuordnung zu Tailwind-Farben (`bg-background`, `text-muted-foreground`, …) liefert
+  `@spartan-ng/brain/hlm-tailwind-preset.css` (`@theme inline`, `@custom-variant dark`, `tw-animate-css`,
+  CDK-Overlay-Styles). Eigene Ergänzung: `--success`/`--success-foreground` → `bg-success`,
+  `text-success` (shadcn hat keinen Erfolgston).
+- **Dunkelmodus über die Klasse `.dark` auf `<html>`.** `ThemeService` (`core/theme`) kennt
+  `system | light | dark` (Storage-Key `ag-theme`, `system` = kein Eintrag) und setzt `.dark` nach dem
+  effektiven Modus `isDark()`, auch bei Systemwechsel zur Laufzeit. Ein Inline-Skript in `index.html`
+  setzt `.dark` vor dem ersten Paint (kein Aufblitzen). Gibt es künftig eine CSP, braucht dieses Skript
+  einen Hash oder eine Nonce.
+- **Schrift**: System-Font-Stack (`--font-sans`), keine Webfonts.
+- **Widgets ohne CSS-Variablen**: Monaco bekommt seine Farben über `shared/raw-view/monaco-theme.ts`;
+  `css-color.ts` rechnet oklch/Hex/rgb in `#rrggbb` um (transparente Werte auf den Editor-Hintergrund
+  verrechnet). Der Markdown-Editor nutzt die shadcn-Variablen direkt.
+- **Utilities sind unlayered** (so richtet spartan Tailwind ein, damit sie die CDK-Overlay-Styles
+  schlagen). Eigenes CSS, das eine Utility überschreiben soll, muss ebenfalls ohne `@layer` und danach
+  stehen.
+
+### UI-Bausteine
+
+**Ablage.** Helm-Komponenten liegen unter `src/frontend/src/app/shared/ui/helm/<name>/src/` und werden
+über den Pfad-Alias `@spartan-ng/helm/<name>` importiert (`tsconfig.json` → `paths`), z. B.
+`import { HlmButton } from '@spartan-ng/helm/button'` oder `HlmDialogImports`. Vorhanden: alert,
+alert-dialog, avatar, badge, breadcrumb, button, card, checkbox, dialog, dropdown-menu, field, input,
+label, native-select, popover, select, separator, sheet, sidebar, skeleton, switch, table, tabs, textarea,
+tooltip, utils. Die Konfiguration steht in `src/frontend/components.json` (Pfad, Alias, Stil „vega“).
+
+**Weitere Bausteine erzeugen**, nie von Hand abschreiben (in `src/frontend`):
+
+```
+npx ng g @spartan-ng/cli:ui <name>     # z. B. command, collapsible; Abhängigkeiten kommen mit
+```
+
+Der Generator trägt den Alias in `tsconfig.json` ein (entfernt dabei die Kopfkommentare) und erweitert
+`tsconfig.app.json` um ein überflüssiges `include` – Letzteres zurücknehmen. Er legt `.nx/` als Cache an
+(ignoriert). Helm-Code ist Fremdcode: nicht umformatieren, nicht umschreiben (ESLint ignoriert
+`shared/ui/helm/**`); Anpassungen an der Optik gehören in die Verwendung (`class` am Element wird per
+`tailwind-merge` mit den Helm-Klassen zusammengeführt), Aktualisierung über die Migrations-Generatoren
+der CLI.
+
+**Eigene Wrapper in `shared/ui`** (Inputs/Outputs stabil): `ag-badge` (Tone `neutral | accent | success |
+danger` → Helm-Badge `secondary | default | Erfolgsfarben | destructive`), `ag-confirm-dialog` (Helm
+Alert-Dialog), `ag-session-menu` (Dropdown mit Avatar), `ag-theme-toggle` (System/Hell/Dunkel),
+`ag-breadcrumbs`, `ag-field-errors`, `ag-actor-label`, `ag-placeholder-page`.
+
+**Klassen-Mapping alt → neu** (Migrationsvorschrift für AP-020/AP-021). Bis alle Features umgestellt
+sind, bilden Übergangs-Aliase in `styles.css` die alten Klassen auf das Theme ab; danach werden sie
+entfernt. Neue Templates verwenden nur die rechte Spalte.
+
+| Alte Klasse | Neue Klasse / Baustein | Hinweis |
+|---|---|---|
+| `bg-bg` | `bg-background` | Seitenhintergrund, meist gar nicht nötig (`body` hat ihn) |
+| `bg-surface` | `bg-card` bzw. `hlmCard` | Karten, Panels |
+| `bg-surface-hover`, `hover:bg-surface-hover` | `bg-muted`, `hover:bg-muted` | aktive Navigation über Helm (`isActive`/`data-active`) |
+| `text-fg`, `hover:text-fg` | `text-foreground`, `hover:text-foreground` |  |
+| `text-muted` | `text-muted-foreground` | **nicht** wörtlich übernehmen: shadcn-`muted` ist eine Flächenfarbe |
+| `bg-accent text-accent-fg` (Primäraktion) | `hlmBtn` (Variante `default`) bzw. `bg-primary text-primary-foreground` | **nicht** `bg-accent`: das ist bei shadcn die Hover-Fläche |
+| `text-accent-fg` | `text-primary-foreground` |  |
+| `text-accent` an Links (`<a>`) und linkartigen Buttons, samt `hover:underline`/`underline` | `underline underline-offset-4` (Gruppe ganz ersetzen) | Pflicht: Links sind immer unterstrichen und erben die Textfarbe; `text-primary` allein wäre im hellen Theme fast schwarz und nicht als Link erkennbar. In Tabellen und Karten zusätzlich `font-medium` |
+| `text-accent` an echten Aktions-Buttons (z. B. „+ Ansicht“) | `hlmBtn variant="ghost" size="sm"` |  |
+| `border-accent` | `border-primary` |  |
+| `focus:ring-2 focus:ring-accent focus:ring-inset` | `focus:ring-2 focus:ring-ring focus:ring-inset` | ganze Gruppe ersetzen, Variante `focus:` beibehalten (aktive Tabellenzelle soll auch nach Mausklick markiert sein); nicht mit `focus-visible:` mischen. Helm-Bausteine bringen ihren Fokusring selbst mit |
+| `hover:bg-accent/40` | `hover:bg-primary/40` |  |
+| `border-border`, `divide-border`, `focus:border-border` | **unverändert lassen** | gültige shadcn-Klassen (`--color-border`); Breiten-/Seitenklassen (`border`, `border-b`, `border-t`, `divide-y`, `border-dashed`) ebenfalls unverändert |
+| `text-danger`, `hover:text-danger` | `text-destructive`, `hover:text-destructive` |  |
+| `border-danger`, `ring-danger`, `bg-danger/10` | `border-destructive`, `ring-destructive`, `bg-destructive/10` | Fehlerblöcke als `hlmAlert variant="destructive"` |
+| `bg-danger text-white` | `hlmBtn variant="destructive"` |  |
+| `text-success`, `border-success`, `bg-success/10` | unverändert | eigene Variable `--success`; Badge `ag-badge tone="success"` |
+| rohe `<button>`, `<input>`, `<textarea>`, `<select>`, `<label>`, `<table>` | `hlmBtn`, `hlmInput`, `hlmTextarea`, `hlm-native-select` (oder `hlm-select`), `hlmLabel`/`hlmFieldLabel`, `hlmTable` |  |
+| Eigenbau-Dialog/-Dropdown | `hlm-dialog`/`ag-confirm-dialog`, `hlmDropdownMenuTrigger` + `hlm-dropdown-menu` |  |
+
+**Faustregeln.**
+
+- *Seitenüberschrift*: `<h1 class="text-2xl font-semibold tracking-tight">`, darunter optional
+  `<p class="text-sm text-muted-foreground">`; Aktionen der Seite rechts daneben (`flex flex-wrap
+items-start justify-between gap-4`). Seitenrahmen `mx-auto flex max-w-… flex-col gap-6 p-6`.
+- *Abstände*: `gap-*` statt Margins; Abschnitte `gap-6`, Felder in `hlmFieldGroup` `gap-5`, Label zu
+  Feld `gap-2`. Karten über `hlmCard` (`hlmCardHeader`/`hlmCardTitle`/`hlmCardDescription`/
+  `hlmCardContent`/`hlmCardFooter`).
+- *Formular-Layout*: `form novalidate` → `hlmFieldGroup` → je Feld `hlmField` mit `label hlmFieldLabel`,
+  Control (`hlmInput`, `hlmTextarea`, `hlm-native-select`; `[formField]` direkt daran) und darunter die
+  Feldfehler (`ag-field-errors`). Formularweite Fehler als `hlmAlert variant="destructive"` oben im
+  Formular, Submit-Button `hlmBtn type="submit"` am Ende (rechts, in schmalen Karten volle Breite).
+  `aria-invalid` und den roten Rahmen setzt Brain aus dem Signal-Forms-Zustand; nicht selbst binden
+  (eine eigene `[attr.aria-invalid]`-Bindung kommt gegen Brains Host-Binding nicht an). Dabei gilt:
+  `aria-invalid="true"` zeigt „Feld ist ungültig“ (Brain: `control.invalid`, also z. B. ein leeres
+  Pflichtfeld schon vor der ersten Eingabe); der rote Rahmen (`data-matches-spartan-invalid`) zeigt
+  „ungültig und berührt“ (Brain-`ErrorStateMatcher`; Signal Forms markiert beim Absenden alle Felder
+  als berührt). Die sichtbaren Feldfehler (`ag-field-errors`) folgen wie der Rahmen „berührt bzw.
+  abgesendet und ungültig“ (`touched() && invalid()`).
+- *Leerzustände*: gestrichelter Rahmen `rounded-xl border border-dashed p-10 text-center`, eine Zeile
+  `font-medium`, eine Erklärung `text-sm text-muted-foreground`, ggf. die passende Aktion.
+- *Laden*: `hlm-skeleton` in der Form des erwarteten Inhalts statt „Wird geladen …“-Text.
+- *Fehleranzeige*: Lade- und Aktionsfehler als `hlmAlert variant="destructive"` mit `lucideCircleAlert`,
+  Text über `describeError`, ggf. `hlmAlertAction` mit „Erneut laden“; Hinweise als `hlmAlert` (Default).
+- _Destruktive Aktionen_ immer über `ag-confirm-dialog` (Alert-Dialog); Auslöser `hlmBtn
+variant="destructive"` bzw. Dropdown-Eintrag `variant="destructive"`.
+- _Aktionsmenüs_ je Zeile/Objekt als Dropdown-Menu (`hlmDropdownMenuItem` mit `(triggered)`), nicht
+  als Reihe einzelner Buttons.
+- _Icons_ nur Lucide: `provideIcons({ lucideX })` in der Komponente, `<ng-icon name="lucideX" />`.
+  Keine Unicode-Pfeile oder Emoji als Bedien-Icons (Daten wie Space-Icons ausgenommen).
+- _Overlays_ (Dialog, Alert-Dialog, Dropdown, Popover, Tooltip, Select) rendern in den CDK-Overlay-
+  Container am Ende von `<body>`. Specs suchen sie dort (`document.body.querySelector`) und warten
+  beim Schließen (`vi.waitFor`), weil Brain die Exit-Animation abwartet.
 
 ## 7. Sicherheit
 

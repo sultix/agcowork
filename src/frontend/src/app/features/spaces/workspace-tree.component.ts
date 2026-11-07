@@ -1,51 +1,85 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideFolder } from '@ng-icons/lucide';
+import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { WorkspaceTreeStore } from './workspace-tree.store';
 
-/** Sidebar tree: every space with its collections; the page being viewed is highlighted. */
+/**
+ * Sidebar tree: every space with its collections (Helm sidebar menu with sub-menu); the page being
+ * viewed is marked active (`data-active`, `aria-current="page"`).
+ */
 @Component({
   selector: 'ag-workspace-tree',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, NgIcon, HlmSidebarImports],
+  providers: [provideIcons({ lucideFolder })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <nav
-      aria-label="Spaces und Collections"
-      class="flex flex-col gap-1 text-sm"
-      data-testid="workspace-tree"
-    >
-      @for (node of tree.tree(); track node.space.id) {
-        <a
-          [routerLink]="['/w', context.slug(), 'spaces', node.space.id]"
-          routerLinkActive="bg-surface-hover text-fg"
-          class="truncate rounded-md px-2 py-1 font-medium hover:bg-surface-hover"
-          data-testid="tree-space"
-        >
-          @if (node.space.icon) {
-            <span aria-hidden="true">{{ node.space.icon }} </span>
+    <nav aria-label="Spaces und Collections" data-testid="workspace-tree">
+      <ul hlmSidebarMenu>
+        @for (node of tree.tree(); track node.space.id) {
+          <li hlmSidebarMenuItem>
+            <a
+              hlmSidebarMenuButton
+              [routerLink]="['/w', context.slug(), 'spaces', node.space.id]"
+              routerLinkActive
+              #spaceLink="routerLinkActive"
+              ariaCurrentWhenActive="page"
+              [isActive]="spaceLink.isActive"
+              [tooltip]="node.space.name"
+              data-testid="tree-space"
+            >
+              @if (node.space.icon) {
+                <span class="w-4 shrink-0 text-center leading-none" aria-hidden="true">{{
+                  node.space.icon
+                }}</span>
+              } @else {
+                <ng-icon name="lucideFolder" />
+              }
+              <span>{{ node.space.name }}</span>
+            </a>
+            @if (node.collections.length > 0) {
+              <ul hlmSidebarMenuSub>
+                @for (collection of node.collections; track collection.id) {
+                  <li hlmSidebarMenuSubItem>
+                    <a
+                      hlmSidebarMenuSubButton
+                      [routerLink]="['/w', context.slug(), 'collections', collection.id]"
+                      routerLinkActive
+                      #collectionLink="routerLinkActive"
+                      ariaCurrentWhenActive="page"
+                      [isActive]="collectionLink.isActive"
+                      data-testid="tree-collection"
+                      ><span>{{ collection.name }}</span></a
+                    >
+                  </li>
+                }
+              </ul>
+            }
+          </li>
+        } @empty {
+          @if (tree.error()) {
+            <li class="px-2 text-sm text-destructive" role="alert">
+              Spaces konnten nicht geladen werden.
+            </li>
+          } @else if (tree.isLoading()) {
+            @for (row of skeletonRows; track row) {
+              <li hlmSidebarMenuItem><hlm-sidebar-menu-skeleton /></li>
+            }
+          } @else {
+            <li class="px-2 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+              Keine Spaces.
+            </li>
           }
-          {{ node.space.name }}
-        </a>
-        @for (collection of node.collections; track collection.id) {
-          <a
-            [routerLink]="['/w', context.slug(), 'collections', collection.id]"
-            routerLinkActive="bg-surface-hover text-fg"
-            class="truncate rounded-md py-1 pr-2 pl-6 text-muted hover:bg-surface-hover"
-            data-testid="tree-collection"
-            >{{ collection.name }}</a
-          >
         }
-      } @empty {
-        @if (tree.error()) {
-          <p class="px-2 text-danger" role="alert">Spaces konnten nicht geladen werden.</p>
-        } @else if (!tree.isLoading()) {
-          <p class="px-2 text-muted">Keine Spaces.</p>
-        }
-      }
+      </ul>
     </nav>
   `,
 })
 export class WorkspaceTreeComponent {
   protected readonly tree = inject(WorkspaceTreeStore);
   protected readonly context = inject(WorkspaceContext);
+
+  protected readonly skeletonRows = [1, 2, 3];
 }

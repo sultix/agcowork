@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | UI |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten des Musters) |
@@ -85,3 +85,8 @@ Die Oberfläche übernimmt Optik und Bausteine von shadcn/ui (https://ui.shadcn.
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt (Nutzerentscheid: spartan/ui, Theme „neutral“) |
+| 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: 21 Helm-Bausteine + avatar/field/alert/native-select per CLI, Ablage `shared/ui/helm/`, Aliase für alte Klassen, oklch→Hex-Resolver für Monaco, Inline-Skript gegen Aufblitzen; 8 Specs außerhalb des Scopes (Overlay im Body) angepasst; Initial 95,9 → 106,5 kB übertragen |
+| 2026-11-07 | Review: Freigabe mit Hinweisen – Cmd+B klappt Sidebar im Editor ein, Mapping-Tabelle mehrdeutig (Rahmen, Ring, Links), `aria-invalid` zu früh |
+| 2026-11-07 | Nacharbeit: Sidebar-Shortcut aus (eigene Service-Instanz in der Shell), Tabelle präzisiert; `aria-invalid` nicht konfigurierbar → Backlog |
+| 2026-11-07 | abgeschlossen |

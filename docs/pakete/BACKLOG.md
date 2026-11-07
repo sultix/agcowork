@@ -22,7 +22,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-016](AP-016-frontend-verwaltung.md) | Frontend: Workspace-Liste, Workspace-Verwaltung, Mitglieder, Agenten/Keys | 1 | implementer-sonnet | AP-005, AP-013 | abgeschlossen | 45c5e25 |
 | [AP-017](AP-017-frontend-raw-historie.md) | Frontend: Raw-View (bearbeitbar), Historie mit Diff, Aktivitätsfeed | 1 | implementer-sonnet | AP-007, AP-012, AP-013, AP-014 | abgeschlossen | 7492762 |
 | [AP-018](AP-018-docker-compose.md) | Docker Compose für den lokalen Start ohne Aspire (Postgres, API, Nginx + Angular) | Betrieb | implementer-sonnet | AP-011 | abgeschlossen | f1c615a |
-| [AP-019](AP-019-ui-fundament-spartan.md) | UI-Fundament: spartan/ui (shadcn), Theme neutral, Shell, Referenz-Migration | UI | implementer-opus | AP-012–AP-017 | angelegt | |
+| [AP-019](AP-019-ui-fundament-spartan.md) | UI-Fundament: spartan/ui (shadcn), Theme neutral, Shell, Referenz-Migration | UI | implementer-opus | AP-012–AP-017 | abgeschlossen | |
 | [AP-020](AP-020-ui-migration-verwaltung.md) | UI-Migration: Verwaltung, Spaces, Collections, Aktivität | UI | implementer-sonnet | AP-019 | angelegt | |
 | [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | angelegt | |
 
@@ -30,9 +30,13 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 
 | Quelle | Hinweis | Entscheidung |
 |---|---|---|
+| AP-019 Review | `npm audit --omit=dev`: kritischer Fund `dompurify` unter `monaco-editor` (bestand schon vor AP-019); `@spartan-ng/cli` bringt Nx und einen high-Fund (`zod`, nur dev) | Kleinpaket: Monaco-Update oder `overrides` für dompurify prüfen; CLI-Fund beobachten |
+| AP-019 Review | Theme-Aufblitzen beim Laden (Inline-Skript in `index.html`) nicht automatisiert getestet; bei künftiger CSP braucht das Skript Hash/Nonce | Mit dem ersten Playwright-Paket |
+| AP-019 Review | Brain setzt `aria-invalid` fest auf `control.invalid` (schon vor der ersten Eingabe), roter Rahmen erst bei ungültig+berührt; nicht konfigurierbar | Upstream-Issue bei spartan oder eigene Brain-Erweiterung, wenn ein A11y-Paket ansteht |
+| AP-019 Review | `HlmSidebarService` schreibt Cookie `sidebar_state` (`path=/`), geht bei jedem API-Request mit | unkritisch; bei Cookie-Policy-Änderungen beachten |
 | AP-002 Review | `HealthService` lädt `/health` nur einmal; startet das Backend später, bleibt „nicht erreichbar“ bis zum Reload | Phase 1: Polling oder Klick-Reload im Paket zur Kopfzeile/Statusanzeige |
 | AP-012 Review | Markdown-Bilder laden als `<img src>` von fremder Herkunft (Tracking/IP-Leak) | Entschieden: Platzhalter-NodeView (alt + URL-Text), umgesetzt in AP-014-Nacharbeit; Bild-Proxy Phase 3 |
-| AP-012 Review | Monaco-Adapter ohne Test; `token()` liest nur 6-stellige Hex-Werte; drei verwaiste CSS-Chunks (3×186 kB) im Build | Phase 2: Adapter-Test im Browser (Playwright), Token-Parser erweitern, wenn Tokens auf oklch wechseln |
+| AP-012 Review | Monaco-Adapter ohne Test; `token()` liest nur 6-stellige Hex-Werte; drei verwaiste CSS-Chunks (3×186 kB) im Build | Token-Parser erledigt in AP-019 (`css-color.ts`, oklch → Hex). Offen Phase 2: Adapter-Test im Browser (Playwright), verwaiste CSS-Chunks |
 | AP-007 Bericht | Activity `Seq` ist Identity: Leser in kurzen Abständen können Events überspringen, deren Transaktion später committet | Phase 2 (SignalR/Outbox): Outbox mit Commit-Reihenfolge oder `pg_current_xact_id`-Fenster |
 | AP-007 Bericht | Migration `AddRecords` braucht Extension `btree_gin` (in postgres:17 enthalten) | Beim Hosting-Entscheid prüfen, ob die gehostete DB sie erlaubt |
 | AP-007 Review | `RecordValuesSchemaHook` bereinigt ohne Revision (dokumentierte Ausnahme, Event zählt `affectedRecords`) | Phase 2 optional: Revision `schema_cleanup` je Record |

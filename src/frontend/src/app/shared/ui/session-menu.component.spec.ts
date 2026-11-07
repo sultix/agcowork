@@ -3,13 +3,16 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Me, SessionStore } from '../../core/auth/session.store';
-import { SessionMenuComponent } from './session-menu.component';
+import { SessionMenuComponent, initialsOf } from './session-menu.component';
 
 @Component({ imports: [SessionMenuComponent], template: '<ag-session-menu />' })
 class HostComponent {}
 
 @Component({ template: 'login page' })
 class LoginStubComponent {}
+
+@Component({ template: 'admin page' })
+class AdminStubComponent {}
 
 const ME: Me = {
   id: '0199a000-0000-7000-8000-000000000002',
@@ -24,6 +27,7 @@ const ME: Me = {
 describe('SessionMenuComponent', () => {
   let me: ReturnType<typeof signal<Me | null>>;
   let session: { me: typeof me; logout: ReturnType<typeof vi.fn> };
+  let harness: RouterTestingHarness;
 
   beforeEach(() => {
     me = signal<Me | null>(ME);
@@ -38,56 +42,89 @@ describe('SessionMenuComponent', () => {
         provideRouter([
           { path: 'home', component: HostComponent },
           { path: 'login', component: LoginStubComponent },
+          { path: 'admin', component: AdminStubComponent },
         ]),
         { provide: SessionStore, useValue: session },
       ],
     });
   });
 
-  it('render_Authenticated_ShowsNameAndKind', async () => {
-    const harness = await RouterTestingHarness.create('/home');
+  const root = () => harness.routeNativeElement as HTMLElement;
+  // Menu items render into the CDK overlay container in <body>.
+  const inBody = (id: string) => document.body.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 
-    const actor = (harness.routeNativeElement as HTMLElement).querySelector(
-      '[data-testid="session-actor"]',
-    );
+  async function render(): Promise<void> {
+    harness = await RouterTestingHarness.create('/home');
+  }
+
+  async function openMenu(): Promise<void> {
+    root().querySelector<HTMLButtonElement>('[data-testid="session-menu-trigger"]')!.click();
+    await harness.fixture.whenStable();
+  }
+
+  it('render_Authenticated_ShowsInitialsNameAndKindOnTrigger', async () => {
+    await render();
+
+    const trigger = root().querySelector('[data-testid="session-menu-trigger"]')!;
+    expect(trigger.querySelector('[data-slot="avatar-fallback"]')?.textContent?.trim()).toBe('C');
+    const actor = root().querySelector('[data-testid="session-actor"]');
     expect(actor?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Coder · Agent');
+    expect(inBody('session-menu')).toBeNull();
   });
 
   it('render_Anonymous_ShowsNothing', async () => {
     me.set(null);
-    const harness = await RouterTestingHarness.create('/home');
+    await render();
 
-    expect(
-      (harness.routeNativeElement as HTMLElement).querySelector('[data-testid="logout"]'),
-    ).toBeNull();
+    expect(root().querySelector('[data-testid="session-menu-trigger"]')).toBeNull();
   });
 
-  it('render_InstanceAdmin_ShowsAdminLink', async () => {
+  it('open_Click_ShowsMenuWithActorAndLogout', async () => {
+    await render();
+
+    await openMenu();
+
+    const menu = inBody('session-menu')!;
+    expect(menu.getAttribute('role')).toBe('menu');
+    expect(menu.textContent).toContain('Coder');
+    expect(inBody('logout')?.getAttribute('role')).toBe('menuitem');
+  });
+
+  it('open_InstanceAdmin_ShowsAdminLink', async () => {
     me.set({ ...ME, instanceScopes: ['instance:admin'] });
-    const harness = await RouterTestingHarness.create('/home');
+    await render();
 
-    const link = (harness.routeNativeElement as HTMLElement).querySelector(
-      '[data-testid="admin-link"]',
-    );
-    expect(link?.getAttribute('href')).toBe('/admin');
+    await openMenu();
+
+    expect(inBody('admin-link')?.getAttribute('href')).toBe('/admin');
   });
 
-  it('render_NoInstanceAdmin_HidesAdminLink', async () => {
-    const harness = await RouterTestingHarness.create('/home');
+  it('open_NoInstanceAdmin_HidesAdminLink', async () => {
+    await render();
 
-    expect(
-      (harness.routeNativeElement as HTMLElement).querySelector('[data-testid="admin-link"]'),
-    ).toBeNull();
+    await openMenu();
+
+    expect(inBody('session-menu')).not.toBeNull();
+    expect(inBody('admin-link')).toBeNull();
   });
 
   it('logout_Click_EndsSessionAndGoesToLogin', async () => {
-    const harness = await RouterTestingHarness.create('/home');
+    await render();
+    await openMenu();
 
-    (harness.routeNativeElement as HTMLElement)
-      .querySelector<HTMLButtonElement>('[data-testid="logout"]')!
-      .click();
+    inBody('logout')!.click();
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/login'));
 
     expect(session.logout).toHaveBeenCalledOnce();
+    expect(inBody('session-menu')).toBeNull();
+  });
+
+  it.each([
+    ['Ada Lovelace', 'AL'],
+    ['Coder', 'C'],
+    ['  grace  brewster murray hopper ', 'GH'],
+    ['', '?'],
+  ])('initialsOf_%j_Is_%s', (name, expected) => {
+    expect(initialsOf(name)).toBe(expected);
   });
 });

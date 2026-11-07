@@ -64,6 +64,12 @@ describe('LoginComponent', () => {
 
     await submit();
 
+    // aria-invalid and the red border come from Brain (it reads the Signal Forms state).
+    expect(root().querySelector('#login-email')!.getAttribute('aria-invalid')).toBe('true');
+    expect(root().querySelector('#login-email')!.getAttribute('data-matches-spartan-invalid')).toBe(
+      'true',
+    );
+
     expect(text('email-errors')).toBe('Bitte die E-Mail-Adresse eingeben.');
     expect(text('password-errors')).toBe('Bitte das Passwort eingeben.');
     expect(session.login).not.toHaveBeenCalled();

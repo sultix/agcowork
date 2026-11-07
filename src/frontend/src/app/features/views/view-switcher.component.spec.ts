@@ -118,7 +118,10 @@ describe('ViewSwitcherComponent and view page', () => {
 
   const router = () => TestBed.inject(Router);
   const root = () => harness.routeNativeElement as HTMLElement;
-  const q = (id: string) => root().querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  // Overlays (e.g. the confirm dialog) render into the CDK overlay container in <body>.
+  const q = (id: string) =>
+    root().querySelector<HTMLElement>(`[data-testid="${id}"]`) ??
+    document.body.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   const all = (id: string) =>
     Array.from(root().querySelectorAll<HTMLElement>(`[data-testid="${id}"]`));
   const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';

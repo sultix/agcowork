@@ -21,9 +21,19 @@ import {
   required,
   submit,
 } from '@angular/forms/signals';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideArrowLeft, lucideCircleAlert } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
+import { HlmTextarea } from '@spartan-ng/helm/textarea';
 import { mapFormErrors } from '../../shared/ui/api-error-text';
 import { FieldErrorsComponent } from '../../shared/ui/field-errors.component';
 import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
+import { ThemeToggleComponent } from '../../shared/ui/theme-toggle.component';
 import { WorkspacesStore } from './workspaces.store';
 
 /** Same rule as the backend: lowercase letters and digits, single hyphens between, max. 63. */
@@ -50,110 +60,136 @@ const FALLBACK_TEMPLATE: Template = {
 /** `/workspaces/new`: create a workspace; on success continue in it. */
 @Component({
   selector: 'ag-workspace-create',
-  imports: [FormField, RouterLink, SessionMenuComponent, FieldErrorsComponent],
+  imports: [
+    FormField,
+    RouterLink,
+    NgIcon,
+    HlmAlertImports,
+    HlmButton,
+    HlmCardImports,
+    HlmFieldImports,
+    HlmInput,
+    HlmNativeSelectImports,
+    HlmTextarea,
+    SessionMenuComponent,
+    ThemeToggleComponent,
+    FieldErrorsComponent,
+  ],
+  providers: [provideIcons({ lucideArrowLeft, lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="flex items-center justify-end border-b border-border px-6 py-3">
-      <ag-session-menu />
+    <header class="flex h-14 items-center gap-2 border-b px-4 sm:px-6">
+      <span class="text-sm font-semibold tracking-tight">agcowork</span>
+      <div class="ml-auto flex items-center gap-1">
+        <ag-theme-toggle />
+        <ag-session-menu />
+      </div>
     </header>
-    <main class="mx-auto max-w-xl p-6">
-      <a routerLink="/workspaces" class="text-sm text-muted hover:text-fg">‹ Workspaces</a>
-      <form
-        class="mt-2 rounded-lg border border-border bg-surface p-6"
-        novalidate
-        (submit)="onSubmit($event)"
-      >
-        <h1 class="text-lg font-semibold">Neuer Workspace</h1>
+    <main class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+      <a hlmBtn variant="ghost" size="sm" routerLink="/workspaces" class="self-start">
+        <ng-icon name="lucideArrowLeft" />
+        Workspaces
+      </a>
+      <section hlmCard>
+        <header hlmCardHeader>
+          <h1 hlmCardTitle class="text-xl">Neuer Workspace</h1>
+          <p hlmCardDescription>Ein eigener Bereich mit Mitgliedern, Spaces und Collections.</p>
+        </header>
+        <div hlmCardContent>
+          <form novalidate (submit)="onSubmit($event)">
+            <div hlmFieldGroup class="gap-5">
+              @if (formError(); as message) {
+                <div hlmAlert variant="destructive" data-testid="form-error">
+                  <ng-icon name="lucideCircleAlert" />
+                  <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+                </div>
+              }
 
-        @if (formError(); as message) {
-          <p
-            class="mt-4 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-            role="alert"
-            data-testid="form-error"
-          >
-            {{ message }}
-          </p>
-        }
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="ws-name">Name</label>
+                <input hlmInput id="ws-name" type="text" [formField]="form.name" />
+                <div data-testid="name-errors">
+                  @if (showErrors(form.name)) {
+                    <ag-field-errors [errors]="form.name().errors()" />
+                  }
+                </div>
+              </div>
 
-        <label for="ws-name" class="mt-4 block text-sm font-medium">Name</label>
-        <input
-          id="ws-name"
-          type="text"
-          class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-          [formField]="form.name"
-        />
-        <div data-testid="name-errors">
-          @if (showErrors(form.name)) {
-            <ag-field-errors [errors]="form.name().errors()" />
-          }
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="ws-slug">Slug</label>
+                <input
+                  hlmInput
+                  id="ws-slug"
+                  type="text"
+                  autocomplete="off"
+                  class="font-mono"
+                  [formField]="form.slug"
+                />
+                <p hlmFieldDescription>
+                  URL:
+                  <span class="font-mono" data-testid="slug-preview"
+                    >/w/{{ model().slug || '…' }}</span
+                  >
+                  . Der Slug lässt sich später nicht ändern.
+                </p>
+                <div data-testid="slug-errors">
+                  @if (showErrors(form.slug)) {
+                    <ag-field-errors [errors]="form.slug().errors()" />
+                  }
+                </div>
+              </div>
+
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="ws-description">Beschreibung</label>
+                <textarea
+                  hlmTextarea
+                  id="ws-description"
+                  rows="3"
+                  [formField]="form.description"
+                ></textarea>
+                <div data-testid="description-errors">
+                  @if (showErrors(form.description)) {
+                    <ag-field-errors [errors]="form.description().errors()" />
+                  }
+                </div>
+              </div>
+
+              <div hlmField class="gap-2">
+                <label hlmFieldLabel for="ws-template">Vorlage</label>
+                <hlm-native-select
+                  selectId="ws-template"
+                  class="w-full"
+                  [formField]="form.templateId"
+                >
+                  @for (template of templates(); track template.id) {
+                    <option hlmNativeSelectOption [value]="template.id">{{ template.name }}</option>
+                  }
+                </hlm-native-select>
+                @if (selectedTemplate()?.description; as description) {
+                  <p hlmFieldDescription data-testid="template-description">{{ description }}</p>
+                }
+                @if (templatesFailed()) {
+                  <p class="text-sm text-destructive" data-testid="template-fallback">
+                    Die Vorlagen konnten nicht geladen werden; es steht nur die leere Vorlage zur
+                    Verfügung.
+                  </p>
+                }
+                <div data-testid="template-errors">
+                  @if (showErrors(form.templateId)) {
+                    <ag-field-errors [errors]="form.templateId().errors()" />
+                  }
+                </div>
+              </div>
+
+              <div class="flex justify-end">
+                <button hlmBtn type="submit" [disabled]="form().submitting()">
+                  {{ form().submitting() ? 'Wird angelegt …' : 'Workspace anlegen' }}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
-
-        <label for="ws-slug" class="mt-4 block text-sm font-medium">Slug</label>
-        <input
-          id="ws-slug"
-          type="text"
-          autocomplete="off"
-          class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 font-mono text-sm"
-          [formField]="form.slug"
-        />
-        <p class="mt-1 text-sm text-muted">
-          URL:
-          <span class="font-mono" data-testid="slug-preview">/w/{{ model().slug || '…' }}</span>
-          . Der Slug lässt sich später nicht ändern.
-        </p>
-        <div data-testid="slug-errors">
-          @if (showErrors(form.slug)) {
-            <ag-field-errors [errors]="form.slug().errors()" />
-          }
-        </div>
-
-        <label for="ws-description" class="mt-4 block text-sm font-medium">Beschreibung</label>
-        <textarea
-          id="ws-description"
-          rows="3"
-          class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-          [formField]="form.description"
-        ></textarea>
-        <div data-testid="description-errors">
-          @if (showErrors(form.description)) {
-            <ag-field-errors [errors]="form.description().errors()" />
-          }
-        </div>
-
-        <label for="ws-template" class="mt-4 block text-sm font-medium">Vorlage</label>
-        <select
-          id="ws-template"
-          class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-          [formField]="form.templateId"
-        >
-          @for (template of templates(); track template.id) {
-            <option [value]="template.id">{{ template.name }}</option>
-          }
-        </select>
-        @if (selectedTemplate()?.description; as description) {
-          <p class="mt-1 text-sm text-muted" data-testid="template-description">
-            {{ description }}
-          </p>
-        }
-        @if (templatesFailed()) {
-          <p class="mt-1 text-sm text-danger" data-testid="template-fallback">
-            Die Vorlagen konnten nicht geladen werden; es steht nur die leere Vorlage zur Verfügung.
-          </p>
-        }
-        <div data-testid="template-errors">
-          @if (showErrors(form.templateId)) {
-            <ag-field-errors [errors]="form.templateId().errors()" />
-          }
-        </div>
-
-        <button
-          type="submit"
-          class="mt-6 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
-          [disabled]="form().submitting()"
-        >
-          {{ form().submitting() ? 'Wird angelegt …' : 'Workspace anlegen' }}
-        </button>
-      </form>
+      </section>
     </main>
   `,
 })

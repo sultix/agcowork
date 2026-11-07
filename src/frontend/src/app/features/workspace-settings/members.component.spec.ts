@@ -97,7 +97,10 @@ describe('MembersComponent', () => {
   afterEach(() => http.verify());
 
   const root = () => harness.routeNativeElement as HTMLElement;
-  const q = (id: string) => root().querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  // Overlays (e.g. the confirm dialog) render into the CDK overlay container in <body>.
+  const q = (id: string) =>
+    root().querySelector<HTMLElement>(`[data-testid="${id}"]`) ??
+    document.body.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   const rows = () => Array.from(root().querySelectorAll('[data-testid="member-row"]'));
   const text = (el: Element) => el.textContent!.replace(/\s+/g, ' ').trim();
 

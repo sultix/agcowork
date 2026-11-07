@@ -1,5 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { HlmSidebarService } from '@spartan-ng/helm/sidebar';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
@@ -78,6 +80,11 @@ describe('WorkspaceShellComponent', () => {
     await harness.fixture.whenStable();
 
     expect(text('backend-status')).toBe('Backend: ok');
+    expect(
+      (harness.routeNativeElement as HTMLElement)
+        .querySelector('[data-testid="backend-status"]')!
+        .getAttribute('data-status'),
+    ).toBe('ok');
   });
 
   it('render_BackendUnreachable_ShowsNotReachable', async () => {
@@ -86,6 +93,83 @@ describe('WorkspaceShellComponent', () => {
     await harness.fixture.whenStable();
 
     expect(text('backend-status')).toBe('Backend: nicht erreichbar');
+    expect(
+      (harness.routeNativeElement as HTMLElement)
+        .querySelector('[data-testid="backend-status"]')!
+        .getAttribute('data-status'),
+    ).toBe('unreachable');
+  });
+
+  it('render_ActiveRoute_MarksOnlyThatNavEntryActive', async () => {
+    await harness.navigateByUrl('/w/demo/search');
+    http.expectOne('/health').flush('Healthy');
+    await harness.fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
+    await harness.fixture.whenStable();
+
+    const links = Array.from(
+      (harness.routeNativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+        '[data-testid="nav-link"]',
+      ),
+    );
+    const active = links.filter((a) => a.getAttribute('data-active') === 'true');
+    expect(active.map((a) => a.textContent?.trim())).toEqual(['Suche']);
+    expect(active[0].getAttribute('aria-current')).toBe('page');
+    expect(
+      links.find((a) => a.textContent?.trim() === 'Start')!.getAttribute('aria-current'),
+    ).toBeNull();
+  });
+
+  it('keydown_ModB_DoesNotToggleSidebar', async () => {
+    // Helm's sidebar service only registers its keyboard listener when matchMedia exists (jsdom
+    // has none), so provide a desktop-sized one; without it this test could not fail.
+    const view = document.defaultView as Window;
+    Object.defineProperty(view, 'matchMedia', {
+      configurable: true,
+      value: () => ({
+        matches: false,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }),
+    });
+    onTestFinished(() => {
+      delete (view as Partial<Window>).matchMedia;
+    });
+    await harness.navigateByUrl('/w/demo/search');
+    http.expectOne('/health').flush('Healthy');
+    await harness.fixture.whenStable();
+    onTestFinished(() => {
+      // The trigger click below persists the state in a cookie; do not leak it into other tests.
+      document.cookie = 'sidebar_state=; path=/; max-age=0';
+    });
+
+    const trigger = harness.fixture.debugElement.query(By.css('[data-sidebar="trigger"]'));
+    const sidebar = trigger.injector.get(HlmSidebarService);
+    expect(sidebar.open()).toBe(true);
+
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }]) {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'b', bubbles: true, cancelable: true, ...modifier }),
+      );
+      await harness.fixture.whenStable();
+      expect(sidebar.open()).toBe(true);
+    }
+
+    // Same service instance still reacts to the explicit toggle button.
+    (trigger.nativeElement as HTMLButtonElement).click();
+    await harness.fixture.whenStable();
+    expect(sidebar.open()).toBe(false);
+  });
+
+  it('render_Header_HasSidebarToggleThemeToggleAndSessionMenu', async () => {
+    await harness.navigateByUrl('/w/demo/search');
+    http.expectOne('/health').flush('Healthy');
+    await harness.fixture.whenStable();
+
+    const root = harness.routeNativeElement as HTMLElement;
+    expect(root.querySelector('[data-sidebar="trigger"]')).not.toBeNull();
+    expect(root.querySelector('[data-testid="theme-toggle"]')).not.toBeNull();
+    expect(text('header-workspace')).toBe('demo');
   });
 });
 
@@ -175,8 +259,10 @@ describe('WorkspaceShellComponent sidebar tree', () => {
       '/w/demo/spaces/sp2',
     ]);
     expect(collections.map((a) => a.textContent!.trim())).toEqual(['Aufgaben', 'Entscheidungen']);
-    expect(collections[0].classList).toContain('bg-surface-hover');
-    expect(collections[1].classList).not.toContain('bg-surface-hover');
+    expect(collections[0].getAttribute('data-active')).toBe('true');
+    expect(collections[0].getAttribute('aria-current')).toBe('page');
+    expect(collections[1].getAttribute('data-active')).toBe('false');
+    expect(collections[1].getAttribute('aria-current')).toBeNull();
     http.verify();
   });
 });

@@ -1,8 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert, lucideInfo, lucidePlus, lucideRefreshCw } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { describeError } from '../../shared/ui/api-error-text';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
+import { ThemeToggleComponent } from '../../shared/ui/theme-toggle.component';
 import { WorkspacesStore } from './workspaces.store';
 
 const NOTICES: Record<string, string> = {
@@ -15,75 +22,110 @@ const NOTICES: Record<string, string> = {
  */
 @Component({
   selector: 'ag-workspace-list',
-  imports: [RouterLink, SessionMenuComponent, BadgeComponent],
+  imports: [
+    RouterLink,
+    NgIcon,
+    HlmAlertImports,
+    HlmButton,
+    HlmCardImports,
+    HlmSkeleton,
+    SessionMenuComponent,
+    ThemeToggleComponent,
+    BadgeComponent,
+  ],
+  providers: [provideIcons({ lucideCircleAlert, lucideInfo, lucidePlus, lucideRefreshCw })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (!embedded()) {
-      <header class="flex items-center justify-end border-b border-border px-6 py-3">
-        <ag-session-menu />
+      <header class="flex h-14 items-center gap-2 border-b px-4 sm:px-6">
+        <span class="text-sm font-semibold tracking-tight">agcowork</span>
+        <div class="ml-auto flex items-center gap-1">
+          <ag-theme-toggle />
+          <ag-session-menu />
+        </div>
       </header>
     }
-    <main class="mx-auto max-w-2xl p-6">
+    <main class="mx-auto flex max-w-4xl flex-col gap-6 p-6">
       @if (noticeText(); as text) {
-        <p
-          class="mb-4 rounded-md border border-danger px-3 py-2 text-sm text-danger"
-          role="alert"
-          data-testid="notice"
-        >
-          {{ text }}
-        </p>
+        <div hlmAlert data-testid="notice">
+          <ng-icon name="lucideInfo" />
+          <p hlmAlertDescription>{{ text }}</p>
+        </div>
       }
-      <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold">Workspaces</h1>
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="flex flex-col gap-1">
+          <h1 class="text-2xl font-semibold tracking-tight">Workspaces</h1>
+          @if (embedded()) {
+            <p class="text-sm text-muted-foreground" data-testid="membership-hint">
+              Angezeigt werden die Workspaces, in denen du Mitglied bist; die API liefert auch
+              Instanz-Admins keine fremden Workspaces.
+            </p>
+          } @else {
+            <p class="text-sm text-muted-foreground">Workspaces, in denen du Mitglied bist.</p>
+          }
+        </div>
         @if (store.canCreate()) {
-          <a
-            routerLink="/workspaces/new"
-            class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg"
-            data-testid="create-workspace"
-            >Neuer Workspace</a
-          >
+          <a hlmBtn routerLink="/workspaces/new" data-testid="create-workspace">
+            <ng-icon name="lucidePlus" />
+            Neuer Workspace
+          </a>
         }
       </div>
-      @if (embedded()) {
-        <p class="mt-1 text-sm text-muted" data-testid="membership-hint">
-          Angezeigt werden die Workspaces, in denen du Mitglied bist; die API liefert auch
-          Instanz-Admins keine fremden Workspaces.
-        </p>
-      }
 
       @if (store.error(); as error) {
-        <p class="mt-4 text-sm text-danger" role="alert" data-testid="load-error">
-          {{ describe(error) }}
-          <button type="button" class="underline" (click)="store.reload()">Erneut laden</button>
-        </p>
+        <div hlmAlert variant="destructive" data-testid="load-error">
+          <ng-icon name="lucideCircleAlert" />
+          <p hlmAlertDescription>{{ describe(error) }}</p>
+          <button hlmAlertAction hlmBtn variant="outline" size="sm" (click)="store.reload()">
+            <ng-icon name="lucideRefreshCw" />
+            Erneut laden
+          </button>
+        </div>
       } @else if (store.isLoading() && store.workspaces().length === 0) {
-        <p class="mt-4 text-sm text-muted">Wird geladen …</p>
-      } @else if (store.workspaces().length === 0) {
-        <p class="mt-4 text-sm text-muted" data-testid="empty">
-          Du bist noch in keinem Workspace Mitglied. Bitte einen Admin, dich hinzuzufügen
-          @if (store.canCreate()) {
-            <span> oder lege einen neuen Workspace an</span>
+        <div class="grid gap-4 sm:grid-cols-2" aria-busy="true" aria-label="Wird geladen">
+          @for (row of skeletonRows; track row) {
+            <hlm-skeleton class="h-24 rounded-xl" />
           }
-          .
-        </p>
+        </div>
+      } @else if (store.workspaces().length === 0) {
+        <div
+          class="flex flex-col items-center gap-1 rounded-xl border border-dashed p-10 text-center"
+        >
+          <p class="font-medium">Noch keine Workspaces</p>
+          <p class="text-sm text-muted-foreground" data-testid="empty">
+            Du bist noch in keinem Workspace Mitglied. Bitte einen Admin, dich hinzuzufügen
+            @if (store.canCreate()) {
+              <span> oder lege einen neuen Workspace an</span>
+            }
+            .
+          </p>
+        </div>
       } @else {
-        <ul class="mt-4 divide-y divide-border rounded-lg border border-border bg-surface">
+        <ul class="grid gap-4 sm:grid-cols-2">
           @for (workspace of store.workspaces(); track workspace.id) {
             <li data-testid="workspace-row">
               <a
+                hlmCard
                 [routerLink]="['/w', workspace.slug]"
-                class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-hover"
+                class="h-full outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                <span class="min-w-0">
-                  <span class="block truncate">{{ workspace.name }}</span>
-                  <span class="block text-sm text-muted">{{ workspace.slug }}</span>
-                </span>
-                <span class="flex shrink-0 items-center gap-2">
-                  @if (workspace.archivedAt) {
-                    <ag-badge tone="danger">archiviert</ag-badge>
-                  }
-                  <ag-badge tone="accent">{{ workspace.role }}</ag-badge>
-                </span>
+                <div hlmCardHeader>
+                  <h2 hlmCardTitle class="truncate">{{ workspace.name }}</h2>
+                  <p hlmCardDescription class="truncate font-mono text-xs">
+                    /w/{{ workspace.slug }}
+                  </p>
+                  <div hlmCardAction class="flex items-center gap-1.5">
+                    @if (workspace.archivedAt) {
+                      <ag-badge tone="danger">archiviert</ag-badge>
+                    }
+                    <ag-badge tone="neutral">{{ workspace.role }}</ag-badge>
+                  </div>
+                </div>
+                @if (workspace.description) {
+                  <p hlmCardContent class="line-clamp-2 text-muted-foreground">
+                    {{ workspace.description }}
+                  </p>
+                }
               </a>
             </li>
           }
@@ -101,6 +143,8 @@ export class WorkspaceListComponent {
   readonly notice = input<string>();
 
   protected readonly noticeText = computed(() => NOTICES[this.notice() ?? ''] ?? null);
+
+  protected readonly skeletonRows = [1, 2];
 
   protected describe(error: unknown): string {
     return describeError(error);

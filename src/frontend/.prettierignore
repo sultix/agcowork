@@ -4,3 +4,4 @@ node_modules
 coverage
 package-lock.json
 src/app/core/api/generated/*.d.ts
+.nx

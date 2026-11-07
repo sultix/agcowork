@@ -22,6 +22,7 @@ import 'monaco-editor/editor/contrib/readOnlyMessage/browser/contribution.js';
 import 'monaco-editor/languages/definitions/markdown/register.js';
 import 'monaco-editor/languages/features/json/register.js';
 import type { CodeEditorHandle, CodeEditorOptions, RawLanguage } from './code-editor.adapter';
+import { monacoThemeColors } from './monaco-theme';
 
 const MONACO_STYLESHEET_ID = 'ag-monaco-styles';
 /** Emitted by angular.json (`styles` entry with `inject: false`). */
@@ -54,29 +55,10 @@ function ensureEnvironment(): void {
   };
 }
 
-function token(style: CSSStyleDeclaration, name: string): string | undefined {
-  const value = style.getPropertyValue(name).trim();
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : undefined;
-}
-
-/** Defines `ag-light`/`ag-dark` from the current `--ag-*` tokens and activates one of them. */
+/** Defines `ag-light`/`ag-dark` from the current theme variables and activates one of them. */
 function applyTheme(dark: boolean): void {
   const style = getComputedStyle(document.documentElement);
-  const colors: Record<string, string> = {};
-  const map: [string, string][] = [
-    ['editor.background', '--ag-surface'],
-    ['editor.foreground', '--ag-fg'],
-    ['editorLineNumber.foreground', '--ag-muted'],
-    ['editorCursor.foreground', '--ag-accent'],
-    ['editorWidget.border', '--ag-border'],
-    ['editor.lineHighlightBackground', '--ag-surface-hover'],
-  ];
-  for (const [key, name] of map) {
-    const value = token(style, name);
-    if (value) {
-      colors[key] = value;
-    }
-  }
+  const colors = monacoThemeColors((name) => style.getPropertyValue(name).trim());
   const name = dark ? 'ag-dark' : 'ag-light';
   monaco.editor.defineTheme(name, {
     base: dark ? 'vs-dark' : 'vs',

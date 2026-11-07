@@ -110,8 +110,10 @@ describe('RecordHistoryComponent', () => {
   afterEach(() => http.verify({ ignoreCancelled: true }));
 
   const root = () => harness.routeNativeElement as HTMLElement;
+  // Overlays (e.g. the confirm dialog) render into the CDK overlay container in <body>.
   const q = <T extends HTMLElement = HTMLElement>(id: string) =>
-    root().querySelector<T>(`[data-testid="${id}"]`);
+    root().querySelector<T>(`[data-testid="${id}"]`) ??
+    document.body.querySelector<T>(`[data-testid="${id}"]`);
   const all = (id: string, scope: ParentNode = root()) =>
     Array.from(scope.querySelectorAll<HTMLElement>(`[data-testid="${id}"]`));
   const text = (el: Element | null | undefined) =>
@@ -401,7 +403,8 @@ describe('RecordHistoryComponent', () => {
       q('confirm-cancel')!.click();
       harness.fixture.detectChanges();
 
-      expect(q('confirm-dialog')).toBeNull();
+      // The overlay closes asynchronously (Brain waits for the exit animation).
+      await vi.waitFor(() => expect(q('confirm-dialog')).toBeNull());
     });
 
     it('render_SchemaNotLoadedYet_OffersNoRestoreUntilItIs', async () => {

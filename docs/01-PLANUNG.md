@@ -148,7 +148,7 @@ ein versehentlich falscher Lookup niemals „zufällig“ einen fremden Datensat
 | Realtime | SignalR | UI-Aktualisierung bei Agent-Schreibzugriffen |
 | Orchestrierung lokal | .NET Aspire | startet API, Postgres, Angular-Dev-Server |
 | Frontend | **Angular 22** (zoneless, Signals, Standalone, Signal Forms) | Angular 23 ist für Ende 2026 zu erwarten; Upgrade-Pfad einfach |
-| UI-Bausteine | Angular CDK (Virtual Scroll, Drag&Drop), Tailwind CSS, eigene Komponenten | Alternativ Angular Material 3; Entscheidung in Phase 1 |
+| UI-Bausteine | **spartan/ui** (shadcn/ui für Angular: Brain-Primitives + Helm-Komponenten im Repo), Theme „neutral“, Lucide-Icons, Tailwind CSS v4, Angular CDK (Virtual Scroll, Drag&Drop) | Entschieden 2026-11-07 (AP-019), siehe `02-ARCHITEKTUR.md` §6 „UI-Bausteine“ |
 | Rich-Text | Markdown-WYSIWYG (Milkdown oder TipTap/ProseMirror mit Markdown-Serialisierung) | Markdown bleibt kanonisch |
 | Raw-Ansicht | Monaco Editor (JSON/Markdown mit Syntax-Highlighting) | |
 | Tests | xUnit, Testcontainers (Postgres), Playwright (UI), Vitest (Angular) | |
@@ -200,7 +200,7 @@ ein versehentlich falscher Lookup niemals „zufällig“ einen fremden Datensat
 5. **Notion-Import** gewünscht (bestehende Inhalte migrieren)?
 6. **Dateianhänge** (Bilder, PDFs) in v1 nötig?
 7. **Markdown als Kanon** (E2) einverstanden, oder ist dir ein Block-Editor wichtig?
-8. **UI-Bausteine:** Tailwind + eigene Komponenten (flexibler, mehr Arbeit) oder Angular Material (schneller, generischer)?
+8. ~~**UI-Bausteine:** Tailwind + eigene Komponenten oder Angular Material?~~ Entschieden 2026-11-07: shadcn/ui-Optik über spartan/ui (AP-019).
 ### Bereits entschieden (2026-11-07)
 
 - Ein Agent-Key gilt über mehrere Workspaces hinweg; die Rechte pro Workspace kommen aus der Mitgliedschaft (z. B. A: schreiben, B: lesen). Einschränkung eines Keys auf einen Workspace bleibt optional möglich.

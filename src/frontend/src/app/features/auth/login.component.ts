@@ -4,6 +4,13 @@ import { FieldTree, FormField, email, form, required, submit } from '@angular/fo
 import { ApiError, NETWORK_ERROR_CODE } from '../../core/api/api-error';
 import { toServerErrors } from '../../core/api/field-errors';
 import { SessionStore } from '../../core/auth/session.store';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmInput } from '@spartan-ng/helm/input';
 
 interface LoginModel {
   email: string;
@@ -27,71 +34,82 @@ export const INVALID_CREDENTIALS_MESSAGE = 'E-Mail oder Passwort falsch.';
 /** Login with email and password (session cookie). Redirects to `returnUrl` on success. */
 @Component({
   selector: 'ag-login',
-  imports: [FormField],
+  imports: [
+    FormField,
+    NgIcon,
+    HlmAlertImports,
+    HlmButton,
+    HlmCardImports,
+    HlmFieldImports,
+    HlmInput,
+  ],
+  providers: [provideIcons({ lucideCircleAlert })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="flex min-h-screen items-center justify-center p-6">
-      <form
-        class="w-full max-w-sm rounded-lg border border-border bg-surface p-6"
-        novalidate
-        (submit)="onSubmit($event)"
-      >
-        <h1 class="text-lg font-semibold">Anmelden</h1>
+    <main class="flex min-h-svh items-center justify-center bg-muted p-6 md:p-10">
+      <div class="flex w-full max-w-sm flex-col gap-6">
+        <p class="text-center text-sm font-semibold tracking-tight">agcowork</p>
+        <section hlmCard>
+          <header hlmCardHeader>
+            <h1 hlmCardTitle class="text-xl">Anmelden</h1>
+            <p hlmCardDescription>Mit E-Mail-Adresse und Passwort.</p>
+          </header>
+          <div hlmCardContent>
+            <form novalidate (submit)="onSubmit($event)">
+              <div hlmFieldGroup class="gap-5">
+                @if (formError(); as message) {
+                  <div hlmAlert variant="destructive" data-testid="form-error">
+                    <ng-icon name="lucideCircleAlert" />
+                    <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+                  </div>
+                }
 
-        @if (formError(); as message) {
-          <p
-            class="mt-4 rounded-md border border-danger px-3 py-2 text-sm whitespace-pre-line text-danger"
-            role="alert"
-            data-testid="form-error"
-          >
-            {{ message }}
-          </p>
-        }
+                <div hlmField class="gap-2">
+                  <label hlmFieldLabel for="login-email">E-Mail</label>
+                  <input
+                    hlmInput
+                    id="login-email"
+                    type="email"
+                    autocomplete="username"
+                    [formField]="form.email"
+                    aria-describedby="login-email-errors"
+                  />
+                  <div id="login-email-errors" data-testid="email-errors">
+                    @if (showErrors(form.email)) {
+                      @for (error of form.email().errors(); track $index) {
+                        <p class="text-sm text-destructive">{{ error.message }}</p>
+                      }
+                    }
+                  </div>
+                </div>
 
-        <label for="login-email" class="mt-4 block text-sm font-medium">E-Mail</label>
-        <input
-          id="login-email"
-          type="email"
-          autocomplete="username"
-          class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-          [formField]="form.email"
-          [attr.aria-invalid]="showErrors(form.email)"
-          aria-describedby="login-email-errors"
-        />
-        <div id="login-email-errors" data-testid="email-errors">
-          @if (showErrors(form.email)) {
-            @for (error of form.email().errors(); track $index) {
-              <p class="mt-1 text-sm text-danger">{{ error.message }}</p>
-            }
-          }
-        </div>
+                <div hlmField class="gap-2">
+                  <label hlmFieldLabel for="login-password">Passwort</label>
+                  <input
+                    hlmInput
+                    id="login-password"
+                    type="password"
+                    autocomplete="current-password"
+                    [formField]="form.password"
+                    aria-describedby="login-password-errors"
+                  />
+                  <div id="login-password-errors" data-testid="password-errors">
+                    @if (showErrors(form.password)) {
+                      @for (error of form.password().errors(); track $index) {
+                        <p class="text-sm text-destructive">{{ error.message }}</p>
+                      }
+                    }
+                  </div>
+                </div>
 
-        <label for="login-password" class="mt-4 block text-sm font-medium">Passwort</label>
-        <input
-          id="login-password"
-          type="password"
-          autocomplete="current-password"
-          class="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
-          [formField]="form.password"
-          [attr.aria-invalid]="showErrors(form.password)"
-          aria-describedby="login-password-errors"
-        />
-        <div id="login-password-errors" data-testid="password-errors">
-          @if (showErrors(form.password)) {
-            @for (error of form.password().errors(); track $index) {
-              <p class="mt-1 text-sm text-danger">{{ error.message }}</p>
-            }
-          }
-        </div>
-
-        <button
-          type="submit"
-          class="mt-6 w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
-          [disabled]="form().submitting()"
-        >
-          {{ form().submitting() ? 'Anmelden …' : 'Anmelden' }}
-        </button>
-      </form>
+                <button hlmBtn type="submit" class="w-full" [disabled]="form().submitting()">
+                  {{ form().submitting() ? 'Anmelden …' : 'Anmelden' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
     </main>
   `,
 })

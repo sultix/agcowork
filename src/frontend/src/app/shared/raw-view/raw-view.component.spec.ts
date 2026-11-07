@@ -43,7 +43,7 @@ describe('RawViewComponent', () => {
   beforeEach(async () => {
     editors = [];
     localStorage.clear();
-    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.classList.remove('dark');
     TestBed.configureTestingModule({ providers: [provideFakeCodeEditor(editors)] });
     fixture = TestBed.createComponent(HostComponent);
     host = fixture.componentInstance;
@@ -53,7 +53,7 @@ describe('RawViewComponent', () => {
   afterEach(() => {
     fixture.destroy();
     localStorage.clear();
-    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.classList.remove('dark');
   });
 
   it('mount_PassesValueLanguageAndModeToEngine', () => {

@@ -7,6 +7,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <script>
+      // Applies the dark theme before the first paint (no flash of the wrong theme). Mirrors
+      // ThemeService: storage key "ag-theme" holds "light" | "dark"; missing means "system".
+      (function () {
+        var stored = null;
+        try {
+          stored = window.localStorage.getItem('ag-theme');
+        } catch (e) {
+          // Storage blocked: follow the system preference.
+        }
+        var systemDark =
+          !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = stored === 'dark' || (stored !== 'light' && systemDark);
+        document.documentElement.classList.toggle('dark', dark);
+      })();
+    </script>
   </head>
   <body>
     <ag-root></ag-root>

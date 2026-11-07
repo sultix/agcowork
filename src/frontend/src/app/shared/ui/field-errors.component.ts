@@ -6,7 +6,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @for (error of errors(); track $index) {
-      <p class="mt-1 text-sm text-danger">{{ error.message }}</p>
+      <p class="mt-1.5 text-sm text-destructive">{{ error.message }}</p>
     }
   `,
 })

@@ -2,13 +2,21 @@ import { DOCUMENT, Injectable, computed, effect, inject, signal } from '@angular
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
+/** The three modes in menu order. */
+export const THEME_MODES: readonly ThemeMode[] = ['system', 'light', 'dark'];
+
+/** Also read by the inline script in `index.html` (applies the theme before the first paint). */
 export const THEME_STORAGE_KEY = 'ag-theme';
+
+/** Class on `<html>` that switches the shadcn/spartan theme to dark (`@custom-variant dark`). */
+export const DARK_CLASS = 'dark';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 /**
- * Manual theme override. `system` removes `data-theme` so `prefers-color-scheme` applies;
- * `light`/`dark` set `data-theme` on the root element.
+ * Theme mode `system | light | dark`. Sets the `dark` class on the root element from the
+ * effective theme (`isDark()`), follows system changes at runtime while in `system`, and persists
+ * explicit choices (`system` removes the stored value).
  */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -19,8 +27,8 @@ export class ThemeService {
   private readonly systemDark = signal(false);
 
   /**
-   * Effective theme after resolving `system`. For widgets that cannot read CSS tokens directly
-   * (e.g. Monaco needs a named theme).
+   * Effective theme after resolving `system`. Also for widgets that cannot read CSS tokens
+   * directly (e.g. Monaco needs a named theme).
    */
   readonly isDark = computed(
     () => this.mode() === 'dark' || (this.mode() === 'system' && this.systemDark()),
@@ -34,21 +42,17 @@ export class ThemeService {
     }
 
     effect(() => {
+      this.document.documentElement.classList.toggle(DARK_CLASS, this.isDark());
+    });
+
+    effect(() => {
       const mode = this.mode();
-      const root = this.document.documentElement;
-      if (mode === 'system') {
-        root.removeAttribute('data-theme');
-        this.writeStored(null);
-      } else {
-        root.setAttribute('data-theme', mode);
-        this.writeStored(mode);
-      }
+      this.writeStored(mode === 'system' ? null : mode);
     });
   }
 
-  cycle(): void {
-    const order: ThemeMode[] = ['system', 'light', 'dark'];
-    this.mode.update((mode) => order[(order.indexOf(mode) + 1) % order.length]);
+  setMode(mode: ThemeMode): void {
+    this.mode.set(mode);
   }
 
   private readStored(): ThemeMode {
@@ -70,7 +74,7 @@ export class ThemeService {
         storage?.setItem(THEME_STORAGE_KEY, mode);
       }
     } catch {
-      // Persisting is best effort; the attribute is already applied.
+      // Persisting is best effort; the class is already applied.
     }
   }
 }

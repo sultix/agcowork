@@ -97,8 +97,10 @@ describe('RecordRawComponent', () => {
   afterEach(() => http.verify());
 
   const root = () => harness.routeNativeElement as HTMLElement;
+  // Overlays (e.g. the confirm dialog) render into the CDK overlay container in <body>.
   const q = <T extends HTMLElement = HTMLElement>(id: string) =>
-    root().querySelector<T>(`[data-testid="${id}"]`);
+    root().querySelector<T>(`[data-testid="${id}"]`) ??
+    document.body.querySelector<T>(`[data-testid="${id}"]`);
   const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
   const editorIn = (id: string) => editors.filter((e) => q(id)!.contains(e.root)).at(-1)!;
   const jsonEditor = () => editorIn('raw-properties');

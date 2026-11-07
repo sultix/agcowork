@@ -6,6 +6,7 @@ import { BadgeComponent } from './badge.component';
 @Component({
   selector: 'ag-actor-label',
   imports: [BadgeComponent],
+  host: { class: 'inline-flex items-center gap-1.5' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <span class="font-medium" data-testid="actor-name">{{ members.nameOf(actorId()) }}</span>

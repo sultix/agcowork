@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { HlmBreadcrumbImports } from '@spartan-ng/helm/breadcrumb';
 
 export interface Crumb {
   readonly label: string;
@@ -7,27 +7,30 @@ export interface Crumb {
   readonly link?: readonly string[];
 }
 
-/** Path above a page title, e.g. `Produkt › Aufgaben`. */
+/** Path above a page title, e.g. `Produkt › Aufgaben` (Helm breadcrumb). */
 @Component({
   selector: 'ag-breadcrumbs',
-  imports: [RouterLink],
+  imports: [HlmBreadcrumbImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <nav
-      aria-label="Pfad"
-      class="flex flex-wrap items-center gap-1 text-sm text-muted"
-      data-testid="breadcrumbs"
-    >
-      @for (crumb of crumbs(); track $index; let last = $last) {
-        @if (crumb.link && !last) {
-          <a [routerLink]="crumb.link" class="hover:underline">{{ crumb.label }}</a>
-        } @else {
-          <span [attr.aria-current]="last ? 'page' : null">{{ crumb.label }}</span>
+    <nav hlmBreadcrumb aria-label="Pfad" data-testid="breadcrumbs">
+      <ol hlmBreadcrumbList>
+        @for (crumb of crumbs(); track $index; let last = $last) {
+          <li hlmBreadcrumbItem>
+            @if (crumb.link && !last) {
+              <a hlmBreadcrumbLink [link]="crumb.link">{{ crumb.label }}</a>
+            } @else if (last) {
+              <span hlmBreadcrumbPage>{{ crumb.label }}</span>
+            } @else {
+              <span>{{ crumb.label }}</span>
+            }
+          </li>
+          @if (!last) {
+            <!-- Text separator (instead of the default chevron icon) keeps the path readable as text. -->
+            <li hlmBreadcrumbSeparator>›</li>
+          }
         }
-        @if (!last) {
-          <span aria-hidden="true">›</span>
-        }
-      }
+      </ol>
     </nav>
   `,
 })

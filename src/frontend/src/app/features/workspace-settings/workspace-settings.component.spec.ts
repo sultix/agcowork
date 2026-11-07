@@ -52,7 +52,10 @@ describe('WorkspaceSettingsComponent', () => {
   afterEach(() => http.verify());
 
   const root = () => harness.routeNativeElement as HTMLElement;
-  const q = (id: string) => root().querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  // Overlays (e.g. the confirm dialog) render into the CDK overlay container in <body>.
+  const q = (id: string) =>
+    root().querySelector<HTMLElement>(`[data-testid="${id}"]`) ??
+    document.body.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 
   async function type(id: string, value: string): Promise<void> {
     const input = root().querySelector<HTMLInputElement>(`#${id}`)!;
