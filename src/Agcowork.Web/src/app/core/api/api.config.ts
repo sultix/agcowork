@@ -1,19 +1,13 @@
-import { EnvironmentProviders, InjectionToken, makeEnvironmentProviders } from '@angular/core';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { apiErrorInterceptor } from './api-error.interceptor';
 
-/** Base URL of the versioned REST API. Workspace prefixes are appended by the API client. */
-export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL', {
-  providedIn: 'root',
-  factory: () => '/api/v1',
-});
+// Tokens live in their own file so the interceptor and the client can import them without a cycle.
+export { API_BASE_URL, HEALTH_URL } from './api-tokens';
 
-/** URL of the backend health endpoint (outside the versioned API). */
-export const HEALTH_URL = new InjectionToken<string>('HEALTH_URL', {
-  providedIn: 'root',
-  factory: () => '/health',
-});
-
-/** HTTP setup for the app: fetch-based HttpClient. */
+/** HTTP setup for the app: fetch-based HttpClient with the API error interceptor. */
 export function provideApi(): EnvironmentProviders {
-  return makeEnvironmentProviders([provideHttpClient(withFetch())]);
+  return makeEnvironmentProviders([
+    provideHttpClient(withFetch(), withInterceptors([apiErrorInterceptor])),
+  ]);
 }

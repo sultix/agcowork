@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { BackendStatus, HealthService } from '../../core/api/health.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
+import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
 
 const STATUS_LABELS: Record<BackendStatus, string> = {
   checking: 'wird geprüft',
@@ -13,7 +14,7 @@ const STATUS_LABELS: Record<BackendStatus, string> = {
 /** Layout for everything under `/w/:workspaceSlug`: sidebar, header and content outlet. */
 @Component({
   selector: 'ag-workspace-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, SessionMenuComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex min-h-screen">
@@ -46,6 +47,7 @@ const STATUS_LABELS: Record<BackendStatus, string> = {
             >
               Theme: {{ theme.mode() }}
             </button>
+            <ag-session-menu />
           </div>
         </header>
         <main class="min-w-0 flex-1">

@@ -4,6 +4,16 @@
     <UserSecretsId>agcowork-api-3f6c2a1e-6d5b-4f0e-9c1a-7b2e8d4f5a90</UserSecretsId>
   </PropertyGroup>
 
+  <!-- The OpenAPI document is generated on every build and checked in: it is the contract the Angular
+       client is generated from (src/Agcowork.Web, npm run api:generate). CI fails when it is stale.
+       The generator starts the host up to app.Run(), so Program.cs must skip migrations and bootstrap
+       when the entry assembly is GetDocument.Insider. -->
+  <PropertyGroup>
+    <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiGenerateDocumentsOptions>--file-name v1</OpenApiGenerateDocumentsOptions>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/openapi</OpenApiDocumentsDirectory>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Agcowork.Infrastructure\Agcowork.Infrastructure.csproj" />
     <ProjectReference Include="..\Agcowork.ServiceDefaults\Agcowork.ServiceDefaults.csproj" />
@@ -12,6 +22,10 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
 

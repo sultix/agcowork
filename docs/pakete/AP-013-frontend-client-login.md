@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-002/AP-012: `core/api/api.config.ts`, `HealthService` (httpResource), `WorkspaceContext`, Adapter-Muster, Routen-Spec |
@@ -90,3 +90,9 @@ Alle folgenden Frontend-Pakete nutzen diesen Client.
 |---|---|
 | 2026-11-07 | angelegt |
 | 2026-11-07 | an implementer-opus übergeben |
+| 2026-11-07 | Bericht: eigener typisierter `ApiClient` über HttpClient (kein openapi-fetch), Typen per openapi-typescript 7.13 aus eingecheckter `openapi/v1.json`, `ApiError` + Interceptor (401 → Login), `SessionStore` mit resource(), `authGuard`, Login mit Signal Forms; 138 Tests grün, Build/Lint grün; AK 3/4 per Playwright gegen laufende API belegt. Offen: AK 1 nur teilweise, Build-Zeit-Generierung aus, weil Program.cs einen Guard braucht (GetDocument.Insider startet den Host ohne DB) – Orchestrator baut ihn nach AP-005 ein. Abweichungen: TS-6-Override für openapi-typescript, `returnUrl` kodiert |
+| 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen, AK 1 bleibt offen bis Guard eingebaut. Wichtig: Workspace-Sub-Client verlangt `slug` doppelt (Typfehler bei erstem Workspace-Endpunkt); `load()` während laufendem initialen `/me` → Login scheitert fälschlich (`reload()` no-op bei loading); Test Login-nach-Logout fehlt. Hinweise: Pflicht-Query-Parameter nicht erzwungen; CI-Frontend-Prüfung ohne untracked; TS-6-Override gegen Peer-Dep. Sicherheit ohne Befund |
+| 2026-11-07 | Nacharbeit an implementer-opus: Slug-Omit, load()-Race, Logout-Login-Test, Pflicht-Query, CI-untracked |
+| 2026-11-07 | Nacharbeit fertig: 143 Tests grün; `WorkspacePathsOf` entfernt den Präfix-Parameter, `load()` wartet bei laufendem `/me`, `QueryRequired`, CI mit `git status --porcelain`. Wartet auf AP-005-Commit für AK 1 |
+| 2026-11-07 | Orchestrator: Guard für `GetDocument.Insider` in Program.cs, `OpenApiGenerateDocumentsOnBuild=true`, `openapi/v1.json` (mit AP-005-Pfaden) und `schema.d.ts` neu erzeugt; 143 Frontend-Tests, Lint, Build grün; 280 Backend-Tests grün. AK 1 erfüllt. Abgeschlossen, Commit siehe Backlog |

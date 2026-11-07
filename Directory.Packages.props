@@ -11,6 +11,8 @@
   </ItemGroup>
   <ItemGroup Label="ASP.NET Core">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <!-- Writes the OpenAPI document at build time (src/Agcowork.Api/openapi/v1.json) for the Angular client. -->
+    <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.14" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.19.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <!-- Only for PasswordHasher<T>; ASP.NET Core Identity itself is not used. -->

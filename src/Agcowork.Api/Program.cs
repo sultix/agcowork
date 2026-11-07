@@ -71,7 +71,12 @@ if (app.Environment.IsDevelopment())
 app.MapDefaultEndpoints();
 app.MapApiV1();
 
-await app.Services.ApplyMigrationsAsync();
-await app.Services.BootstrapIdentityAsync();
+// Build-time OpenAPI generation (Microsoft.Extensions.ApiDescription.Server) starts the host
+// via GetDocument.Insider without a database; skip migrations and bootstrap there.
+if (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name != "GetDocument.Insider")
+{
+    await app.Services.ApplyMigrationsAsync();
+    await app.Services.BootstrapIdentityAsync();
+}
 
 await app.RunAsync();

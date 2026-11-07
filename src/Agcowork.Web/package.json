@@ -3,9 +3,13 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+    "api:generate": "openapi-typescript ../Agcowork.Api/openapi/v1.json --output src/app/core/api/generated/schema.d.ts",
+    "prestart": "npm run api:generate",
     "start": "ng serve",
+    "prebuild": "npm run api:generate",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "pretest": "npm run api:generate",
     "test": "ng test --watch=false",
     "lint": "ng lint",
     "test:watch": "ng test",
@@ -35,11 +39,17 @@
     "angular-eslint": "22.6.0",
     "eslint": "^10.12.0",
     "jsdom": "^30.0.0",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",
     "tailwindcss": "^4.1.12",
     "typescript": "~6.0.2",
     "typescript-eslint": "8.71.0",
     "vitest": "^5.0.0"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
   }
 }

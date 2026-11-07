@@ -1,6 +1,6 @@
 import { Injectable, Signal, computed, inject } from '@angular/core';
 import { httpResource } from '@angular/common/http';
-import { HEALTH_URL } from './api.config';
+import { HEALTH_URL } from './api-tokens';
 
 export type BackendStatus = 'checking' | 'ok' | 'unreachable';
 

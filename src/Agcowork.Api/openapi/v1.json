@@ -1,0 +1,1918 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Agcowork.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Log in a human with email and password",
+        "description": "Humans only. On success the response sets an HttpOnly session cookie (7 days, sliding) and returns 204. Wrong email, wrong password, inactive account and agent accounts all yield the same 401, so the response never reveals whether an email exists. Agents do not log in; they send 'Authorization: Bearer <api key>'.",
+        "operationId": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "End the session",
+        "description": "Deletes the session cookie. Always 204, also without a session.",
+        "operationId": "Logout",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Who am I",
+        "description": "Returns the calling actor (human via session cookie, agent via API key) with its kind and instance scopes. For API-key calls, 'apiKey' holds the key's metadata: prefix, scope and workspace restrictions, expiry. Agents should call this first to check which identity and rights a key carries.",
+        "operationId": "GetMe",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actors": {
+      "get": {
+        "tags": [
+          "Actors"
+        ],
+        "summary": "List actors",
+        "description": "All humans and agents of the installation, ordered by name, including inactive ones. Requires instance:admin.",
+        "operationId": "ListActors",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActorDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Actors"
+        ],
+        "summary": "Create an actor",
+        "description": "Creates a human or agent. 'kind' is 'human' or 'agent'. Humans need 'email' and may get an initial 'password' (min. 12 characters) for local login; agents get no password and authenticate with API keys (POST /api/v1/actors/{id}/keys). 'instanceScopes' is a subset of 'instance:admin', 'workspaces:create'. Requires instance:admin. A taken email yields 409 with code 'email_taken'.",
+        "operationId": "CreateActor",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActorDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actors/{id}": {
+      "get": {
+        "tags": [
+          "Actors"
+        ],
+        "summary": "Get an actor",
+        "description": "One actor by id. Requires instance:admin.",
+        "operationId": "GetActor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Actors"
+        ],
+        "summary": "Update an actor",
+        "description": "Partial update: omitted or null fields stay unchanged; role \"\" clears the role; 'instanceScopes' replaces the set. 'isActive': false deactivates the actor: no login, all its API keys are rejected. You cannot deactivate yourself or remove instance:admin from yourself (409 'self_lockout'). Requires instance:admin.",
+        "operationId": "UpdateActor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActorBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActorDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actors/{id}/keys": {
+      "post": {
+        "tags": [
+          "API keys"
+        ],
+        "summary": "Issue an API key for an agent",
+        "description": "Creates a key 'agck_<prefix>_<secret>' for an agent actor. The plain-text 'key' appears only in this 201 response; store it immediately, it cannot be retrieved again (only a hash is kept). Optional body: 'scopes' (subset of read, write, schema, admin; empty = the agent's membership rights apply in full), 'workspaceId' (restrict the key to one workspace), 'expiresAt' (future timestamp). Humans cannot get keys. Requires instance:admin.",
+        "operationId": "CreateApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateApiKeyBody"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedApiKeyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "API keys"
+        ],
+        "summary": "List an actor's API keys",
+        "description": "Metadata of all keys of the actor, newest first, including revoked and expired ones. Never contains secrets. Requires instance:admin.",
+        "operationId": "ListApiKeys",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeyDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/keys/{id}": {
+      "delete": {
+        "tags": [
+          "API keys"
+        ],
+        "summary": "Revoke an API key",
+        "description": "Revokes the key immediately; further requests with it get 401. The key stays listed with 'revokedAt' for audit. Idempotent. Requires instance:admin.",
+        "operationId": "RevokeApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces": {
+      "get": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "List my workspaces",
+        "description": "Workspaces the caller is a member of, ordered by name, each with the caller's 'role' (owner, admin, editor, viewer) and effective 'scopes' (read, write, schema, admin; narrowed by the API key, if it is restricted). Archived workspaces are included with 'archivedAt'. A key restricted to one workspace sees only that one. Use 'slug' in /api/v1/w/{slug}/….",
+        "operationId": "ListMyWorkspaces",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkspaceDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Create a workspace",
+        "description": "Creates a workspace; the caller becomes its owner. 'slug' (unique, immutable; lowercase letters, digits, single hyphens, max. 63) becomes the URL segment /api/v1/w/{slug}. 'name' is required, 'description' optional. 'templateId' accepts only 'empty' for now (default). Requires workspaces:create (instance:admin implies it). A taken slug yields 409 'slug_taken'.",
+        "operationId": "CreateWorkspace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}": {
+      "get": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Get the workspace",
+        "description": "The workspace with the caller's role and effective scopes. Requires read. Unknown slug or no membership: 404.",
+        "operationId": "GetWorkspace",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Update the workspace",
+        "description": "Partial update of 'name' and 'description' (\"\" clears the description); omitted fields stay unchanged. The slug cannot change. Requires admin (roles admin, owner). Archived workspace: 409 'workspace_archived'.",
+        "operationId": "UpdateWorkspace",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkspaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/archive": {
+      "post": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Archive the workspace",
+        "description": "Makes the workspace read-only: reads keep working, every write answers 409 'workspace_archived'. Owner only. Cannot be undone through the API yet.",
+        "operationId": "ArchiveWorkspace",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/members": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "List members",
+        "description": "Members of the workspace with role and scopes, owners first. Requires read.",
+        "operationId": "ListMembers",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemberDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Add a member",
+        "description": "Adds an actor (human or agent, by 'actorId') with a 'role': owner, admin, editor or viewer. Roles grant scopes: viewer = read; editor = read, write; admin and owner = read, write, schema, admin. Optional 'scopes' narrows the role to a non-empty subset. Requires admin; only owners can add owners. An existing member yields 409 'already_member'.",
+        "operationId": "AddMember",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/members/{actorId}": {
+      "patch": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Change a member's role or scopes",
+        "description": "Partial update. A new 'role' without 'scopes' resets the scopes to the role's defaults; 'scopes' alone narrows the current role. Requires admin; changing an owner or promoting to owner requires the owner role. The last owner cannot be demoted (409 'last_owner'): make another member owner first.",
+        "operationId": "UpdateMember",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Remove a member",
+        "description": "Removes the actor from the workspace. Requires admin; removing an owner requires the owner role. The last owner cannot be removed (409 'last_owner').",
+        "operationId": "RemoveMember",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActorDto": {
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "role",
+          "email",
+          "instanceScopes",
+          "isActive",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ActorKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instanceScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Actor as seen by administrators and by the actor itself."
+      },
+      "ActorKind": {
+        "enum": [
+          "human",
+          "agent"
+        ],
+        "description": "Whether an actor is a person (logs in with a password) or an agent (authenticates with API keys)."
+      },
+      "AddMemberRequest": {
+        "required": [
+          "actorId",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "actorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Actor (human or agent) to add; see `GET /api/v1/actors`.",
+            "format": "uuid"
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "`owner`, `admin`, `editor` or `viewer`."
+          },
+          "scopes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional narrowing: a non-empty subset of the role's scopes. Omit for the role's defaults."
+          }
+        }
+      },
+      "ApiKeyDto": {
+        "required": [
+          "id",
+          "actorId",
+          "prefix",
+          "scopes",
+          "workspaceId",
+          "expiresAt",
+          "lastUsedAt",
+          "revokedAt",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "workspaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Metadata of an API key. Never contains the secret or its hash."
+      },
+      "CreateActorRequest": {
+        "required": [
+          "kind",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "`human` or `agent`."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Display name, max. 200 characters."
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Free-text role such as \"Tech-Lead\"; not a permission."
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Required for humans, optional for agents. Unique across the installation."
+          },
+          "password": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Initial password for a human's local login (optional; without it the human cannot log in yet). Not allowed for agents."
+          },
+          "instanceScopes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Subset of `instance:admin`, `workspaces:create`."
+          }
+        }
+      },
+      "CreateApiKeyBody": {
+        "required": [
+          "scopes",
+          "workspaceId",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "scopes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "workspaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "Optional body of `POST /actors/{id}/keys`."
+      },
+      "CreatedApiKeyDto": {
+        "required": [
+          "key",
+          "apiKey"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Plain-text key. Shown exactly once; store it now, it cannot be retrieved later."
+          },
+          "apiKey": {
+            "description": "Metadata of the new key.",
+            "$ref": "#/components/schemas/ApiKeyDto"
+          }
+        }
+      },
+      "CreateWorkspaceRequest": {
+        "required": [
+          "slug",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "URL segment, unique, immutable: lowercase letters, digits, single hyphens, max. 63 characters."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Display name, max. 200 characters."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the workspace is for, max. 2000 characters. Agents read it."
+          },
+          "templateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Structure to start with. Only `empty` for now (also the default when omitted)."
+          }
+        }
+      },
+      "LoginRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "password": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "MeDto": {
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "role",
+          "email",
+          "instanceScopes",
+          "apiKey"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ActorKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instanceScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "apiKey": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApiKeyDto"
+              }
+            ]
+          }
+        },
+        "description": "The calling actor. ApiKey is set when the call was made with an API key."
+      },
+      "MemberDto": {
+        "required": [
+          "actorId",
+          "name",
+          "kind",
+          "role",
+          "scopes",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "actorId": {
+            "type": "string",
+            "description": "The member; use it in `/members/{actorId}`.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the actor."
+          },
+          "kind": {
+            "description": "`human` or `agent`.",
+            "$ref": "#/components/schemas/ActorKind"
+          },
+          "role": {
+            "description": "Role in this workspace.",
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Membership scopes (role defaults unless narrowed)."
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Actor that added the member.",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the member was added (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A member of the workspace."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code, stable across releases: validation_failed, unauthorized, forbidden, not_found, bad_request, or a specific conflict code such as email_taken."
+          },
+          "traceId": {
+            "type": "string",
+            "description": "W3C trace id of the request; quote it when reporting a problem."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "required": [
+                "field",
+                "code",
+                "message"
+              ],
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "description": "camelCase path of the input, e.g. 'email' or 'instanceScopes[1]'."
+                },
+                "code": {
+                  "type": "string",
+                  "description": "required, invalid_format, not_in_options, too_long, too_short, out_of_range, not_allowed, conflict."
+                },
+                "message": {
+                  "type": "string",
+                  "description": "What is wrong and how to fix it."
+                },
+                "allowed": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Accepted values, for enum-like fields only."
+                }
+              }
+            },
+            "description": "Present for 400 validation errors and for 409 conflicts caused by a specific field. One entry per invalid field."
+          }
+        }
+      },
+      "UpdateActorBody": {
+        "required": [
+          "name",
+          "role",
+          "instanceScopes",
+          "isActive"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instanceScopes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "isActive": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        },
+        "description": "Body of `PATCH /actors/{id}`; the id comes from the route."
+      },
+      "UpdateMemberBody": {
+        "required": [
+          "role",
+          "scopes"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scopes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Body of `PATCH /members/{actorId}`; the actor comes from the route."
+      },
+      "UpdateWorkspaceRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New display name."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New description; an empty string clears it."
+          }
+        },
+        "description": "Partial update: null leaves a field unchanged."
+      },
+      "WorkspaceDto": {
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "description",
+          "createdBy",
+          "createdAt",
+          "archivedAt",
+          "role",
+          "scopes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Workspace id.",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Route segment: `/api/v1/w/{slug}/…`."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the workspace is for."
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Actor that created the workspace.",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when archived; archived workspaces are read-only.",
+            "format": "date-time"
+          },
+          "role": {
+            "description": "The caller's role in the workspace.",
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the caller may do here: membership scopes narrowed by the API key, if any."
+          }
+        },
+        "description": "A workspace as seen by the caller."
+      },
+      "WorkspaceRole": {
+        "enum": [
+          "viewer",
+          "editor",
+          "admin",
+          "owner"
+        ],
+        "description": "Role of a member in a workspace. Determines the default scopes (see IReadOnlyList&lt;string&gt; WorkspaceScope.ForRole(WorkspaceRole role))."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Me"
+    },
+    {
+      "name": "Actors"
+    },
+    {
+      "name": "API keys"
+    },
+    {
+      "name": "Workspaces"
+    },
+    {
+      "name": "Members"
+    }
+  ]
+}

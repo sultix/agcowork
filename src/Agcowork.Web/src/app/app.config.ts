@@ -5,6 +5,7 @@ import {
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideApi } from './core/api/api.config';
+import { provideSession } from './core/auth/session.providers';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -14,5 +15,6 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
     provideApi(),
+    provideSession(),
   ],
 };
