@@ -27,6 +27,10 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-021](AP-021-ui-migration-daten.md) | UI-Migration: Records, Views, Tabelle, Filter, Property-Editoren | UI | implementer-sonnet | AP-019 | abgeschlossen | 559d0a2 |
 | [AP-022](AP-022-haertung-backend.md) | Härtung Backend: Passwort ändern/zurücksetzen, Sitzungen entwerten, relation-Hook, OpenAPI-Defaults, Activity-Titel | Härtung | implementer-opus | AP-004–AP-011 | in Arbeit | |
 | [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | angelegt | |
+| [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | angelegt | |
+| [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | angelegt | |
+| [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | angelegt | |
+| [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | angelegt | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -42,7 +46,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-002 Review | `HealthService` lädt `/health` nur einmal; startet das Backend später, bleibt „nicht erreichbar“ bis zum Reload | → AP-023 |
 | AP-012 Review | Markdown-Bilder laden als `<img src>` von fremder Herkunft (Tracking/IP-Leak) | Entschieden: Platzhalter-NodeView (alt + URL-Text), umgesetzt in AP-014-Nacharbeit; Bild-Proxy Phase 3 |
 | AP-012 Review | Monaco-Adapter ohne Test; `token()` liest nur 6-stellige Hex-Werte; drei verwaiste CSS-Chunks (3×186 kB) im Build | Token-Parser erledigt in AP-019 (`css-color.ts`, oklch → Hex). Offen Phase 2: Adapter-Test im Browser (Playwright), verwaiste CSS-Chunks |
-| AP-007 Bericht | Activity `Seq` ist Identity: Leser in kurzen Abständen können Events überspringen, deren Transaktion später committet | Phase 2 (SignalR/Outbox): Outbox mit Commit-Reihenfolge oder `pg_current_xact_id`-Fenster |
+| AP-007 Bericht | Activity `Seq` ist Identity: Leser in kurzen Abständen können Events überspringen, deren Transaktion später committet | → AP-024 |
 | AP-007 Bericht | Migration `AddRecords` braucht Extension `btree_gin` (in postgres:17 enthalten) | Beim Hosting-Entscheid prüfen, ob die gehostete DB sie erlaubt |
 | AP-007 Review | `RecordValuesSchemaHook` bereinigt ohne Revision (dokumentierte Ausnahme, Event zählt `affectedRecords`) | Phase 2 optional: Revision `schema_cleanup` je Record |
 | AP-007 Review | `idempotency_keys` werden nie aufgeräumt; `LoadParentAsync` bis 32 Abfragen; Frontmatter ohne YAML-1.1-Sonderfälle (`0x1F`, `.inf`) | Phase 2: Cleanup-Job, rekursive CTE, YAML-Quoting erweitern |
@@ -50,7 +54,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-006 Bericht | Self-Relations (z. B. `supersedes` in Entscheidungen) brauchen beim Anlegen die eigene Collection-ID | AP-010: Vorlage legt Collection erst ohne Self-Relation an und ergänzt sie per `UpdateSchema`, oder baut die Domain direkt |
 | AP-006 Bericht | Body-Records aus AP-004/005 erscheinen in OpenAPI mit allen Feldern als required | → AP-022 |
 | AP-006 Bericht | Architektur §2 nennt `DefaultTemplateId`, umgesetzt ist `Template.IsDefault`; §4.3 ohne `describe`-Route | Orchestrator zieht Doku nach dem Review nach |
-| AP-011 Review | `collection_describe` ruft zwei Use-Cases ohne gemeinsamen Snapshot; `ListActivity` nicht nach Record filterbar | Phase 2: `history_get` mit Activity je Record, Use-Case zusammenführen |
+| AP-011 Review | `collection_describe` ruft zwei Use-Cases ohne gemeinsamen Snapshot; `ListActivity` nicht nach Record filterbar | Activity-Filter `targetId` → AP-024; Use-Case zusammenführen offen |
 | AP-009 Bericht | Nach `relation.multiple` false→true bleiben Skalar-Altwerte stehen; `RecordValuesSchemaHook` greift nicht; nächster PATCH scheitert am Validator | → AP-022 |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
