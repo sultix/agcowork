@@ -1,8 +1,10 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Common.Validation;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,7 +21,7 @@ public sealed record UpdateMemberRequest(Guid ActorId, string? Role = null, IRea
 /// requires the owner role. The last owner cannot be demoted (409 <c>last_owner</c>). Callers may narrow
 /// but never widen their own membership (409 <c>self_escalation</c>).
 /// </summary>
-public sealed class UpdateMember(IAgcoworkDbContext db, ITenantContext tenant) : IUseCase<UpdateMemberRequest, MemberDto>
+public sealed class UpdateMember(IAgcoworkDbContext db, ITenantContext tenant, IActivityRecorder activity) : IUseCase<UpdateMemberRequest, MemberDto>
 {
     public async Task<Result<MemberDto>> HandleAsync(UpdateMemberRequest request, CancellationToken cancellationToken)
     {
@@ -89,6 +91,7 @@ public sealed class UpdateMember(IAgcoworkDbContext db, ITenantContext tenant) :
             return WorkspaceConflicts.LastOwner("role");
         }
 
+        var before = MemberActivity.State(membership);
         if (newRole is not null)
         {
             membership.ChangeRole(targetRole, request.Scopes);
@@ -96,6 +99,11 @@ public sealed class UpdateMember(IAgcoworkDbContext db, ITenantContext tenant) :
         else if (request.Scopes is not null)
         {
             membership.RestrictScopes(request.Scopes);
+        }
+
+        if (MemberActivity.Changed(before, membership) is { Count: > 0 } diff)
+        {
+            activity.Record(ActivityTypes.MemberUpdated, ActivityTargets.Member, membership.ActorId, diff: diff);
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

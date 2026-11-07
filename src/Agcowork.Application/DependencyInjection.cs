@@ -1,7 +1,9 @@
 using System.Reflection;
+using Agcowork.Application.Activity;
 using Agcowork.Application.Collections;
 using Agcowork.Application.Collections.Templates;
 using Agcowork.Application.Common;
+using Agcowork.Application.Records;
 using Agcowork.Application.Schema;
 using Agcowork.Application.Tenancy;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,12 +26,16 @@ public static class DependencyInjection
         services.TryAddScoped<ITenantContextAccessor, TenantContextAccessor>();
         services.TryAddScoped<ITenantContext, CurrentTenantContext>();
 
-        // Property values (AP-006). The relation checker is a placeholder until records exist (AP-007 replaces it).
+        // Property values (AP-006); relation targets are records of the target collection (AP-007).
         services.TryAddScoped<PropertyValueValidator>();
-        services.TryAddScoped<IRelationTargetChecker, NoRecordsRelationTargetChecker>();
+        services.TryAddScoped<IRelationTargetChecker, RecordRelationTargetChecker>();
         services.TryAddScoped<IActorMembershipChecker, MembershipActorChecker>();
         services.TryAddScoped<ISchemaProvider, SchemaProvider>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<ISchemaChangedHook, TemplatePresetSchemaHook>());
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<ISchemaChangedHook, RecordValuesSchemaHook>());
+
+        // Activity log (AP-007): events are added by the writing use cases and saved with their change.
+        services.TryAddScoped<IActivityRecorder, ActivityRecorder>();
 
         foreach (var useCase in FindUseCases(typeof(DependencyInjection).Assembly))
         {

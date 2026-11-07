@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Agcowork.Domain.Collections.Schema;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -38,6 +39,21 @@ internal static class JsonColumns
             (a, b) => SerializePreset(a!) == SerializePreset(b!),
             preset => StringComparer.Ordinal.GetHashCode(SerializePreset(preset)),
             preset => DeserializePreset(SerializePreset(preset)));
+
+    /// <summary>Property values of records and revisions: same format as template presets (keys sorted).</summary>
+    public static ValueConverter<IReadOnlyDictionary<string, JsonElement>, string> PropertiesConverter => PresetConverter;
+
+    public static ValueComparer<IReadOnlyDictionary<string, JsonElement>> PropertiesComparer => PresetComparer;
+
+    /// <summary>Diffs of activity events: a plain JSON object.</summary>
+    public static ValueConverter<JsonObject, string> DiffConverter { get; } =
+        new(diff => diff.ToJsonString(Options), json => (JsonNode.Parse(json, null, default) as JsonObject) ?? new JsonObject());
+
+    public static ValueComparer<JsonObject> DiffComparer { get; } =
+        new(
+            (a, b) => a!.ToJsonString(Options) == b!.ToJsonString(Options),
+            diff => StringComparer.Ordinal.GetHashCode(diff.ToJsonString(Options)),
+            diff => (JsonObject)diff.DeepClone());
 
     public static string SerializeSchema(IReadOnlyList<PropertyDefinition> schema) =>
         JsonSerializer.Serialize(new SchemaDocument(SchemaFormatVersion, [.. schema]), Options);

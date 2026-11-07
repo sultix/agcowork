@@ -77,7 +77,7 @@ public sealed record CollectionSchemaDto(
 /// <param name="JsonSchema">JSON Schema (draft 2020-12) of a record's <c>properties</c> object.</param>
 /// <param name="Example">A valid example <c>properties</c> object: one value per writable property. Relation and actor properties are left out; they need real record and member ids.</param>
 /// <param name="Templates">Record templates, default first.</param>
-/// <param name="Statistics">Counts; filled once records exist.</param>
+/// <param name="Statistics">Counts.</param>
 public sealed record CollectionDescriptionDto(
     CollectionDto Collection,
     SpaceDto Space,
@@ -87,5 +87,5 @@ public sealed record CollectionDescriptionDto(
     CollectionStatisticsDto Statistics);
 
 /// <summary>Counts of a collection.</summary>
-/// <param name="RecordCount">Number of records; null until records exist (AP-007).</param>
-public sealed record CollectionStatisticsDto(long? RecordCount);
+/// <param name="RecordCount">Number of records that are not archived.</param>
+public sealed record CollectionStatisticsDto(long RecordCount);

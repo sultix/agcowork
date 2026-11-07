@@ -34,7 +34,7 @@ ausführen (Filter + Sorts aus dem View). Die Übersetzung nach SQL nutzt den GI
   - `date`/`datetime`: eq, neq, gt, gte, lt, lte, is_empty, is_not_empty (Werte ISO 8601; relative Werte wie `today` **nicht** in diesem Paket)
   - `relation`: contains (Record-Id), in, nin, is_empty, is_not_empty
   - `actor`: eq, neq, in, nin, is_empty, is_not_empty (Wert `actor:<id>` oder Guid)
-  - Pseudo-Felder: `title` wie text; `created_at`/`updated_at` wie datetime; `created_by`/`updated_by` wie actor.
+  - Pseudo-Felder: `title` wie text; `created_at`/`updated_at` wie datetime; `created_by`/`updated_by` wie actor. **Berechnete Properties** (Schema-Typen `created_at` usw. unter beliebigem Key) werden beim Filtern und Sortieren auf die Spalten abgebildet, nie auf `properties->>'key'`.
 - Sortierung: `[ { prop, dir } ]`, Pseudo-Felder erlaubt; immer stabil durch Tie-Breaker `(created_at, id)`; Sortierung über JSONB-Werte typgerecht (number als numeric, date als timestamptz, text als text, select nach Options-Reihenfolge ist **nicht** nötig).
 - Cursor: opaker Base64url-String aus den Sortierwerten + `(created_at, id)`; Keyset-Paginierung (keine OFFSETs); `nextCursor` nur, wenn weitere Treffer existieren.
 - `ExecuteQuery` (Use-Case): Schema laden, parsen, Tenant-Filter ist implizit, Archivierte standardmäßig aus, Ergebnis `QueryResult { Items: RecordDto[], NextCursor?, Count? }` (kein Total-Count; optional `includeCount: true` mit `COUNT(*)` bis max. 10 000).

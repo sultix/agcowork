@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Agcowork.Api.Tests.Identity;
 using Agcowork.Api.Tests.Tenancy;
 using Agcowork.Application.Collections;
@@ -93,7 +92,7 @@ public sealed class CollectionsEndpointsTests(AgcoworkApiFactory factory)
         Assert.Equal("proposed", body.GetProperty("example").GetProperty("status").GetString());
         Assert.Equal("ADR", body.GetProperty("templates")[0].GetProperty("name").GetString());
         Assert.Equal("Technik", body.GetProperty("space").GetProperty("name").GetString());
-        Assert.Equal(JsonValueKind.Null, body.GetProperty("statistics").GetProperty("recordCount").ValueKind);
+        Assert.Equal(0, body.GetProperty("statistics").GetProperty("recordCount").GetInt64());
     }
 
     [Fact]

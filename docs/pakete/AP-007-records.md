@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | im Review |
+| Status | abgeschlossen |
 | Phase | 1 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | AP-006: Collections-Use-Cases, `PropertyValueValidator`, Endpunkte und Isolationstests; AP-005: `RequireWritable`/`RequireScope`, `LockWorkspaceAsync`; AP-004: Fehler-Muster, `SaveChangesOrConflictAsync` |
@@ -100,3 +100,6 @@ Actor. Updates können eine erwartete Revision mitgeben, damit sich zwei Agenten
 | 2026-11-07 | an implementer-opus übergeben |
 | 2026-11-07 | Bericht: 627 Tests grün, 0 Warnungen. Row-Lock (`LockRecordAsync`) statt `WHERE revision_no`, damit Appends parallel ohne 409 und ohne Verlust laufen; `revision_no` zusätzlich Concurrency-Token. GIN `(workspace_id, properties jsonb_path_ops)` über `btree_gin`. `RecordValuesSchemaHook` bereinigt Werte per ExecuteUpdate; `UpdateSchema` jetzt in Transaktion. Titel auch aus `properties.title` (Konflikt → 400). `ConflictError.Details` (`currentRevision`, `changedKeys`). Activity-Events für Space/Collection/Member nachgerüstet. Offen: Bereinigung erzeugt keine Revision; `Seq` kann bei parallelen Commits Events überspringen (Phase 2 Outbox); `btree_gin` muss in gehosteter DB verfügbar sein |
 | 2026-11-07 | an reviewer übergeben |
+| 2026-11-07 | Review: Freigabe mit Hinweisen; Tenancy, Nebenläufigkeit, Agent-Tauglichkeit, Integrität, Activity, Migration ohne Befund. Wichtig: Schemaänderung parallel zu Record-Update verliert Änderungen still (Hook ohne Sperre; Validierung gegen veraltetes Schema); Bereinigung bricht „Revision N = Stand N“. Hinweise: Hook ohne OrderBy (Deadlock-Risiko), Surrogat-Kürzung, berechnete Properties fehlen im DTO/Frontmatter, `since`-Polling kann Events verpassen, `idempotency_keys` ohne Cleanup, fehlender 2-MiB-Test für PATCH |
+| 2026-11-07 | Entscheidungen: Collection-Sperre (UpdateSchema FOR UPDATE, Record-Schreiber FOR SHARE, Reihenfolge Collection→Record); Bereinigung ohne Revision als dokumentierte Ausnahme mit `affectedRecords` im Event. Nacharbeit an implementer-opus (6 Punkte) |
+| 2026-11-07 | Nacharbeit fertig: 636 Tests grün. `LockCollectionAsync`/`LockCollectionSharedAsync`, Sperr-Reihenfolge Collection→Record, Nebenläufigkeitstests (a)(b)(c) je 5 Runden; `SchemaChange.Effects` mit `affectedRecords`/`cleanedKeys`/`removedOptions`; berechnete Properties im DTO/Frontmatter, `read_only` auch bei null; surrogat-sichere Kürzung; 2-MiB-PATCH-Test. Vom Orchestrator verifiziert. Abgeschlossen, Commit siehe Backlog |

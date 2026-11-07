@@ -20,7 +20,83 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gin");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Agcowork.Domain.Activity.ActivityEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid?>("CollectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("collection_id");
+
+                    b.Property<string>("Diff")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("diff");
+
+                    b.Property<long>("Seq")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("seq");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Seq"));
+
+                    b.Property<Guid?>("SpaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("space_id");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("target_type");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_activity_events");
+
+                    b.HasIndex("WorkspaceId", "Seq")
+                        .HasDatabaseName("ix_activity_events_workspace_id_seq");
+
+                    b.HasIndex("WorkspaceId", "ActorId", "Seq")
+                        .HasDatabaseName("ix_activity_events_workspace_id_actor_id_seq");
+
+                    b.HasIndex("WorkspaceId", "CollectionId", "Seq")
+                        .HasDatabaseName("ix_activity_events_workspace_id_collection_id_seq");
+
+                    b.HasIndex("WorkspaceId", "SpaceId", "Seq")
+                        .HasDatabaseName("ix_activity_events_workspace_id_space_id_seq");
+
+                    b.HasIndex("WorkspaceId", "TargetId", "Seq")
+                        .HasDatabaseName("ix_activity_events_workspace_id_target_id_seq");
+
+                    b.ToTable("activity_events", (string)null);
+                });
 
             modelBuilder.Entity("Agcowork.Domain.Collections.Collection", b =>
                 {
@@ -290,6 +366,197 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                     b.ToTable("local_logins", (string)null);
                 });
 
+            modelBuilder.Entity("Agcowork.Domain.Records.IdempotencyKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("key");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_idempotency_keys");
+
+                    b.HasIndex("WorkspaceId", "RecordId")
+                        .HasDatabaseName("ix_idempotency_keys_workspace_id_record_id");
+
+                    b.HasIndex("WorkspaceId", "ActorId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_idempotency_keys_workspace_id_actor_id_key");
+
+                    b.ToTable("idempotency_keys", (string)null);
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Records.Record", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<Guid?>("CollectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("collection_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid?>("ParentRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_record_id");
+
+                    b.Property<string>("Properties")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("properties");
+
+                    b.Property<int>("RevisionNo")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("revision_no");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("space_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_records");
+
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_records_workspace_id_id");
+
+                    b.HasIndex("WorkspaceId", "ParentRecordId")
+                        .HasDatabaseName("ix_records_workspace_id_parent_record_id");
+
+                    b.HasIndex("WorkspaceId", "Properties")
+                        .HasDatabaseName("ix_records_workspace_id_properties");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("WorkspaceId", "Properties"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("WorkspaceId", "Properties"), new[] { "uuid_ops", "jsonb_path_ops" });
+
+                    b.HasIndex("WorkspaceId", "SpaceId")
+                        .HasDatabaseName("ix_records_workspace_id_space_id");
+
+                    b.HasIndex("WorkspaceId", "CollectionId", "CreatedAt", "Id")
+                        .HasDatabaseName("ix_records_workspace_id_collection_id_created_at_id");
+
+                    b.ToTable("records", (string)null);
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Records.Revision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<int>("No")
+                        .HasColumnType("integer")
+                        .HasColumnName("no");
+
+                    b.Property<string>("Properties")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("properties");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_revisions");
+
+                    b.HasIndex("WorkspaceId", "RecordId", "No")
+                        .IsUnique()
+                        .HasDatabaseName("ix_revisions_workspace_id_record_id_no");
+
+                    b.ToTable("revisions", (string)null);
+                });
+
             modelBuilder.Entity("Agcowork.Domain.Spaces.Space", b =>
                 {
                     b.Property<Guid>("Id")
@@ -445,6 +712,16 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                     b.ToTable("workspaces", (string)null);
                 });
 
+            modelBuilder.Entity("Agcowork.Domain.Activity.ActivityEvent", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_activity_events_workspaces_workspace_id");
+                });
+
             modelBuilder.Entity("Agcowork.Domain.Collections.Collection", b =>
                 {
                     b.HasOne("Agcowork.Domain.Spaces.Space", null)
@@ -491,6 +768,53 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_local_logins_actors_actor_id");
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Records.IdempotencyKey", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Records.Record", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "RecordId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_idempotency_keys_records_workspace_id_record_id");
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Records.Record", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Collections.Collection", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "CollectionId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_records_collections_workspace_id_collection_id");
+
+                    b.HasOne("Agcowork.Domain.Records.Record", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ParentRecordId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_records_records_workspace_id_parent_record_id");
+
+                    b.HasOne("Agcowork.Domain.Spaces.Space", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "SpaceId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_records_spaces_workspace_id_space_id");
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Records.Revision", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Records.Record", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "RecordId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_revisions_records_workspace_id_record_id");
                 });
 
             modelBuilder.Entity("Agcowork.Domain.Spaces.Space", b =>

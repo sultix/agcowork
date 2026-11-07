@@ -414,6 +414,13 @@ Templates), `Records`, `Views`, `Query` (Filter-DSL), `Activity` (Revisions, Eve
   `code`, `message`, optional `allowed`, dazu `traceId`. 401 ohne Details, 404 ohne Existenzhinweis.
   409-Konflikte dürfen `ConflictError.Details` tragen, die als Extensions erscheinen (z. B.
   `revision_mismatch` mit `currentRevision` und `changedKeys`).
+- **Sperr-Reihenfolge**: `UpdateSchema` sperrt die Collection `FOR UPDATE`; Record-Schreiber sperren die
+  Collection `FOR SHARE` und dann den Record `FOR UPDATE` (immer Collection → Record). So kann eine
+  Schemaänderung keine parallel geschriebenen Werte überschreiben und niemand gegen ein veraltetes
+  Schema validieren.
+- **Bekannte Ausnahme**: Die Bereinigung von Record-Werten bei destruktiven Schemaänderungen erzeugt
+  keine Revision; der Stand vor der Bereinigung steht nur in der letzten Revision, das Event
+  `collection.schema_changed` trägt `affectedRecords`.
 - **Nebenläufigkeit bei Records**: Row-Lock (`LockRecordAsync`) + `revision_no` als Concurrency-Token.
   Ohne `expectedRevision` gewinnt der letzte Schreiber; parallele `append`s laufen lückenlos durch;
   `expectedRevision` veraltet → 409 `revision_mismatch`. Idempotenz über `Idempotency-Key` (24 h).

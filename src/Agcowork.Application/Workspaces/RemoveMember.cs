@@ -1,7 +1,9 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +16,7 @@ public sealed record RemoveMemberRequest(Guid ActorId);
 /// Removes a member from the current workspace. Requires <c>admin</c>; removing an owner requires the
 /// owner role. The last owner cannot be removed (409 <c>last_owner</c>). Leaving the workspace oneself is allowed.
 /// </summary>
-public sealed class RemoveMember(IAgcoworkDbContext db, ITenantContext tenant) : IUseCase<RemoveMemberRequest>
+public sealed class RemoveMember(IAgcoworkDbContext db, ITenantContext tenant, IActivityRecorder activity) : IUseCase<RemoveMemberRequest>
 {
     public async Task<Result> HandleAsync(RemoveMemberRequest request, CancellationToken cancellationToken)
     {
@@ -64,6 +66,7 @@ public sealed class RemoveMember(IAgcoworkDbContext db, ITenantContext tenant) :
         }
 
         db.Memberships.Remove(membership);
+        activity.Record(ActivityTypes.MemberRemoved, ActivityTargets.Member, membership.ActorId, diff: MemberActivity.Removed(membership));
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();

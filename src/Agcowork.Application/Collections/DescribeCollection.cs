@@ -35,6 +35,7 @@ public sealed class DescribeCollection(IAgcoworkDbContext db, ITenantContext ten
 
         var space = await db.Spaces.AsNoTracking().SingleAsync(s => s.Id == collection.SpaceId, cancellationToken).ConfigureAwait(false);
         var templates = await ListTemplates.LoadAsync(db, collection.Id, cancellationToken).ConfigureAwait(false);
+        var recordCount = await db.Records.LongCountAsync(r => r.CollectionId == collection.Id && r.ArchivedAt == null, cancellationToken).ConfigureAwait(false);
 
         return new CollectionDescriptionDto(
             CollectionDto.From(collection),
@@ -42,6 +43,6 @@ public sealed class DescribeCollection(IAgcoworkDbContext db, ITenantContext ten
             JsonSchemaBuilder.Build(collection),
             JsonSchemaBuilder.Example(collection.Schema),
             templates,
-            new CollectionStatisticsDto(RecordCount: null));
+            new CollectionStatisticsDto(recordCount));
     }
 }

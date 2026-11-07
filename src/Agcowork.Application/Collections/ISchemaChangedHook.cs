@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Agcowork.Domain.Collections;
 using Agcowork.Domain.Collections.Schema;
 
@@ -30,6 +31,12 @@ public sealed record SchemaChange(
     IReadOnlyDictionary<string, PropertyTypeChange> TypeChanges,
     IReadOnlyDictionary<string, IReadOnlyList<string>> RemovedOptions)
 {
+    /// <summary>
+    /// What the hooks did, for the activity event <c>collection.schema_changed</c>: hooks add members here (e.g.
+    /// <c>affectedRecords</c>), <see cref="UpdateSchema"/> merges them into the event's diff.
+    /// </summary>
+    public JsonObject Effects { get; } = [];
+
     public static SchemaChange Between(IReadOnlyList<PropertyDefinition> before, IReadOnlyList<PropertyDefinition> after)
     {
         ArgumentNullException.ThrowIfNull(before);

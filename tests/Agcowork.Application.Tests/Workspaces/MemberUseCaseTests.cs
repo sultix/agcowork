@@ -19,7 +19,7 @@ public sealed class MemberUseCaseTests(PostgresFixture postgres) : DatabaseTest(
         var seed = await TenancySeed.CreateAsync(Db);
         var tenant = Enter(seed.Alpha, seed.AlphaOwner);
 
-        var result = await new UpdateMember(Db, tenant).HandleAsync(new UpdateMemberRequest(seed.AlphaOwner.Id, "admin"), Ct);
+        var result = await new UpdateMember(Db, tenant, Activity).HandleAsync(new UpdateMemberRequest(seed.AlphaOwner.Id, "admin"), Ct);
 
         var error = Assert.IsType<ConflictError>(result.Error);
         Assert.Equal("last_owner", error.Code);
@@ -31,9 +31,9 @@ public sealed class MemberUseCaseTests(PostgresFixture postgres) : DatabaseTest(
     {
         var seed = await TenancySeed.CreateAsync(Db);
         var tenant = Enter(seed.Alpha, seed.AlphaOwner);
-        Assert.True((await new UpdateMember(Db, tenant).HandleAsync(new UpdateMemberRequest(seed.MemberOfBoth.Id, "owner"), Ct)).IsSuccess);
+        Assert.True((await new UpdateMember(Db, tenant, Activity).HandleAsync(new UpdateMemberRequest(seed.MemberOfBoth.Id, "owner"), Ct)).IsSuccess);
 
-        var result = await new UpdateMember(Db, tenant).HandleAsync(new UpdateMemberRequest(seed.AlphaOwner.Id, "viewer"), Ct);
+        var result = await new UpdateMember(Db, tenant, Activity).HandleAsync(new UpdateMemberRequest(seed.AlphaOwner.Id, "viewer"), Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(WorkspaceRole.Viewer, result.Value.Role);
@@ -46,7 +46,7 @@ public sealed class MemberUseCaseTests(PostgresFixture postgres) : DatabaseTest(
         var seed = await TenancySeed.CreateAsync(Db);
         var tenant = Enter(seed.Alpha, seed.AlphaOwner);
 
-        var result = await new RemoveMember(Db, tenant).HandleAsync(new RemoveMemberRequest(seed.AlphaOwner.Id), Ct);
+        var result = await new RemoveMember(Db, tenant, Activity).HandleAsync(new RemoveMemberRequest(seed.AlphaOwner.Id), Ct);
 
         Assert.Equal("last_owner", Assert.IsType<ConflictError>(result.Error).Code);
         Assert.Equal(2, await Db.Memberships.CountAsync(Ct));
@@ -58,7 +58,7 @@ public sealed class MemberUseCaseTests(PostgresFixture postgres) : DatabaseTest(
         var seed = await TenancySeed.CreateAsync(Db);
         var tenant = Enter(seed.Alpha, seed.AlphaOwner);
 
-        var result = await new UpdateMember(Db, tenant).HandleAsync(new UpdateMemberRequest(seed.BetaOwner.Id, "viewer"), Ct);
+        var result = await new UpdateMember(Db, tenant, Activity).HandleAsync(new UpdateMemberRequest(seed.BetaOwner.Id, "viewer"), Ct);
 
         Assert.IsType<NotFoundError>(result.Error);
     }
@@ -82,7 +82,7 @@ public sealed class MemberUseCaseTests(PostgresFixture postgres) : DatabaseTest(
         var seed = await TenancySeed.CreateAsync(Db);
         var newcomer = await SeedActorAsync();
 
-        var result = await new AddMember(Db, TestActor.Agent(seed.AlphaOwner.Id), Enter(seed.Alpha, seed.AlphaOwner), _clock)
+        var result = await new AddMember(Db, TestActor.Agent(seed.AlphaOwner.Id), Enter(seed.Alpha, seed.AlphaOwner), _clock, Activity)
             .HandleAsync(new AddMemberRequest(newcomer.Id, "viewer", [WorkspaceScope.Read, WorkspaceScope.Write]), Ct);
 
         var field = Assert.Single(Assert.IsType<ValidationError>(result.Error).Errors);
@@ -111,7 +111,7 @@ public sealed class MemberUseCaseTests(PostgresFixture postgres) : DatabaseTest(
     }
 
     private Task<Result<MemberDto>> AddAsync(TenantContext tenant, Actor caller, Guid actorId, string role) =>
-        new AddMember(Db, TestActor.Agent(caller.Id), tenant, _clock).HandleAsync(new AddMemberRequest(actorId, role), Ct);
+        new AddMember(Db, TestActor.Agent(caller.Id), tenant, _clock, Activity).HandleAsync(new AddMemberRequest(actorId, role), Ct);
 
     private async Task<Actor> SeedActorAsync()
     {

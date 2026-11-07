@@ -1,8 +1,10 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Common.Validation;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,7 +17,7 @@ namespace Agcowork.Application.Collections;
 public sealed record UpdateCollectionRequest(Guid CollectionId, string? Name = null, string? Description = null);
 
 /// <summary>Renames or re-describes a collection. Requires <c>schema</c> (the collection's structure, like its properties).</summary>
-public sealed class UpdateCollection(IAgcoworkDbContext db, ITenantContext tenant) : IUseCase<UpdateCollectionRequest, CollectionDto>
+public sealed class UpdateCollection(IAgcoworkDbContext db, ITenantContext tenant, IActivityRecorder activity) : IUseCase<UpdateCollectionRequest, CollectionDto>
 {
     public async Task<Result<CollectionDto>> HandleAsync(UpdateCollectionRequest request, CancellationToken cancellationToken)
     {
@@ -58,6 +60,7 @@ public sealed class UpdateCollection(IAgcoworkDbContext db, ITenantContext tenan
             return CollectionConflicts.Archived;
         }
 
+        var diff = new ActivityDiff();
         if (request.Name is not null)
         {
             var name = request.Name.Trim();
@@ -66,12 +69,19 @@ public sealed class UpdateCollection(IAgcoworkDbContext db, ITenantContext tenan
                 return CollectionConflicts.Name.Error;
             }
 
+            diff.Change("name", collection.Name, name);
             collection.Rename(name);
         }
 
         if (request.Description is not null)
         {
+            diff.Change("description", collection.Description, request.Description.Trim());
             collection.Describe(request.Description);
+        }
+
+        if (diff.ToJson().Count > 0)
+        {
+            activity.Record(ActivityTypes.CollectionUpdated, ActivityTargets.Collection, collection.Id, collection.SpaceId, collection.Id, diff.ToJson());
         }
 
         if (await CollectionSave.SaveAsync(db, collection.Id, null, cancellationToken, CollectionConflicts.Name).ConfigureAwait(false) is { } conflict)

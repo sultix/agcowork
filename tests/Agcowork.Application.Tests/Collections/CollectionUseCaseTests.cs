@@ -131,7 +131,7 @@ public sealed class CollectionUseCaseTests(PostgresFixture postgres) : SchemaTes
         var seed = await TenancySeed.CreateAsync(Db);
         var tenant = Enter(seed.Alpha, seed.AlphaOwner);
 
-        var result = await new CreateCollection(Db, TestActor.Agent(seed.AlphaOwner.Id), tenant, Clock, [])
+        var result = await new CreateCollection(Db, TestActor.Agent(seed.AlphaOwner.Id), tenant, Clock, [], Activity)
             .HandleAsync(new CreateCollectionRequest(null, "X", " "), Ct);
 
         var error = Invalid(result);
@@ -173,7 +173,7 @@ public sealed class CollectionUseCaseTests(PostgresFixture postgres) : SchemaTes
         var seed = await TenancySeed.CreateAsync(Db);
         var tenant = Enter(seed.Alpha, seed.AlphaOwner);
         var space = await CreateSpaceAsync(tenant, seed.AlphaOwner);
-        Assert.True((await new ArchiveSpace(Db, tenant, Clock).HandleAsync(new ArchiveSpaceRequest(space.Id), Ct)).IsSuccess);
+        Assert.True((await new ArchiveSpace(Db, tenant, Clock, Activity).HandleAsync(new ArchiveSpaceRequest(space.Id), Ct)).IsSuccess);
 
         var result = await TryCreateCollectionAsync(tenant, seed.AlphaOwner, space.Id, "X");
 
@@ -298,7 +298,7 @@ public sealed class CollectionUseCaseTests(PostgresFixture postgres) : SchemaTes
         await CreateCollectionAsync(tenant, seed.AlphaOwner, produkt.Id, "Analysen");
         var archived = await CreateCollectionAsync(tenant, seed.AlphaOwner, produkt.Id, "Alt");
         await CreateCollectionAsync(tenant, seed.AlphaOwner, technik.Id, "Komponenten");
-        Assert.True((await new ArchiveCollection(Db, tenant, Clock).HandleAsync(new ArchiveCollectionRequest(archived.Id), Ct)).IsSuccess);
+        Assert.True((await new ArchiveCollection(Db, tenant, Clock, Activity).HandleAsync(new ArchiveCollectionRequest(archived.Id), Ct)).IsSuccess);
 
         var list = await new ListCollections(Db, tenant).HandleAsync(new ListCollectionsRequest(produkt.Id), Ct);
         var all = await new ListCollections(Db, tenant).HandleAsync(new ListCollectionsRequest(IncludeArchived: true), Ct);
@@ -317,9 +317,9 @@ public sealed class CollectionUseCaseTests(PostgresFixture postgres) : SchemaTes
         var space = await CreateSpaceAsync(owner, seed.AlphaOwner);
         var collection = await CreateCollectionAsync(owner, seed.AlphaOwner, space.Id, "Aufgaben");
 
-        var editor = await new UpdateCollection(Db, Enter(seed.Alpha, seed.MemberOfBoth)).HandleAsync(new UpdateCollectionRequest(collection.Id, "Tasks"), Ct);
-        var renamed = await new UpdateCollection(Db, Enter(seed.Alpha, seed.AlphaOwner)).HandleAsync(new UpdateCollectionRequest(collection.Id, " Tasks ", "New description."), Ct);
-        var clear = await new UpdateCollection(Db, owner).HandleAsync(new UpdateCollectionRequest(collection.Id, Description: ""), Ct);
+        var editor = await new UpdateCollection(Db, Enter(seed.Alpha, seed.MemberOfBoth), Activity).HandleAsync(new UpdateCollectionRequest(collection.Id, "Tasks"), Ct);
+        var renamed = await new UpdateCollection(Db, Enter(seed.Alpha, seed.AlphaOwner), Activity).HandleAsync(new UpdateCollectionRequest(collection.Id, " Tasks ", "New description."), Ct);
+        var clear = await new UpdateCollection(Db, owner, Activity).HandleAsync(new UpdateCollectionRequest(collection.Id, Description: ""), Ct);
 
         Assert.Equal("requires schema", Assert.IsType<ForbiddenError>(editor.Error).Message);
         Assert.Equal("Tasks", renamed.Value.Name);
@@ -343,7 +343,7 @@ public sealed class CollectionUseCaseTests(PostgresFixture postgres) : SchemaTes
         Assert.False(result.Value.JsonSchema["additionalProperties"]!.GetValue<bool>());
         Assert.Equal("high", result.Value.Example["priority"]!.GetValue<string>());
         Assert.Equal("Bug", Assert.Single(result.Value.Templates).Name);
-        Assert.Null(result.Value.Statistics.RecordCount);
+        Assert.Equal(0, result.Value.Statistics.RecordCount);
     }
 
     [Fact]

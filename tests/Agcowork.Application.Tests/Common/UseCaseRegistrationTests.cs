@@ -1,8 +1,10 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Collections;
 using Agcowork.Application.Collections.Templates;
 using Agcowork.Application.Identity.Actors;
 using Agcowork.Application.Identity.ApiKeys;
 using Agcowork.Application.Identity.Authentication;
+using Agcowork.Application.Records;
 using Agcowork.Application.Schema;
 using Agcowork.Application.Spaces;
 using Agcowork.Application.Tenancy;
@@ -61,8 +63,21 @@ public sealed class UseCaseRegistrationTests
             Assert.Equal(ServiceLifetime.Scoped, Assert.Single(services, d => d.ServiceType == type).Lifetime);
         }
 
-        var hook = Assert.Single(services, d => d.ServiceType == typeof(ISchemaChangedHook));
-        Assert.Equal((typeof(TemplatePresetSchemaHook), ServiceLifetime.Scoped), (hook.ImplementationType, hook.Lifetime));
+        var hooks = services.Where(d => d.ServiceType == typeof(ISchemaChangedHook)).ToList();
+        Assert.Equal([typeof(TemplatePresetSchemaHook), typeof(RecordValuesSchemaHook)], hooks.Select(h => h.ImplementationType));
+        Assert.All(hooks, h => Assert.Equal(ServiceLifetime.Scoped, h.Lifetime));
+        Assert.Equal(
+            "Agcowork.Application.Schema.RecordRelationTargetChecker",
+            Assert.Single(services, d => d.ServiceType == typeof(IRelationTargetChecker)).ImplementationType?.FullName);
+    }
+
+    [Fact]
+    public void AddApplication_RegistersActivityRecorderScoped()
+    {
+        var services = new ServiceCollection().AddApplication();
+
+        var recorder = Assert.Single(services, d => d.ServiceType == typeof(IActivityRecorder));
+        Assert.Equal((typeof(ActivityRecorder), ServiceLifetime.Scoped), (recorder.ImplementationType, recorder.Lifetime));
     }
 
     [Fact]

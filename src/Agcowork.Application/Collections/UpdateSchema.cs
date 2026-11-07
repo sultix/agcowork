@@ -1,10 +1,12 @@
 using System.Text.Json;
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Common.Validation;
 using Agcowork.Application.Schema;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Collections.Schema;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
@@ -62,9 +64,10 @@ public sealed record PropertyChangeInput(
 /// Changes the schema of a collection (additive changes preferred) and increments its version. Requires
 /// <c>schema</c>. Keys are immutable; types change only along text ↔ markdown and select → multi_select;
 /// changes that lose values need <c>confirmRemoval: true</c>. A request without an actual change keeps the version.
-/// Every <see cref="ISchemaChangedHook"/> runs before the save (template presets, later records and views).
+/// Every <see cref="ISchemaChangedHook"/> runs before the save (template presets, record values, later views), inside one
+/// transaction with the save and the activity event <c>collection.schema_changed</c>.
 /// </summary>
-public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, IEnumerable<ISchemaChangedHook> hooks)
+public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, IEnumerable<ISchemaChangedHook> hooks, IActivityRecorder activity)
     : IUseCase<UpdateSchemaRequest, CollectionSchemaDto>
 {
     public async Task<Result<CollectionSchemaDto>> HandleAsync(UpdateSchemaRequest request, CancellationToken cancellationToken)
@@ -104,6 +107,10 @@ public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, I
             return errors.ToError();
         }
 
+        // Exclusive collection lock first (order: collection → record): record writes wait until the new schema and the
+        // cleaned values are committed, and a concurrent schema change waits and then sees this one's version.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        await db.LockCollectionAsync(request.CollectionId, cancellationToken).ConfigureAwait(false);
         var collection = await db.Collections.SingleOrDefaultAsync(c => c.Id == request.CollectionId, cancellationToken).ConfigureAwait(false);
         if (collection is null)
         {
@@ -161,18 +168,34 @@ public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, I
             return CollectionSchemaDto.From(collection);
         }
 
+        var versionBefore = collection.SchemaVersion;
         collection.ReplaceSchema(next);
         var change = SchemaChange.Between(current, collection.Schema);
+
+        // Hooks may update other rows directly (record values); they commit together with the schema or not at all.
         foreach (var hook in hooks)
         {
             await hook.OnSchemaChangedAsync(collection, change, cancellationToken).ConfigureAwait(false);
         }
+
+        var diff = new ActivityDiff()
+            .Change("schemaVersion", versionBefore, collection.SchemaVersion)
+            .Set("added", ActivityDiff.Strings(added.Select(p => p.Key)))
+            .Set("changed", ActivityDiff.Strings(changed.Keys.Order(StringComparer.Ordinal)))
+            .Set("removed", ActivityDiff.Strings(removed.Order(StringComparer.Ordinal)));
+        foreach (var (key, value) in change.Effects)
+        {
+            diff.Set(key, value);
+        }
+
+        activity.Record(ActivityTypes.CollectionSchemaChanged, ActivityTargets.Collection, collection.Id, collection.SpaceId, collection.Id, diff.ToJson());
 
         if (await CollectionSave.SaveAsync(db, collection.Id, "expectedSchemaVersion", cancellationToken).ConfigureAwait(false) is { } conflict)
         {
             return conflict;
         }
 
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return CollectionSchemaDto.From(collection);
     }
 

@@ -28,7 +28,7 @@ public sealed class UpdateSchemaTests(PostgresFixture postgres) : SchemaTestBase
     private Task<Result<CollectionSchemaDto>> UpdateAsync(TenantContext tenant, UpdateSchemaRequest request, params ISchemaChangedHook[] extraHooks)
     {
         Db.ChangeTracker.Clear();
-        return new UpdateSchema(Db, tenant, [new TemplatePresetSchemaHook(Db), .. extraHooks]).HandleAsync(request, Ct);
+        return new UpdateSchema(Db, tenant, [new TemplatePresetSchemaHook(Db), .. extraHooks], Activity).HandleAsync(request, Ct);
     }
 
     private async Task<Guid> CreateTemplateAsync(TenancySeed seed, TenantContext tenant, Guid collectionId, string preset)
@@ -242,15 +242,16 @@ public sealed class UpdateSchemaTests(PostgresFixture postgres) : SchemaTestBase
     {
         var (_, tenant, collection) = await ArrangeAsync();
         Db.ChangeTracker.Clear();
-        var racing = new RacingDbContext(Db, RacingDbContext.BumpSchemaVersion(Db, collection.Id));
+        var racing = new RacingDbContext(Db, RacingDbContext.BumpSchemaVersionInTransaction(Db, collection.Id));
 
-        var result = await new UpdateSchema(racing, tenant, []).HandleAsync(new UpdateSchemaRequest(collection.Id, Add: [new("due", "Due", "date")]), Ct);
+        var result = await new UpdateSchema(racing, tenant, [], Activity).HandleAsync(new UpdateSchemaRequest(collection.Id, Add: [new("due", "Due", "date")]), Ct);
 
         var error = Assert.IsType<ConflictError>(result.Error);
         Assert.Equal(("schema_version_conflict", "expectedSchemaVersion"), (error.Code, error.Field));
         var stored = await ReloadAsync(collection.Id);
         Assert.Null(stored.Schema.Find("due"));
-        Assert.Equal(2, stored.SchemaVersion);
+        // The bump ran in the rolled-back transaction: nothing of it remains either.
+        Assert.Equal(1, stored.SchemaVersion);
     }
 
     [Fact]
@@ -260,7 +261,7 @@ public sealed class UpdateSchemaTests(PostgresFixture postgres) : SchemaTestBase
         Db.ChangeTracker.Clear();
         var racing = new RacingDbContext(Db, RacingDbContext.BumpSchemaVersion(Db, collection.Id));
 
-        var result = await new UpdateCollection(racing, tenant).HandleAsync(new UpdateCollectionRequest(collection.Id, "Tasks"), Ct);
+        var result = await new UpdateCollection(racing, tenant, Activity).HandleAsync(new UpdateCollectionRequest(collection.Id, "Tasks"), Ct);
 
         Assert.Equal("schema_version_conflict", Assert.IsType<ConflictError>(result.Error).Code);
         Assert.Equal("Aufgaben", (await ReloadAsync(collection.Id)).Name);
@@ -273,7 +274,7 @@ public sealed class UpdateSchemaTests(PostgresFixture postgres) : SchemaTestBase
         Db.ChangeTracker.Clear();
         var racing = new RacingDbContext(Db, RacingDbContext.BumpSchemaVersion(Db, collection.Id));
 
-        var result = await new ArchiveCollection(racing, tenant, Clock).HandleAsync(new ArchiveCollectionRequest(collection.Id), Ct);
+        var result = await new ArchiveCollection(racing, tenant, Clock, Activity).HandleAsync(new ArchiveCollectionRequest(collection.Id), Ct);
 
         Assert.Equal("schema_version_conflict", Assert.IsType<ConflictError>(result.Error).Code);
         Assert.Null((await ReloadAsync(collection.Id)).ArchivedAt);
@@ -427,7 +428,7 @@ public sealed class UpdateSchemaTests(PostgresFixture postgres) : SchemaTestBase
         var (_, tenant, collection) = await ArrangeAsync();
 
         var empty = await UpdateAsync(tenant, new UpdateSchemaRequest(collection.Id));
-        Assert.True((await new ArchiveCollection(Db, tenant, Clock).HandleAsync(new ArchiveCollectionRequest(collection.Id), Ct)).IsSuccess);
+        Assert.True((await new ArchiveCollection(Db, tenant, Clock, Activity).HandleAsync(new ArchiveCollectionRequest(collection.Id), Ct)).IsSuccess);
         var archived = await UpdateAsync(tenant, new UpdateSchemaRequest(collection.Id, Add: [new("due", "Due", "date")]));
 
         Assert.Equal(ErrorCodes.Required, Field(Invalid(empty), "add").Code);

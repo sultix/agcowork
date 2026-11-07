@@ -74,6 +74,13 @@ public sealed class PropertyValueValidator(IRelationTargetChecker relationTarget
                 continue;
             }
 
+            // Computed values are never written, not even cleared with null.
+            if (property.IsComputed)
+            {
+                PropertyTypeRegistry.Get(property.Type).Check(property, value, field, errors, references);
+                continue;
+            }
+
             if (value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             {
                 if (property.Required)

@@ -45,6 +45,14 @@ public static class ProblemDetailsMapping
             problem.Extensions[ErrorsExtension] = fields.Select(ProblemFieldError.From).ToList();
         }
 
+        if (error is ConflictError { Details: { } details })
+        {
+            foreach (var (key, value) in details)
+            {
+                problem.Extensions.TryAdd(key, value);
+            }
+        }
+
         return problem;
     }
 

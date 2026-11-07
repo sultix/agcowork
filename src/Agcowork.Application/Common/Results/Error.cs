@@ -39,6 +39,8 @@ public sealed record UnauthorizedError(string Reason = "Authentication required.
 /// <summary>
 /// Request is valid but clashes with current state (duplicate, invariant). <see cref="Error.Code"/>
 /// is specific (e.g. <c>email_taken</c>); <paramref name="Field"/> names the input that caused it, if any.
+/// <paramref name="Details"/> are extra top-level members of the response (camelCase names, JSON-serializable values) that
+/// help the caller resolve the conflict, e.g. <c>currentRevision</c> of <c>revision_mismatch</c>.
 /// </summary>
-public sealed record ConflictError(string Code, string Message, string? Field = null)
+public sealed record ConflictError(string Code, string Message, string? Field = null, IReadOnlyDictionary<string, object?>? Details = null)
     : Error(Code, Message);

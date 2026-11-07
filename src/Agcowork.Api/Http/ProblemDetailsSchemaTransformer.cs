@@ -31,6 +31,17 @@ internal sealed class ProblemDetailsSchemaTransformer : IOpenApiSchemaTransforme
             Type = JsonSchemaType.String,
             Description = "W3C trace id of the request; quote it when reporting a problem.",
         };
+        schema.Properties["currentRevision"] = new OpenApiSchema
+        {
+            Type = JsonSchemaType.Integer,
+            Description = "Only for 409 revision_mismatch: the record's current revision. Retry with it as expectedRevision.",
+        };
+        schema.Properties["changedKeys"] = new OpenApiSchema
+        {
+            Type = JsonSchemaType.Array | JsonSchemaType.Null,
+            Items = new OpenApiSchema { Type = JsonSchemaType.String },
+            Description = "Only for 409 revision_mismatch: what changed since expectedRevision ('title', property keys, 'body'); null when that revision does not exist.",
+        };
         schema.Properties[ProblemDetailsMapping.ErrorsExtension] = new OpenApiSchema
         {
             Type = JsonSchemaType.Array,

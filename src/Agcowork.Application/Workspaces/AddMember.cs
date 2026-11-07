@@ -1,9 +1,11 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Common.Security;
 using Agcowork.Application.Common.Validation;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +19,7 @@ public sealed record AddMemberRequest(Guid? ActorId, string? Role, IReadOnlyList
 /// <summary>
 /// Adds an actor to the current workspace. Requires <c>admin</c>; only owners can add owners.
 /// </summary>
-public sealed class AddMember(IAgcoworkDbContext db, ICurrentActor currentActor, ITenantContext tenant, TimeProvider timeProvider)
+public sealed class AddMember(IAgcoworkDbContext db, ICurrentActor currentActor, ITenantContext tenant, TimeProvider timeProvider, IActivityRecorder activity)
     : IUseCase<AddMemberRequest, MemberDto>
 {
     public async Task<Result<MemberDto>> HandleAsync(AddMemberRequest request, CancellationToken cancellationToken)
@@ -72,6 +74,7 @@ public sealed class AddMember(IAgcoworkDbContext db, ICurrentActor currentActor,
 
         var membership = Membership.Create(tenant.WorkspaceId, actorId, role!.Value, request.Scopes, currentActor.Id, timeProvider);
         db.Memberships.Add(membership);
+        activity.Record(ActivityTypes.MemberAdded, ActivityTargets.Member, actorId, diff: MemberActivity.Added(membership));
         if (await db.SaveChangesOrConflictAsync(cancellationToken, WorkspaceConflicts.Member).ConfigureAwait(false) is { } conflict)
         {
             return conflict;

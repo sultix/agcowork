@@ -17,6 +17,8 @@ public abstract class SchemaTestBase(PostgresFixture postgres) : DatabaseTest(po
 {
     protected FakeTimeProvider Clock { get; } = new(TenancySeed.Now);
 
+    protected override TimeProvider ActivityClock => Clock;
+
     internal TenantContext Enter(Workspace workspace, Actor actor, params string[] keyScopes)
     {
         var tenant = TenancySeed.TenantFor(Db, workspace, actor, keyScopes.Length == 0 ? null : keyScopes.ToHashSet(StringComparer.Ordinal));
@@ -35,7 +37,7 @@ public abstract class SchemaTestBase(PostgresFixture postgres) : DatabaseTest(po
 
     internal async Task<SpaceDto> CreateSpaceAsync(TenantContext tenant, Actor actor, string name = "Produkt")
     {
-        var result = await new CreateSpace(Db, TestActor.Agent(actor.Id), tenant, Clock).HandleAsync(new CreateSpaceRequest(name), Ct);
+        var result = await new CreateSpace(Db, TestActor.Agent(actor.Id), tenant, Clock, Activity).HandleAsync(new CreateSpaceRequest(name), Ct);
         Assert.True(result.IsSuccess, result.Error?.ToString());
         return result.Value;
     }
@@ -48,7 +50,7 @@ public abstract class SchemaTestBase(PostgresFixture postgres) : DatabaseTest(po
         IReadOnlyList<PropertyDefinitionInput>? schema = null,
         string? description = "Work items of the team. Add one per task.",
         params ICollectionCreatedHook[] hooks) =>
-        new CreateCollection(Db, TestActor.Agent(actor.Id), tenant, Clock, hooks).HandleAsync(new CreateCollectionRequest(spaceId, name, description, schema), Ct);
+        new CreateCollection(Db, TestActor.Agent(actor.Id), tenant, Clock, hooks, Activity).HandleAsync(new CreateCollectionRequest(spaceId, name, description, schema), Ct);
 
     internal async Task<CollectionDto> CreateCollectionAsync(TenantContext tenant, Actor actor, Guid spaceId, string name, params PropertyDefinitionInput[] schema)
     {

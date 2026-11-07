@@ -24,6 +24,9 @@ public sealed class FieldErrors
     public void Add(string field, string code, string message, IReadOnlyList<string>? allowed = null) =>
         _errors.Add(new FieldError(field, code, message, allowed));
 
+    /// <summary>Adds errors found elsewhere, e.g. by <c>PropertyValueValidator</c>.</summary>
+    public void AddRange(IEnumerable<FieldError> errors) => _errors.AddRange(errors);
+
     /// <summary>Adds <c>required</c> when the value is null or whitespace. Returns true when a value is present.</summary>
     public bool Required(string field, [NotNullWhen(true)] string? value)
     {

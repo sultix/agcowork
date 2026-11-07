@@ -2,9 +2,11 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Collections;
 using Agcowork.Domain.Common;
 using Agcowork.Domain.Identity;
+using Agcowork.Domain.Records;
 using Agcowork.Domain.Spaces;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +37,14 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
 
     public DbSet<Template> Templates => Set<Template>();
 
+    public DbSet<Record> Records => Set<Record>();
+
+    public DbSet<Revision> Revisions => Set<Revision>();
+
+    public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
+
+    public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
+
     public DbSet<Actor> Actors => Set<Actor>();
 
     public DbSet<LocalLogin> LocalLogins => Set<LocalLogin>();
@@ -57,6 +67,34 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
         return Database.ExecuteSqlAsync($"SELECT 1 FROM workspaces WHERE id = {workspaceId} FOR UPDATE", cancellationToken);
     }
 
+    public Task LockRecordAsync(Guid recordId, CancellationToken cancellationToken)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("LockRecordAsync requires an open transaction; the lock is released at commit.");
+        }
+
+        // Raw SQL bypasses the query filter, so the tenant condition is spelled out.
+        return Database.ExecuteSqlAsync($"SELECT 1 FROM records WHERE id = {recordId} AND workspace_id = {TenantWorkspaceId} FOR UPDATE", cancellationToken);
+    }
+
+    public Task LockCollectionAsync(Guid collectionId, CancellationToken cancellationToken) => LockCollection(collectionId, shared: false, cancellationToken);
+
+    public Task LockCollectionSharedAsync(Guid collectionId, CancellationToken cancellationToken) => LockCollection(collectionId, shared: true, cancellationToken);
+
+    private Task<int> LockCollection(Guid collectionId, bool shared, CancellationToken cancellationToken)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Collection locks require an open transaction; the lock is released at commit.");
+        }
+
+        // Raw SQL bypasses the query filter, so the tenant condition is spelled out.
+        return shared
+            ? Database.ExecuteSqlAsync($"SELECT 1 FROM collections WHERE id = {collectionId} AND workspace_id = {TenantWorkspaceId} FOR SHARE", cancellationToken)
+            : Database.ExecuteSqlAsync($"SELECT 1 FROM collections WHERE id = {collectionId} AND workspace_id = {TenantWorkspaceId} FOR UPDATE", cancellationToken);
+    }
+
     /// <summary>Translates unique violations into <see cref="UniqueConstraintViolationException"/> (see <see cref="UniqueConflict"/>).</summary>
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
@@ -76,6 +114,8 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // GIN indexes over (workspace_id, properties): btree_gin provides the GIN operator class for uuid (trusted extension).
+        modelBuilder.HasPostgresExtension("btree_gin");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AgcoworkDbContext).Assembly);
 
         // Convention: every tenant entity is filtered, without opt-in per configuration.

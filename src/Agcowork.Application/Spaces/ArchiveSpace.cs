@@ -1,7 +1,9 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +15,7 @@ public sealed record ArchiveSpaceRequest(Guid SpaceId);
 /// Archives a space: it stays readable, but cannot be changed and gets no new collections. Its collections
 /// are left as they are. Requires <c>admin</c>. There is no un-archive yet.
 /// </summary>
-public sealed class ArchiveSpace(IAgcoworkDbContext db, ITenantContext tenant, TimeProvider timeProvider) : IUseCase<ArchiveSpaceRequest, SpaceDto>
+public sealed class ArchiveSpace(IAgcoworkDbContext db, ITenantContext tenant, TimeProvider timeProvider, IActivityRecorder activity) : IUseCase<ArchiveSpaceRequest, SpaceDto>
 {
     public async Task<Result<SpaceDto>> HandleAsync(ArchiveSpaceRequest request, CancellationToken cancellationToken)
     {
@@ -41,6 +43,7 @@ public sealed class ArchiveSpace(IAgcoworkDbContext db, ITenantContext tenant, T
         }
 
         space.Archive(timeProvider);
+        activity.Record(ActivityTypes.SpaceArchived, ActivityTargets.Space, space.Id, space.Id);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return SpaceDto.From(space);
     }

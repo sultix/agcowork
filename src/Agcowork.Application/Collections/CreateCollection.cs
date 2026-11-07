@@ -1,3 +1,4 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
@@ -6,6 +7,7 @@ using Agcowork.Application.Common.Validation;
 using Agcowork.Application.Schema;
 using Agcowork.Application.Spaces;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Collections;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +29,8 @@ public sealed class CreateCollection(
     ICurrentActor currentActor,
     ITenantContext tenant,
     TimeProvider timeProvider,
-    IEnumerable<ICollectionCreatedHook> hooks)
+    IEnumerable<ICollectionCreatedHook> hooks,
+    IActivityRecorder activity)
     : IUseCase<CreateCollectionRequest, CollectionDto>
 {
     public async Task<Result<CollectionDto>> HandleAsync(CreateCollectionRequest request, CancellationToken cancellationToken)
@@ -88,6 +91,8 @@ public sealed class CreateCollection(
         {
             await hook.OnCollectionCreatedAsync(collection, cancellationToken).ConfigureAwait(false);
         }
+
+        activity.Record(ActivityTypes.CollectionCreated, ActivityTargets.Collection, collection.Id, collection.SpaceId, collection.Id, new ActivityDiff().Set("name", collection.Name).ToJson());
 
         if (await db.SaveChangesOrConflictAsync(cancellationToken, CollectionConflicts.Name).ConfigureAwait(false) is { } conflict)
         {

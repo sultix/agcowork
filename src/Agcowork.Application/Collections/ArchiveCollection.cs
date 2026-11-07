@@ -1,7 +1,9 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +12,7 @@ namespace Agcowork.Application.Collections;
 public sealed record ArchiveCollectionRequest(Guid CollectionId);
 
 /// <summary>Archives a collection: readable, no longer changeable, hidden from lists by default. Requires <c>schema</c>.</summary>
-public sealed class ArchiveCollection(IAgcoworkDbContext db, ITenantContext tenant, TimeProvider timeProvider)
+public sealed class ArchiveCollection(IAgcoworkDbContext db, ITenantContext tenant, TimeProvider timeProvider, IActivityRecorder activity)
     : IUseCase<ArchiveCollectionRequest, CollectionDto>
 {
     public async Task<Result<CollectionDto>> HandleAsync(ArchiveCollectionRequest request, CancellationToken cancellationToken)
@@ -39,6 +41,7 @@ public sealed class ArchiveCollection(IAgcoworkDbContext db, ITenantContext tena
         }
 
         collection.Archive(timeProvider);
+        activity.Record(ActivityTypes.CollectionArchived, ActivityTargets.Collection, collection.Id, collection.SpaceId, collection.Id);
         if (await CollectionSave.SaveAsync(db, collection.Id, null, cancellationToken).ConfigureAwait(false) is { } conflict)
         {
             return conflict;

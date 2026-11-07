@@ -500,10 +500,229 @@ export interface paths {
         patch: operations["UpdateTemplate"];
         trace?: never;
     };
+    "/api/v1/w/{workspaceSlug}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List records
+         * @description Records of a collection (?collectionId=) or the free pages of a space (?spaceId=), exactly one of both, oldest first, without bodies. Archived records only with includeArchived=true. Paginated: 'limit' (1..200, default 50) and 'cursor' (the 'nextCursor' of the previous page; null on the last page). Filtering comes with POST /collections/{id}/query. Requires read. Unknown collection or space: 404.
+         */
+        get: operations["ListRecords"];
+        put?: never;
+        /**
+         * Create a record
+         * @description Creates a record in a collection ('collectionId') or a free page in a space ('spaceId'). 'title' is required (max. 500 characters). 'properties' holds values by key as described by GET /collections/{id}/describe (JSON Schema); omitted properties get their default; relation values must be ids of records of the target collection, actor values ids of members. 'body' is Markdown (max. 2 MiB). The collection's default template (or 'templateId') provides preset values and the body when none is sent; sent values win. 'parentRecordId' nests the record below another one. Send an 'Idempotency-Key' header (e.g. a UUID) to make retries safe: the same key by the same actor within 24 h returns the first record instead of creating another. The response has no body; read it with GET ?includeBody=true. Requires write. Invalid values: 400 with 'errors[]' on 'properties.<key>' (e.g. 'unknown_property' or 'not_in_options' with 'allowed'); archived collection or space: 409.
+         */
+        post: operations["CreateRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/records/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a record
+         * @description One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown body, includeHistory=n (0..100) the latest n revisions. format=markdown returns text/markdown: a YAML frontmatter block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the easiest form to read for language models. Requires read.
+         */
+        get: operations["GetRecord"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a record
+         * @description Partial update. 'properties' is a patch: only sent keys change, null removes a value (not for required properties). 'title' and 'body' replace the old values when sent; to add text without sending the whole body use POST …/append. Send 'expectedRevision' (the 'revision' you read) so concurrent changes are not overwritten: if the record moved on, 409 'revision_mismatch' carries 'currentRevision' and 'changedKeys' (title, property keys, body) changed since then; if your change does not touch them, retry with the current revision. Without 'expectedRevision' the last writer wins. 'reason' is stored with the revision. A change that changes nothing creates no revision. Requires write. Archived record: 409 'record_archived'.
+         */
+        patch: operations["UpdateRecord"];
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/append": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Append Markdown to a record
+         * @description Appends 'markdown' to the body without knowing it, e.g. log entries or findings. With 'section' (a heading text such as 'Log', case-insensitive, leading '#' optional) the text goes to the end of that section; a missing section is created as '## <section>' at the end. Without 'section' it goes to the end of the body. Concurrent appends never overwrite each other. Creates a revision 'appended'. The body may not exceed 2 MiB: 400 'too_long' on 'markdown'. Requires write.
+         */
+        post: operations["AppendToRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a record
+         * @description Soft delete: the record stays readable but is hidden from lists and read-only until restored. Records are never deleted. Optional 'reason'. Requires write. Already archived: 409 'record_archived'.
+         */
+        post: operations["ArchiveRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an archived record
+         * @description Makes an archived record writable and listed again. Optional 'reason'. Requires write. Not archived: 409 'record_not_archived'.
+         */
+        post: operations["RestoreRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the revisions of a record
+         * @description Revisions newest first, each with 'no', 'kind' (created, updated, appended, archived, restored), actor, time and reason. The content of a revision: GET …/revisions/{no}. Paginated with 'limit' and 'cursor'. Requires read.
+         */
+        get: operations["GetRecordHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/revisions/{no}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one revision of a record
+         * @description Title, properties and body of the record as they were after revision 'no'. Requires read.
+         */
+        get: operations["GetRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What happened in the workspace
+         * @description Activity events, newest first: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). Filters: spaceId, collectionId, actorId, since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, member.added, member.updated, member.removed). Paginated with 'limit' (1..200) and 'cursor'. Requires read.
+         */
+        get: operations["ListActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description One entry of the activity feed. */
+        ActivityEventDto: {
+            /**
+             * Format: int64
+             * @description Position in the workspace's log (monotonic); the feed is ordered by it, newest first.
+             */
+            seq: number | string;
+            /**
+             * Format: uuid
+             * @description Event id.
+             */
+            id: string;
+            /**
+             * @description What happened: record.created, record.updated, record.appended, record.archived, record.restored, space.created,
+             *     space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived,
+             *     member.added, member.updated, member.removed.
+             */
+            type: string;
+            /**
+             * Format: uuid
+             * @description Who did it.
+             */
+            actorId: string;
+            /** @description record, space, collection or member. */
+            targetType: string;
+            /**
+             * Format: uuid
+             * @description Id of the target; for members the actor id.
+             */
+            targetId: string;
+            /**
+             * Format: uuid
+             * @description Space of the target, if any.
+             */
+            spaceId: null | string;
+            /**
+             * Format: uuid
+             * @description Collection of the target, if any.
+             */
+            collectionId: null | string;
+            /**
+             * @description What changed. Changed fields as `{ "old": …, "new": … }`; records: `title`, `properties.&lt;key&gt;`, and
+             *     `bodyChanged`/`bodyDelta` (`{ added, removed }` characters) instead of the body.
+             */
+            diff: components["schemas"]["JsonObject"];
+            /**
+             * Format: date-time
+             * @description When it happened (UTC).
+             */
+            at: string;
+        };
         /** @description Actor as seen by administrators and by the actor itself. */
         ActorDto: {
             /** Format: uuid */
@@ -552,6 +771,15 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        /** @description Body of `POST /records/{recordId}/append`. */
+        AppendToRecordBody: {
+            /** @description Markdown to append. */
+            markdown: null | string;
+            /** @description Heading to append under; created when missing. */
+            section?: null | string;
+            /** @description Why; stored with the revision. */
+            reason?: null | string;
+        };
         /** @description Everything an agent needs to work with a collection, in one response. */
         CollectionDescriptionDto: {
             /** @description The collection with its schema. */
@@ -564,7 +792,7 @@ export interface components {
             example: components["schemas"]["JsonObject"];
             /** @description Record templates, default first. */
             templates: components["schemas"]["TemplateDto"][];
-            /** @description Counts; filled once records exist. */
+            /** @description Counts. */
             statistics: components["schemas"]["CollectionStatisticsDto"];
         };
         /** @description A collection with its schema. */
@@ -631,9 +859,9 @@ export interface components {
         CollectionStatisticsDto: {
             /**
              * Format: int64
-             * @description Number of records; null until records exist (AP-007).
+             * @description Number of records that are not archived.
              */
-            recordCount: null | number | string;
+            recordCount: number | string;
         };
         CreateActorRequest: {
             /** @description `human` or `agent`. */
@@ -675,6 +903,35 @@ export interface components {
             key: string;
             /** @description Metadata of the new key. */
             apiKey: components["schemas"]["ApiKeyDto"];
+        };
+        /** @description Body of `POST /records`; the idempotency key comes as header. */
+        CreateRecordBody: {
+            /**
+             * Format: uuid
+             * @description Collection of the record; or SpaceId for a free page.
+             */
+            collectionId?: null | string;
+            /**
+             * Format: uuid
+             * @description Space of a free page; optional with a collection.
+             */
+            spaceId?: null | string;
+            /** @description Title, max. 500 characters. */
+            title?: null | string;
+            /** @description Property values by key. */
+            properties?: null | Record<string, never>;
+            /** @description Markdown body, max. 2 MiB. */
+            body?: null | string;
+            /**
+             * Format: uuid
+             * @description Template of the collection; default: the collection's default template.
+             */
+            templateId?: null | string;
+            /**
+             * Format: uuid
+             * @description Parent record for nesting.
+             */
+            parentRecordId?: null | string;
         };
         CreateSpaceRequest: {
             /** @description Display name, max. 200 characters, e.g. `Produkt`. */
@@ -755,6 +1012,27 @@ export interface components {
              */
             createdAt: string;
         };
+        /** @description One page of a list. Pass NextCursor as `cursor` to get the next page. */
+        PageOfActivityEventDto: {
+            /** @description The entries of this page. */
+            items: components["schemas"]["ActivityEventDto"][];
+            /** @description Opaque cursor of the next page; null on the last page. */
+            nextCursor: null | string;
+        };
+        /** @description One page of a list. Pass NextCursor as `cursor` to get the next page. */
+        PageOfRecordDto: {
+            /** @description The entries of this page. */
+            items: components["schemas"]["RecordDto"][];
+            /** @description Opaque cursor of the next page; null on the last page. */
+            nextCursor: null | string;
+        };
+        /** @description One page of a list. Pass NextCursor as `cursor` to get the next page. */
+        PageOfRevisionSummaryDto: {
+            /** @description The entries of this page. */
+            items: components["schemas"]["RevisionSummaryDto"][];
+            /** @description Opaque cursor of the next page; null on the last page. */
+            nextCursor: null | string;
+        };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -766,6 +1044,10 @@ export interface components {
             code?: string;
             /** @description W3C trace id of the request; quote it when reporting a problem. */
             traceId?: string;
+            /** @description Only for 409 revision_mismatch: the record's current revision. Retry with it as expectedRevision. */
+            currentRevision?: number;
+            /** @description Only for 409 revision_mismatch: what changed since expectedRevision ('title', property keys, 'body'); null when that revision does not exist. */
+            changedKeys?: null | string[];
             /** @description Present for 400 validation errors and for 409 conflicts caused by a specific field. One entry per invalid field. */
             errors?: {
                 /** @description camelCase path of the input, e.g. 'email' or 'instanceScopes[1]'. */
@@ -903,6 +1185,135 @@ export interface components {
          * @enum {unknown}
          */
         PropertyType: "text" | "markdown" | "number" | "checkbox" | "select" | "multi_select" | "status" | "date" | "datetime" | "url" | "email" | "relation" | "actor" | "json" | "created_at" | "updated_at" | "created_by" | "updated_by";
+        /** @description Optional body of archive and restore. */
+        ReasonBody: {
+            /** @description Why; stored with the revision. */
+            reason?: null | string;
+        };
+        /** @description A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoint (AP-009). */
+        RecordDto: {
+            /**
+             * Format: uuid
+             * @description Record id.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Space of the record.
+             */
+            spaceId: string;
+            /**
+             * Format: uuid
+             * @description Collection of the record; null for a free page of the space.
+             */
+            collectionId: null | string;
+            /**
+             * Format: uuid
+             * @description Parent page, if nested.
+             */
+            parentRecordId: null | string;
+            /** @description Title (the collection's `title` property). */
+            title: string;
+            /**
+             * @description Property values by key in schema order, as a JSON object; absent keys have no value. The title is not repeated here.
+             *     Computed properties of the schema (created_at, updated_at, created_by, updated_by) are filled from the record and read-only.
+             */
+            properties: Record<string, never>;
+            /** @description Markdown body; null unless requested (`includeBody=true`). */
+            body: null | string;
+            /**
+             * Format: int32
+             * @description Current revision number; send it as `expectedRevision` to avoid overwriting concurrent changes.
+             */
+            revision: number | string;
+            /**
+             * Format: uuid
+             * @description Actor that created the record.
+             */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @description Creation time (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description Actor of the last change.
+             */
+            updatedBy: string;
+            /**
+             * Format: date-time
+             * @description Time of the last change (UTC).
+             */
+            updatedAt: string;
+            /**
+             * Format: date-time
+             * @description Set when archived; archived records are read-only until restored.
+             */
+            archivedAt: null | string;
+            /** @description Latest revisions, newest first; only with `includeHistory`. */
+            history?: null | components["schemas"]["RevisionSummaryDto"][];
+        };
+        /** @description A full revision: the record's content after the change. */
+        RevisionDto: {
+            /**
+             * Format: uuid
+             * @description Record id.
+             */
+            recordId: string;
+            /**
+             * Format: int32
+             * @description Revision number, from 1.
+             */
+            no: number | string;
+            /** @description created, updated, appended, archived or restored. */
+            kind: components["schemas"]["RevisionKind"];
+            /** @description Title at this revision. */
+            title: string;
+            /** @description Property values at this revision. */
+            properties: Record<string, never>;
+            /** @description Markdown body at this revision. */
+            body: string;
+            /**
+             * Format: uuid
+             * @description Who made the change.
+             */
+            actorId: string;
+            /**
+             * Format: date-time
+             * @description When (UTC).
+             */
+            at: string;
+            /** @description Why, as given by the caller. */
+            reason: null | string;
+        };
+        /**
+         * @description What produced a Revision. Wire names are snake_case. Values are stable: add, never renumber.
+         * @enum {unknown}
+         */
+        RevisionKind: "created" | "updated" | "appended" | "archived" | "restored";
+        /** @description One revision without its content. */
+        RevisionSummaryDto: {
+            /**
+             * Format: int32
+             * @description Revision number, from 1.
+             */
+            no: number | string;
+            /** @description created, updated, appended, archived or restored. */
+            kind: components["schemas"]["RevisionKind"];
+            /**
+             * Format: uuid
+             * @description Who made the change.
+             */
+            actorId: string;
+            /**
+             * Format: date-time
+             * @description When (UTC).
+             */
+            at: string;
+            /** @description Why, as given by the caller. */
+            reason: null | string;
+        };
         /** @description A space of the workspace. */
         SpaceDto: {
             /**
@@ -990,6 +1401,22 @@ export interface components {
         UpdateMemberBody: {
             role: null | string;
             scopes: null | string[];
+        };
+        /** @description Body of `PATCH /records/{recordId}`; null leaves a field unchanged. */
+        UpdateRecordBody: {
+            /** @description New title. */
+            title?: null | string;
+            /** @description Patch of property values; null removes a value. */
+            properties?: null | Record<string, never>;
+            /** @description New Markdown body (replaces). */
+            body?: null | string;
+            /**
+             * Format: int32
+             * @description Apply only if the record is still at this revision.
+             */
+            expectedRevision?: null | number | string;
+            /** @description Why; stored with the revision. */
+            reason?: null | string;
         };
         /** @description Body of `PATCH /collections/{collectionId}/schema`. At least one of add, update, remove. */
         UpdateSchemaBody: {
@@ -3042,6 +3469,639 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListRecords: {
+        parameters: {
+            query?: {
+                collectionId?: string;
+                spaceId?: string;
+                includeArchived?: boolean;
+                limit?: number | string;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfRecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateRecord: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecordBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetRecord: {
+        parameters: {
+            query?: {
+                format?: string;
+                includeBody?: boolean;
+                includeHistory?: number | string;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordDto"];
+                    "text/markdown": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRecordBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AppendToRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppendToRecordBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ReasonBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RestoreRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ReasonBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetRecordHistory: {
+        parameters: {
+            query?: {
+                limit?: number | string;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfRevisionSummaryDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+                no: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListActivity: {
+        parameters: {
+            query?: {
+                spaceId?: string;
+                collectionId?: string;
+                actorId?: string;
+                since?: string;
+                types?: string[];
+                limit?: number | string;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfActivityEventDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

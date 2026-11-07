@@ -2614,10 +2614,1096 @@
           }
         }
       }
+    },
+    "/api/v1/w/{workspaceSlug}/records": {
+      "get": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "List records",
+        "description": "Records of a collection (?collectionId=) or the free pages of a space (?spaceId=), exactly one of both, oldest first, without bodies. Archived records only with includeArchived=true. Paginated: 'limit' (1..200, default 50) and 'cursor' (the 'nextCursor' of the previous page; null on the last page). Filtering comes with POST /collections/{id}/query. Requires read. Unknown collection or space: 404.",
+        "operationId": "ListRecords",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfRecordDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "Create a record",
+        "description": "Creates a record in a collection ('collectionId') or a free page in a space ('spaceId'). 'title' is required (max. 500 characters). 'properties' holds values by key as described by GET /collections/{id}/describe (JSON Schema); omitted properties get their default; relation values must be ids of records of the target collection, actor values ids of members. 'body' is Markdown (max. 2 MiB). The collection's default template (or 'templateId') provides preset values and the body when none is sent; sent values win. 'parentRecordId' nests the record below another one. Send an 'Idempotency-Key' header (e.g. a UUID) to make retries safe: the same key by the same actor within 24 h returns the first record instead of creating another. The response has no body; read it with GET ?includeBody=true. Requires write. Invalid values: 400 with 'errors[]' on 'properties.<key>' (e.g. 'unknown_property' or 'not_in_options' with 'allowed'); archived collection or space: 409.",
+        "operationId": "CreateRecord",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecordBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/records/{recordId}": {
+      "get": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "Get a record",
+        "description": "One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown body, includeHistory=n (0..100) the latest n revisions. format=markdown returns text/markdown: a YAML frontmatter block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the easiest form to read for language models. Requires read.",
+        "operationId": "GetRecord",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeBody",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeHistory",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDto"
+                }
+              },
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "Change a record",
+        "description": "Partial update. 'properties' is a patch: only sent keys change, null removes a value (not for required properties). 'title' and 'body' replace the old values when sent; to add text without sending the whole body use POST …/append. Send 'expectedRevision' (the 'revision' you read) so concurrent changes are not overwritten: if the record moved on, 409 'revision_mismatch' carries 'currentRevision' and 'changedKeys' (title, property keys, body) changed since then; if your change does not touch them, retry with the current revision. Without 'expectedRevision' the last writer wins. 'reason' is stored with the revision. A change that changes nothing creates no revision. Requires write. Archived record: 409 'record_archived'.",
+        "operationId": "UpdateRecord",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/append": {
+      "post": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "Append Markdown to a record",
+        "description": "Appends 'markdown' to the body without knowing it, e.g. log entries or findings. With 'section' (a heading text such as 'Log', case-insensitive, leading '#' optional) the text goes to the end of that section; a missing section is created as '## <section>' at the end. Without 'section' it goes to the end of the body. Concurrent appends never overwrite each other. Creates a revision 'appended'. The body may not exceed 2 MiB: 400 'too_long' on 'markdown'. Requires write.",
+        "operationId": "AppendToRecord",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendToRecordBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/archive": {
+      "post": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "Archive a record",
+        "description": "Soft delete: the record stays readable but is hidden from lists and read-only until restored. Records are never deleted. Optional 'reason'. Requires write. Already archived: 409 'record_archived'.",
+        "operationId": "ArchiveRecord",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReasonBody"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/restore": {
+      "post": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "Restore an archived record",
+        "description": "Makes an archived record writable and listed again. Optional 'reason'. Requires write. Not archived: 409 'record_not_archived'.",
+        "operationId": "RestoreRecord",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReasonBody"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/history": {
+      "get": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "List the revisions of a record",
+        "description": "Revisions newest first, each with 'no', 'kind' (created, updated, appended, archived, restored), actor, time and reason. The content of a revision: GET …/revisions/{no}. Paginated with 'limit' and 'cursor'. Requires read.",
+        "operationId": "GetRecordHistory",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfRevisionSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/revisions/{no}": {
+      "get": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "Get one revision of a record",
+        "description": "Title, properties and body of the record as they were after revision 'no'. Requires read.",
+        "operationId": "GetRevision",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/activity": {
+      "get": {
+        "tags": [
+          "Activity"
+        ],
+        "summary": "What happened in the workspace",
+        "description": "Activity events, newest first: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). Filters: spaceId, collectionId, actorId, since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, member.added, member.updated, member.removed). Paginated with 'limit' (1..200) and 'cursor'. Requires read.",
+        "operationId": "ListActivity",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "types",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfActivityEventDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActivityEventDto": {
+        "required": [
+          "seq",
+          "id",
+          "type",
+          "actorId",
+          "targetType",
+          "targetId",
+          "spaceId",
+          "collectionId",
+          "diff",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "seq": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Position in the workspace's log (monotonic); the feed is ordered by it, newest first.",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string",
+            "description": "Event id.",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "description": "What happened: record.created, record.updated, record.appended, record.archived, record.restored, space.created,\nspace.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived,\nmember.added, member.updated, member.removed."
+          },
+          "actorId": {
+            "type": "string",
+            "description": "Who did it.",
+            "format": "uuid"
+          },
+          "targetType": {
+            "type": "string",
+            "description": "record, space, collection or member."
+          },
+          "targetId": {
+            "type": "string",
+            "description": "Id of the target; for members the actor id.",
+            "format": "uuid"
+          },
+          "spaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Space of the target, if any.",
+            "format": "uuid"
+          },
+          "collectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Collection of the target, if any.",
+            "format": "uuid"
+          },
+          "diff": {
+            "description": "What changed. Changed fields as `{ \"old\": …, \"new\": … }`; records: `title`, `properties.&lt;key&gt;`, and\n`bodyChanged`/`bodyDelta` (`{ added, removed }` characters) instead of the body.",
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "at": {
+            "type": "string",
+            "description": "When it happened (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "One entry of the activity feed."
+      },
       "ActorDto": {
         "required": [
           "id",
@@ -2776,6 +3862,36 @@
         },
         "description": "Metadata of an API key. Never contains the secret or its hash."
       },
+      "AppendToRecordBody": {
+        "required": [
+          "markdown"
+        ],
+        "type": "object",
+        "properties": {
+          "markdown": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Markdown to append."
+          },
+          "section": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Heading to append under; created when missing."
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why; stored with the revision."
+          }
+        },
+        "description": "Body of `POST /records/{recordId}/append`."
+      },
       "CollectionDescriptionDto": {
         "required": [
           "collection",
@@ -2811,7 +3927,7 @@
             "description": "Record templates, default first."
           },
           "statistics": {
-            "description": "Counts; filled once records exist.",
+            "description": "Counts.",
             "$ref": "#/components/schemas/CollectionStatisticsDto"
           }
         },
@@ -2942,11 +4058,10 @@
           "recordCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
-              "null",
               "integer",
               "string"
             ],
-            "description": "Number of records; null until records exist (AP-007).",
+            "description": "Number of records that are not archived.",
             "format": "int64"
           }
         },
@@ -3098,6 +4213,65 @@
             "$ref": "#/components/schemas/ApiKeyDto"
           }
         }
+      },
+      "CreateRecordBody": {
+        "type": "object",
+        "properties": {
+          "collectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Collection of the record; or SpaceId for a free page.",
+            "format": "uuid"
+          },
+          "spaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Space of a free page; optional with a collection.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Title, max. 500 characters."
+          },
+          "properties": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Property values by key."
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Markdown body, max. 2 MiB."
+          },
+          "templateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Template of the collection; default: the collection's default template.",
+            "format": "uuid"
+          },
+          "parentRecordId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Parent record for nesting.",
+            "format": "uuid"
+          }
+        },
+        "description": "Body of `POST /records`; the idempotency key comes as header."
       },
       "CreateSpaceRequest": {
         "required": [
@@ -3346,6 +4520,78 @@
         },
         "description": "A member of the workspace."
       },
+      "PageOfActivityEventDto": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityEventDto"
+            },
+            "description": "The entries of this page."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Opaque cursor of the next page; null on the last page."
+          }
+        },
+        "description": "One page of a list. Pass NextCursor as `cursor` to get the next page."
+      },
+      "PageOfRecordDto": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordDto"
+            },
+            "description": "The entries of this page."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Opaque cursor of the next page; null on the last page."
+          }
+        },
+        "description": "One page of a list. Pass NextCursor as `cursor` to get the next page."
+      },
+      "PageOfRevisionSummaryDto": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RevisionSummaryDto"
+            },
+            "description": "The entries of this page."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Opaque cursor of the next page; null on the last page."
+          }
+        },
+        "description": "One page of a list. Pass NextCursor as `cursor` to get the next page."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -3389,6 +4635,20 @@
           "traceId": {
             "type": "string",
             "description": "W3C trace id of the request; quote it when reporting a problem."
+          },
+          "currentRevision": {
+            "type": "integer",
+            "description": "Only for 409 revision_mismatch: the record's current revision. Retry with it as expectedRevision."
+          },
+          "changedKeys": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Only for 409 revision_mismatch: what changed since expectedRevision ('title', property keys, 'body'); null when that revision does not exist."
           },
           "errors": {
             "type": "array",
@@ -3814,6 +5074,245 @@
         ],
         "description": "Type of a property (architecture §2, \"Property-Typen\"). Wire and storage names are snake_case,\ne.g. `multi_select`; `datetime` is written as one word. Values are stable: add, never renumber."
       },
+      "ReasonBody": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why; stored with the revision."
+          }
+        },
+        "description": "Optional body of archive and restore."
+      },
+      "RecordDto": {
+        "required": [
+          "id",
+          "spaceId",
+          "collectionId",
+          "parentRecordId",
+          "title",
+          "properties",
+          "body",
+          "revision",
+          "createdBy",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "archivedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Record id.",
+            "format": "uuid"
+          },
+          "spaceId": {
+            "type": "string",
+            "description": "Space of the record.",
+            "format": "uuid"
+          },
+          "collectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Collection of the record; null for a free page of the space.",
+            "format": "uuid"
+          },
+          "parentRecordId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Parent page, if nested.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title (the collection's `title` property)."
+          },
+          "properties": {
+            "type": "object",
+            "description": "Property values by key in schema order, as a JSON object; absent keys have no value. The title is not repeated here.\nComputed properties of the schema (created_at, updated_at, created_by, updated_by) are filled from the record and read-only."
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Markdown body; null unless requested (`includeBody=true`)."
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Current revision number; send it as `expectedRevision` to avoid overwriting concurrent changes.",
+            "format": "int32"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Actor that created the record.",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": "string",
+            "description": "Actor of the last change.",
+            "format": "uuid"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Time of the last change (UTC).",
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when archived; archived records are read-only until restored.",
+            "format": "date-time"
+          },
+          "history": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RevisionSummaryDto"
+            },
+            "description": "Latest revisions, newest first; only with `includeHistory`."
+          }
+        },
+        "description": "A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoint (AP-009)."
+      },
+      "RevisionDto": {
+        "required": [
+          "recordId",
+          "no",
+          "kind",
+          "title",
+          "properties",
+          "body",
+          "actorId",
+          "at",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string",
+            "description": "Record id.",
+            "format": "uuid"
+          },
+          "no": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Revision number, from 1.",
+            "format": "int32"
+          },
+          "kind": {
+            "description": "created, updated, appended, archived or restored.",
+            "$ref": "#/components/schemas/RevisionKind"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title at this revision."
+          },
+          "properties": {
+            "type": "object",
+            "description": "Property values at this revision."
+          },
+          "body": {
+            "type": "string",
+            "description": "Markdown body at this revision."
+          },
+          "actorId": {
+            "type": "string",
+            "description": "Who made the change.",
+            "format": "uuid"
+          },
+          "at": {
+            "type": "string",
+            "description": "When (UTC).",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why, as given by the caller."
+          }
+        },
+        "description": "A full revision: the record's content after the change."
+      },
+      "RevisionKind": {
+        "enum": [
+          "created",
+          "updated",
+          "appended",
+          "archived",
+          "restored"
+        ],
+        "description": "What produced a Revision. Wire names are snake_case. Values are stable: add, never renumber."
+      },
+      "RevisionSummaryDto": {
+        "required": [
+          "no",
+          "kind",
+          "actorId",
+          "at",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "no": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Revision number, from 1.",
+            "format": "int32"
+          },
+          "kind": {
+            "description": "created, updated, appended, archived or restored.",
+            "$ref": "#/components/schemas/RevisionKind"
+          },
+          "actorId": {
+            "type": "string",
+            "description": "Who made the change.",
+            "format": "uuid"
+          },
+          "at": {
+            "type": "string",
+            "description": "When (UTC).",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why, as given by the caller."
+          }
+        },
+        "description": "One revision without its content."
+      },
       "SpaceDto": {
         "required": [
           "id",
@@ -4031,6 +5530,50 @@
           }
         },
         "description": "Body of `PATCH /members/{actorId}`; the actor comes from the route."
+      },
+      "UpdateRecordBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New title."
+          },
+          "properties": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Patch of property values; null removes a value."
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New Markdown body (replaces)."
+          },
+          "expectedRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Apply only if the record is still at this revision.",
+            "format": "int32"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why; stored with the revision."
+          }
+        },
+        "description": "Body of `PATCH /records/{recordId}`; null leaves a field unchanged."
       },
       "UpdateSchemaBody": {
         "type": "object",
@@ -4287,6 +5830,12 @@
     },
     {
       "name": "Templates"
+    },
+    {
+      "name": "Records"
+    },
+    {
+      "name": "Activity"
     }
   ]
 }

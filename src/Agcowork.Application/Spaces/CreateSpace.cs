@@ -1,9 +1,11 @@
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Common.Security;
 using Agcowork.Application.Common.Validation;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Spaces;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +19,7 @@ namespace Agcowork.Application.Spaces;
 public sealed record CreateSpaceRequest(string? Name, string? Description = null, string? Icon = null, int? SortOrder = null);
 
 /// <summary>Creates a space in the current workspace. Requires <c>write</c>.</summary>
-public sealed class CreateSpace(IAgcoworkDbContext db, ICurrentActor currentActor, ITenantContext tenant, TimeProvider timeProvider)
+public sealed class CreateSpace(IAgcoworkDbContext db, ICurrentActor currentActor, ITenantContext tenant, TimeProvider timeProvider, IActivityRecorder activity)
     : IUseCase<CreateSpaceRequest, SpaceDto>
 {
     public async Task<Result<SpaceDto>> HandleAsync(CreateSpaceRequest request, CancellationToken cancellationToken)
@@ -48,6 +50,7 @@ public sealed class CreateSpace(IAgcoworkDbContext db, ICurrentActor currentActo
 
         var space = Space.Create(tenant.WorkspaceId, request.Name!, request.Description, request.Icon, sortOrder, currentActor.Id, timeProvider);
         db.Spaces.Add(space);
+        activity.Record(ActivityTypes.SpaceCreated, ActivityTargets.Space, space.Id, space.Id, diff: new ActivityDiff().Set("name", space.Name).ToJson());
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return SpaceDto.From(space);
     }

@@ -24,13 +24,27 @@ public interface IActorMembershipChecker
 }
 
 /// <summary>
-/// Placeholder until records exist (AP-007 replaces the registration): there are no records yet, so no
-/// reference can be valid. Rejecting is the safe default; accepting unchecked ids could point into other workspaces.
+/// Records of the target collection in the current workspace, via the tenant-filtered records. Archived records count:
+/// they still exist and can be restored, and existing references to them must stay writable.
 /// </summary>
-internal sealed class NoRecordsRelationTargetChecker : IRelationTargetChecker
+internal sealed class RecordRelationTargetChecker(IAgcoworkDbContext db) : IRelationTargetChecker
 {
-    public Task<IReadOnlySet<Guid>> FindExistingAsync(Guid targetCollectionId, IReadOnlyCollection<Guid> recordIds, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>());
+    public async Task<IReadOnlySet<Guid>> FindExistingAsync(Guid targetCollectionId, IReadOnlyCollection<Guid> recordIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(recordIds);
+        if (recordIds.Count == 0 || targetCollectionId == Guid.Empty)
+        {
+            return new HashSet<Guid>();
+        }
+
+        var ids = recordIds.Distinct().ToList();
+        var existing = await db.Records.AsNoTracking()
+            .Where(r => r.CollectionId == targetCollectionId && ids.Contains(r.Id))
+            .Select(r => r.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return existing.ToHashSet();
+    }
 }
 
 /// <summary>Members of the current workspace, via the tenant-filtered memberships.</summary>

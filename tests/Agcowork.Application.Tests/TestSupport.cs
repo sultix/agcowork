@@ -1,5 +1,8 @@
+using System.Text.Json.Nodes;
+using Agcowork.Application.Activity;
 using Agcowork.Application.Common.Security;
 using Agcowork.Application.Tenancy;
+using Agcowork.Domain.Activity;
 using Agcowork.Domain.Identity;
 using Agcowork.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -88,6 +91,12 @@ public abstract class DatabaseTest(PostgresFixture postgres) : IAsyncLifetime
 
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    /// <summary>Activity recorder for use cases under test: actor and workspace of <see cref="Tenant"/> at the time of the call.</summary>
+    internal IActivityRecorder Activity => new TestActivityRecorder(Db, Tenant, ActivityClock);
+
+    /// <summary>Clock of <see cref="Activity"/>; tests with a fake clock return it here.</summary>
+    protected virtual TimeProvider ActivityClock => TimeProvider.System;
+
     public async ValueTask InitializeAsync() => _db = await postgres.CreateDatabaseAsync(Tenant);
 
     public async ValueTask DisposeAsync()
@@ -147,4 +156,15 @@ internal sealed class TestActor : ICurrentActor
     public Guid? KeyWorkspaceRestriction { get; }
 
     public IReadOnlySet<string> KeyScopes { get; }
+}
+
+/// <summary>The production <see cref="ActivityRecorder"/>, with the caller taken from the current test tenant.</summary>
+internal sealed class TestActivityRecorder(AgcoworkDbContext db, TestTenantAccessor tenant, TimeProvider clock) : IActivityRecorder
+{
+    public ActivityEvent Record(string type, string targetType, Guid targetId, Guid? spaceId = null, Guid? collectionId = null, JsonObject? diff = null)
+    {
+        var current = tenant.Current ?? throw new InvalidOperationException("No tenant set.");
+        return new ActivityRecorder(db, TestActor.Agent(current.Membership.ActorId), current, clock)
+            .Record(type, targetType, targetId, spaceId, collectionId, diff);
+    }
 }
