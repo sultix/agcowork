@@ -124,6 +124,8 @@ sequenceDiagram
 - **Commit-Hash erst im Folge-Commit eintragen.** Wer den Hash per `--amend` in Backlog und Paket schreibt, ändert damit den Hash. Deshalb: Paket committen, Hash in Backlog/Paket eintragen, mit dem nächsten Commit mitnehmen.
 - **Geteilte Dateien zwischen parallelen Paketen vorab benennen.** AP-003 hat AppHost.cs und launchSettings.json aus AP-001 verändert, bevor AP-001 committet war. Künftig: Ein abhängiges Paket startet erst, wenn das Vorgängerpaket committet ist, oder es bekommt die geteilten Dateien ausdrücklich zugewiesen und der Vorgänger wird vorher committet.
 - **Nicht belegte Akzeptanzkriterien prüft der Orchestrator selbst**, bevor er committet (hier: Browser-Lauf unter Aspire). Der Reviewer startet keine Prozesse, die hängen können.
+- **Nie zwei Pakete mit EF-Migration parallel.** Zwei Migrationen ändern denselben Model-Snapshot und kollidieren. Pro Welle höchstens ein Paket mit Migration; Pakete ohne Migration (Seeds, Vorlagen, Frontend) laufen daneben.
+- **Hooks statt Verdrahtung.** Erweiterungspunkte (`ICollectionCreatedHook`, `ISchemaChangedHook`) früh einführen, damit Folgepakete sich registrieren statt bestehende Use-Cases zu ändern; spart Nacharbeit und Konflikte.
 - **Sonnet hat für AP-003 gut funktioniert**, weil Referenzbeispiele und Kontext (Ports, Schlüsselbund) im Paket standen. Die Abweichung `.json` → `.js` hat er sauber begründet.
 
 ## 8. Wenn etwas schiefgeht
