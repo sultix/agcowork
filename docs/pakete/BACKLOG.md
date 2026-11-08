@@ -39,7 +39,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-033](AP-033-null-felder-im-vertrag.md) | API-Vertrag: `null`-Felder mitsenden statt weglassen (Fund im Rauchtest) | 2 | implementer-opus | AP-029–AP-032 | abgeschlossen | 321151d |
 | [AP-034](AP-034-haertung-frontend-body.md) | Härtung Frontend: Record-Body gegen präparierten Markdown, Kommentare im Feed, Fehlertexte | 2 | implementer-opus | AP-031, AP-033 | abgeschlossen | b60c8ee |
 | [AP-035](AP-035-haertung-backend-idempotenz-erwaehnungen.md) | Härtung Backend: Idempotenz mit Inhaltsprüfung, Erwähnungen in Zitaten, Activity je Record, Schema-Hooks | 2 | implementer-opus | AP-033 | abgeschlossen | e13d5e2 |
-| [AP-036](AP-036-row-level-security.md) | PostgreSQL Row-Level-Security als zweites Netz (Rolle `agcowork_app`, Policies, Instanz-Bereich) | 2 | implementer-opus | AP-035 | abgeschlossen | |
+| [AP-036](AP-036-row-level-security.md) | PostgreSQL Row-Level-Security als zweites Netz (Rolle `agcowork_app`, Policies, Instanz-Bereich) | 2 | implementer-opus | AP-035 | abgeschlossen | 5a6708a |
 
 ## Zurückgestellte Review-Hinweise
 
