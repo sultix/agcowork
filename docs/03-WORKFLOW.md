@@ -139,6 +139,16 @@ sequenceDiagram
 - **CI auf Linux ist die Wahrheit, lokal ist macOS.** Die .NET-Uhr hat auf macOS Mikrosekunden-, auf Linux 100-ns-Auflösung; PostgreSQL speichert Mikrosekunden. Zeitstempel-Vergleiche vor/nach dem DB-Roundtrip fielen nur in der CI. Lösung: `MicrosecondTimeProvider` zentral, per `Replace` (ASP.NET Core registriert `TimeProvider.System` selbst), plus Host-Test. Nach jedem Push die CI abwarten, nicht nur lokale Tests.
 - **Orchestrator-Rauchtest am Ende** jeder Phase im Browser, zusätzlich zu den Paket-Prüfungen; so fiel die fehlende Vorlagenauswahl in der UI auf.
 
+## 7b. Gelernt aus Härtung und Phase-2-Welle 1 (AP-022 bis AP-028)
+
+- **Sieben Pakete, fünf Blockaden im Review** (AP-024 Konzeptfehler im eigenen Paket, AP-025 zweimal, AP-026, AP-028). Keine davon war durch rote Tests sichtbar: Rennfenster, PostgreSQL-Grenzwerte mit Mehrbyte-Zeichen, Framework-Defaults, die von `IsDevelopment()` abhängen. Reviewer messen inzwischen gegen die laufende Compose-DB (nur SELECT/Temp-Tabellen); das hat sich bewährt.
+- **Pakete, die der Orchestrator mit Lösungsvorschlag schreibt, können falsch sein.** AP-024 schlug „stabil, dann nach `seq`“ vor; der Implementierer hat den Verlustfall gefunden. Lösungsvorschläge im Paket als Vorschlag markieren und Abweichung mit Begründung ausdrücklich erlauben.
+- **Nacharbeit erzeugt neue Fehler.** Die B1-Korrektur in AP-025 brachte N1. Nachprüfung durch denselben Reviewer (Kontext erhalten, per Nachricht) ist günstig und fängt das.
+- **Tests laufen in Development.** Für Verhalten, das von der Umgebung abhängt, gehört ein Test mit `UseEnvironment("Production")` dazu (Muster `CookiePolicyTests`, `UnstorableTextEndpointsTests`).
+- **Commits aus einem geteilten Arbeitsbaum:** Pfade explizit stagen; gemeinsame Dateien (`schema.d.ts`, Spec-Fixtures) bei Bedarf über `git update-index --cacheinfo` mit der paketeigenen Fassung. Danach den Commit in einem temporären `git worktree` (mit verlinktem `node_modules`) bauen und testen.
+- **Rauchtest im Wegwerf-Stack** (`docker compose -p agcowork-smoke`, eigener Port, Zugangsdaten aus `.env.example`, danach `down -v`), damit die lokale Instanz unberührt bleibt.
+- **Nutzungslimit:** unterbrochene Implementierer per Nachricht fortsetzen; beide Agenten haben ohne Verlust weitergemacht.
+
 ## 8. Wenn etwas schiefgeht
 
 - **Implementierer meldet Unklarheit:** Orchestrator klärt im Paket nach, nicht im Chat mit dem Agenten; das Paket bleibt die Quelle.

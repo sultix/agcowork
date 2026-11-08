@@ -93,3 +93,4 @@ Wer einen Workspace offen hat, sieht Änderungen anderer (vor allem von Agenten)
 | 2026-11-08 | Nacharbeit: `attempting` nur über Probe und `hub.start()`, Zähler `catchUps` (nur jüngster Nachhol-Lauf setzt Position/Resync), Banner-Text nach Fall; 779 Tests |
 | 2026-11-08 | Nachprüfung: Freigabe |
 | 2026-11-08 | abgeschlossen (Kriterium 9, Rauchtest im Compose-Stack, folgt nach AP-026) |
+| 2026-11-08 | Rauchtest (Wegwerf-Stack, Stand eefd290): Agent legt per MCP einen Record an, Tabelle und Aktivitätsfeed zeigen ihn ohne Reload, Feed mit Titel; Zähler „N Records“ bleibt stehen (→ Backlog) |

@@ -64,3 +64,4 @@ Menschen suchen aus jeder Seite eines Workspaces heraus und springen direkt zum 
 | 2026-11-08 | Nacharbeit an implementer-sonnet |
 | 2026-11-08 | Nacharbeit: `[selected]` je Option (Test mit spätem Baum, ohne Fix rot), Klartext ohne Whitespace, Keydown prüft Modifier zuerst und auf Apple nur Cmd, Seitenfeld mit Signal Forms (`maxLength` 200, Serverfehler als Validator), Live-Regionen, „Filter nicht gefunden“, archivierte Kontexte, Test für veraltete Antwort, Platzhalter-Seite entfernt; 820 Tests |
 | 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit geprüft) |
+| 2026-11-08 | Rauchtest: Präfix `zauber` findet „Zauberwort“, `<mark>` gesetzt, `<img onerror>` als Text ohne Bild-Element; Filter → URL, echter Browser-Zurück stellt Zustand her; direkter Aufruf mit `spaceId` zeigt den richtigen Filter |

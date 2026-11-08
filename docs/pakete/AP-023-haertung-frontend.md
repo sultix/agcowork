@@ -80,3 +80,4 @@ Menschen ändern ihr Passwort in der UI und werden nach dem ersten Login mit Boo
 | 2026-11-07 | Nacharbeit an implementer-sonnet |
 | 2026-11-07 | Nacharbeit: `core/util/uuid.ts` mit `getRandomValues`-Fallback, Live-Region neben dem Status-Button, Reset-Dialog während Speichern nicht schließbar, `core/auth/password-policy.ts` gemeinsam, Fokus auf „Weiter“; 713 Tests, Orchestrator hat build/test/lint/format nachgeprüft |
 | 2026-11-07 | abgeschlossen |
+| 2026-11-08 | Rauchtest: Bootstrap-Admin wird nach dem Login auf `/account/password` umgeleitet, direkter Aufruf von `/workspaces` ebenso; Änderung meldet „Andere Sitzungen wurden abgemeldet“ |
