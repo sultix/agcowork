@@ -84,17 +84,22 @@ internal sealed class JsonbMethodCallTranslator(ISqlExpressionFactory sql, IRela
 
 internal sealed class JsonbMethodCallTranslatorPlugin(ISqlExpressionFactory sql, IRelationalTypeMappingSource types) : IMethodCallTranslatorPlugin
 {
-    public IEnumerable<IMethodCallTranslator> Translators { get; } = [new JsonbMethodCallTranslator(sql, types)];
+    public IEnumerable<IMethodCallTranslator> Translators { get; } =
+        [new JsonbMethodCallTranslator(sql, types), new Search.RecordSearchMethodCallTranslator(sql, types)];
 }
 
-/// <summary>Keeps <see cref="JsonbFunctions"/> calls in the query even when their arguments are all parameters (e.g. <see cref="JsonbFunctions.Json"/>).</summary>
+/// <summary>
+/// Keeps <see cref="JsonbFunctions"/> and <see cref="Search.RecordSearchFunctions"/> calls in the query even when their
+/// arguments are all parameters (e.g. <see cref="JsonbFunctions.Json"/>, <see cref="Search.RecordSearchFunctions.Query"/>).
+/// </summary>
 internal sealed class JsonbEvaluatableExpressionFilterPlugin : IEvaluatableExpressionFilterPlugin
 {
     public bool IsEvaluatableExpression(Expression expression) =>
-        expression is not MethodCallExpression call || call.Method.DeclaringType != typeof(JsonbFunctions);
+        expression is not MethodCallExpression call
+        || (call.Method.DeclaringType != typeof(JsonbFunctions) && call.Method.DeclaringType != typeof(Search.RecordSearchFunctions));
 }
 
-/// <summary>Registers the <see cref="JsonbFunctions"/> translation with the EF Core services of the context.</summary>
+/// <summary>Registers the <see cref="JsonbFunctions"/> and <see cref="Search.RecordSearchFunctions"/> translations with the EF Core services of the context.</summary>
 internal sealed class JsonbQueryOptionsExtension : IDbContextOptionsExtension
 {
     public DbContextOptionsExtensionInfo Info => new ExtensionInfo(this);

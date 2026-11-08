@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Abfrage-Use-Case und Keyset-Paginierung `src/backend/Agcowork.Application/Query/`, MCP-Tools `src/backend/Agcowork.Api/Mcp/RecordTools.cs` (bzw. Datei mit `records_query`), Isolations-Fixture in `tests/` |
@@ -73,3 +73,13 @@ Agenten und Menschen finden Records über Wörter in Titel, Text-Properties und 
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zu AP-025); nach Nutzungslimit per Nachricht fortgesetzt |
+| 2026-11-08 | Bericht: 1126 Tests grün; Trigger statt generierter Spalte (Schema bestimmt indexierte Werte), `search_vector` außerhalb des EF-Modells mit Translator, Body-Präfix 100.000 / Property 50.000 Zeichen, Label und Value von Select-Optionen, Marker ⟦⟧, Rang mit Titelbonus und `float4` (Keyset-Gleichstand), `or` statt `oder`, Katalogtest für Indizes |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: **Blockiert** – B1 tsvector-Limit mit zulässigen Inhalten erreichbar (4-Byte-Zeichen in Bindestrich-Komposita ≈ 8 B/Zeichen, Body + Property → 1,2 MB, gemessen); wichtig: `ts_headline` bis 313 ms je Dokument, Neuindexierung bei Schemaänderung läuft in den 30-s-Timeout, Snippet-Zusage „kein HTML“ falsch; Tenancy, tsquery-Injection, Cursor in Ordnung |
+| 2026-11-08 | Entscheidung Orchestrator: Records in archivierten Collections/Spaces gelten in der Suche als archiviert (Standard ausgeschlossen, `archived: true`) |
+| 2026-11-08 | Nacharbeit an implementer-opus (B1 mit Präfixen und Fallback im Trigger, W1–W3, H1–H4, H6) |
+| 2026-11-08 | Nacharbeit: Präfixe 75.000/25.000 plus plpgsql-Fallback bei `program_limit_exceeded` (Zehntel, dann nur Titel), Snippet aus den ersten 20.000 Zeichen (≈ 6 ms je Dokument), Neuindexierung nur für Records mit geändertem Key, Snippet-Formulierung, archivierte Container; 1132/1132 |
+| 2026-11-08 | Nachprüfung gestartet |
+| 2026-11-08 | Nachprüfung: Freigabe mit Hinweisen (Fallback-Stufen nachgemessen, Exception-Block vergibt keine Sub-XID); Konsistenztest SQL-Default ↔ C#-Konstante → Backlog |
+| 2026-11-08 | abgeschlossen |

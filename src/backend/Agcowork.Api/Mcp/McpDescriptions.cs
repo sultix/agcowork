@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Agcowork.Api.Endpoints.Records;
+using Agcowork.Api.Endpoints.Search;
 using Agcowork.Application.Workspaces.Templates;
 using Agcowork.Domain.Activity;
 using Agcowork.Domain.Collections.Schema;
@@ -27,6 +28,7 @@ internal static class McpDescriptions
         ["defaultTemplate"] = WorkspaceTemplates.DefaultId,
         ["templates"] = string.Concat(WorkspaceTemplates.All.Select(t => $"'{t.Id}': {t.Description} ")).TrimEnd(),
         ["filterDsl"] = QueryEndpoints.DslDescription.TrimEnd(),
+        ["searchSyntax"] = SearchEndpoints.SyntaxDescription,
     };
 
     /// <summary>Replaces the placeholders in the tool's description and input schema; throws on an unknown one.</summary>

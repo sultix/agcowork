@@ -3,6 +3,7 @@ using Agcowork.Api.Endpoints.Activity;
 using Agcowork.Api.Endpoints.Collections;
 using Agcowork.Api.Endpoints.Identity;
 using Agcowork.Api.Endpoints.Records;
+using Agcowork.Api.Endpoints.Search;
 using Agcowork.Api.Endpoints.Spaces;
 using Agcowork.Api.Endpoints.Views;
 using Agcowork.Api.Endpoints.Workspaces;
@@ -47,6 +48,7 @@ internal static class ApiV1
         workspace.MapRecordEndpoints();
         workspace.MapQueryEndpoints();
         workspace.MapActivityEndpoints();
+        workspace.MapSearchEndpoints();
 
         return app;
     }

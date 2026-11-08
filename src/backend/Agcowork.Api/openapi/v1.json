@@ -4471,6 +4471,124 @@
           }
         }
       }
+    },
+    "/api/v1/w/{workspaceSlug}/search": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "Full-text search over all records of the workspace",
+        "description": "Finds records by words in title, properties and body across all spaces and collections, without knowing the collection or the filter DSL (for exact property conditions use POST /collections/{id}/query). Input: 'q'. Syntax (web search style, case-insensitive, no stemming): words separated by spaces must all occur; \"exact phrase\" in double quotes; -word excludes; 'or' between alternatives (e.g. postgres or mongodb). The last word, if it has at least 2 letters or digits, also matches as a prefix (entsch finds Entscheidung) unless it is quoted or excluded; in a hyphenated word only the last part is a prefix (foo-ba does not find foo-bar). At least one word must not be excluded. 1..200 characters. Searched: title (ranks highest), text, markdown, url and email properties (the first 25000 characters together), the labels and values of select, status and multi_select options, and the first 75000 characters of the body (the rest of a long body is not indexed). E-mail addresses and hosts are single words (kontakt finds kontakt@firma.example, firma does not). Not searched: relations, actors, numbers, dates, json, comments. Records in an archived collection or space count as archived. Each hit has 'snippet': plain text with every match between ⟦ and ⟧ (U+27E6, U+27E7). The snippet can contain <, > and markup from the content: render it as text, never as HTML. Only these two markers come from the server (in content they appear as [ and ]). Without markers when only the title matched or the match lies beyond the first 20000 characters. 'rank': higher is better, 1 or more when the title matches the whole query. Ordered by rank, then id. Filters: spaceId, collectionId (unknown: 404), includeArchived (default false; also records of archived collections and spaces). 'limit' 1..50, default 20; 'nextCursor' with the same 'q' gives the next page, null when there are no further hits. Invalid input: 400 with errors[] on 'q' (required, empty_query when nothing is left to search for, too_long, invalid_value for control characters), 'limit' (out_of_range) or 'cursor' (invalid_cursor). Requires read.",
+        "operationId": "SearchRecords",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search input, see the endpoint description, e.g. \"event sourcing\" -kafka.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "description": "Only records of this space.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "collectionId",
+            "in": "query",
+            "description": "Only records of this collection.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "description": "Also archived records, including records of archived collections and spaces. Default false.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size 1..50, default 20.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "nextCursor of the previous page, with the same q.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfSearchHitDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5575,6 +5693,30 @@
         },
         "description": "One page of a list. Pass NextCursor as `cursor` to get the next page."
       },
+      "PageOfSearchHitDto": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchHitDto"
+            },
+            "description": "The entries of this page."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Opaque cursor of the next page; null on the last page."
+          }
+        },
+        "description": "One page of a list. Pass NextCursor as `cursor` to get the next page."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -6463,6 +6605,66 @@
         },
         "description": "One revision without its content."
       },
+      "SearchHitDto": {
+        "required": [
+          "recordId",
+          "title",
+          "collectionId",
+          "spaceId",
+          "snippet",
+          "rank",
+          "updatedAt",
+          "archived"
+        ],
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string",
+            "description": "The record; read it with `GET …/records/{id}` or `record_get`.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Current title."
+          },
+          "collectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Collection of the record; null for a free page of the space.",
+            "format": "uuid"
+          },
+          "spaceId": {
+            "type": "string",
+            "description": "Space of the record.",
+            "format": "uuid"
+          },
+          "snippet": {
+            "type": "string",
+            "description": "Excerpt of the indexed property text and the body with every match between `⟦` and `⟧` (U+27E6, U+27E7). The\nsnippet is plain text and can contain `&lt;`, `&gt;` and markup from the content: clients must render it as text\nand highlight between the markers themselves. Only `⟦` and `⟧` come from the server (in the content they appear\nas `[` and `]`). Without markers when only the title matched or the match lies beyond the first 20000 characters."
+          },
+          "rank": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Relevance, higher is better: 1 or more when the title alone matches the whole query, then by how densely the words occur\n(title before properties before body). Only comparable within one search.",
+            "format": "float"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Last change of the record.",
+            "format": "date-time"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "True when the record, its collection or its space is archived (such hits only come with `includeArchived`)."
+          }
+        },
+        "description": "One search hit: where the record lives and an excerpt around the match."
+      },
       "SpaceDto": {
         "required": [
           "id",
@@ -7303,6 +7505,9 @@
     },
     {
       "name": "Activity"
+    },
+    {
+      "name": "Search"
     }
   ]
 }

@@ -40,6 +40,7 @@ public sealed class McpIsolationTests(AgcoworkApiFactory factory)
             "record_append" => new { recordId = record.Id, markdown = "" },
             "record_archive" => new { recordId = Guid.NewGuid() },
             "view_create" => new { collectionId = collection.Id, type = "board", name = "" },
+            "search" => new { query = "aufgabe" },
             _ => throw new InvalidOperationException($"No arguments for {tool}."),
         };
 

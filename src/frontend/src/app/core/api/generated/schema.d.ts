@@ -840,6 +840,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/w/{workspaceSlug}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Full-text search over all records of the workspace
+         * @description Finds records by words in title, properties and body across all spaces and collections, without knowing the collection or the filter DSL (for exact property conditions use POST /collections/{id}/query). Input: 'q'. Syntax (web search style, case-insensitive, no stemming): words separated by spaces must all occur; "exact phrase" in double quotes; -word excludes; 'or' between alternatives (e.g. postgres or mongodb). The last word, if it has at least 2 letters or digits, also matches as a prefix (entsch finds Entscheidung) unless it is quoted or excluded; in a hyphenated word only the last part is a prefix (foo-ba does not find foo-bar). At least one word must not be excluded. 1..200 characters. Searched: title (ranks highest), text, markdown, url and email properties (the first 25000 characters together), the labels and values of select, status and multi_select options, and the first 75000 characters of the body (the rest of a long body is not indexed). E-mail addresses and hosts are single words (kontakt finds kontakt@firma.example, firma does not). Not searched: relations, actors, numbers, dates, json, comments. Records in an archived collection or space count as archived. Each hit has 'snippet': plain text with every match between ⟦ and ⟧ (U+27E6, U+27E7). The snippet can contain <, > and markup from the content: render it as text, never as HTML. Only these two markers come from the server (in content they appear as [ and ]). Without markers when only the title matched or the match lies beyond the first 20000 characters. 'rank': higher is better, 1 or more when the title matches the whole query. Ordered by rank, then id. Filters: spaceId, collectionId (unknown: 404), includeArchived (default false; also records of archived collections and spaces). 'limit' 1..50, default 20; 'nextCursor' with the same 'q' gives the next page, null when there are no further hits. Invalid input: 400 with errors[] on 'q' (required, empty_query when nothing is left to search for, too_long, invalid_value for control characters), 'limit' (out_of_range) or 'cursor' (invalid_cursor). Requires read.
+         */
+        get: operations["SearchRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1269,6 +1289,13 @@ export interface components {
             /** @description Opaque cursor of the next page; null on the last page. */
             nextCursor: null | string;
         };
+        /** @description One page of a list. Pass NextCursor as `cursor` to get the next page. */
+        PageOfSearchHitDto: {
+            /** @description The entries of this page. */
+            items: components["schemas"]["SearchHitDto"][];
+            /** @description Opaque cursor of the next page; null on the last page. */
+            nextCursor: null | string;
+        };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -1614,6 +1641,46 @@ export interface components {
             at: string;
             /** @description Why, as given by the caller. */
             reason: null | string;
+        };
+        /** @description One search hit: where the record lives and an excerpt around the match. */
+        SearchHitDto: {
+            /**
+             * Format: uuid
+             * @description The record; read it with `GET …/records/{id}` or `record_get`.
+             */
+            recordId: string;
+            /** @description Current title. */
+            title: string;
+            /**
+             * Format: uuid
+             * @description Collection of the record; null for a free page of the space.
+             */
+            collectionId: null | string;
+            /**
+             * Format: uuid
+             * @description Space of the record.
+             */
+            spaceId: string;
+            /**
+             * @description Excerpt of the indexed property text and the body with every match between `⟦` and `⟧` (U+27E6, U+27E7). The
+             *     snippet is plain text and can contain `&lt;`, `&gt;` and markup from the content: clients must render it as text
+             *     and highlight between the markers themselves. Only `⟦` and `⟧` come from the server (in the content they appear
+             *     as `[` and `]`). Without markers when only the title matched or the match lies beyond the first 20000 characters.
+             */
+            snippet: string;
+            /**
+             * Format: float
+             * @description Relevance, higher is better: 1 or more when the title alone matches the whole query, then by how densely the words occur
+             *     (title before properties before body). Only comparable within one search.
+             */
+            rank: number | string;
+            /**
+             * Format: date-time
+             * @description Last change of the record.
+             */
+            updatedAt: string;
+            /** @description True when the record, its collection or its space is archived (such hits only come with `includeArchived`). */
+            archived: boolean;
         };
         /** @description A space of the workspace. */
         SpaceDto: {
@@ -5098,6 +5165,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActivityPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SearchRecords: {
+        parameters: {
+            query?: {
+                /** @description Search input, see the endpoint description, e.g. "event sourcing" -kafka. */
+                q?: string;
+                /** @description Only records of this space. */
+                spaceId?: string;
+                /** @description Only records of this collection. */
+                collectionId?: string;
+                /** @description Also archived records, including records of archived collections and spaces. Default false. */
+                includeArchived?: boolean;
+                /** @description Page size 1..50, default 20. */
+                limit?: number | string;
+                /** @description nextCursor of the previous page, with the same q. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfSearchHitDto"];
                 };
             };
             /** @description Bad Request */

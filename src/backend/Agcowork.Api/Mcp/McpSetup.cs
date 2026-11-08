@@ -27,7 +27,7 @@ internal static class McpSetup
     public const string WorkspaceInstructions =
         "This server is bound to one agcowork workspace (a structured knowledge and work space: spaces, typed collections, records "
         + "with Markdown bodies). Start with workspace_overview to see the spaces and collections and what belongs where. Call "
-        + "collection_describe before writing to a collection. Read with records_query or record_get; write with record_create, "
+        + "collection_describe before writing to a collection. Read with records_query or record_get; find records by words with search; write with record_create, "
         + "record_update (send expectedRevision from record_get) and record_append (preferred for log-like additions). Errors are "
         + "structured: 'code', 'errors[]' with 'field' and 'allowed' values; correct the input and retry.";
 
@@ -37,7 +37,7 @@ internal static class McpSetup
 
     /// <summary>Workspace tool classes, in listing order.</summary>
     public static IReadOnlyList<Type> WorkspaceToolTypes { get; } =
-        [typeof(WorkspaceTools), typeof(CollectionTools), typeof(RecordTools), typeof(ViewAndActivityTools)];
+        [typeof(WorkspaceTools), typeof(CollectionTools), typeof(RecordTools), typeof(SearchTools), typeof(ViewAndActivityTools)];
 
     public static IReadOnlyList<Type> InstanceToolTypes { get; } = [typeof(InstanceTools)];
 

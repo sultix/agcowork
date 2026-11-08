@@ -169,6 +169,47 @@ public sealed class TenantInterceptorTests(AgcoworkApiFactory factory)
         }
     }
 
+    /// <summary>
+    /// The database catalog, not only the EF model: indexes created by raw SQL in migrations (full-text search, AP-026) must
+    /// start with workspace_id too. Primary keys and the documented exceptions of the model test are skipped.
+    /// </summary>
+    [Fact]
+    public async Task Database_TenantTableIndexesStartWithWorkspaceId()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
+        var tables = db.Model.GetEntityTypes()
+            .Where(t => typeof(ITenantEntity).IsAssignableFrom(t.ClrType))
+            .Select(t => t.GetTableName()!)
+            .ToHashSet(StringComparer.Ordinal);
+        string[] exceptions = ["ix_memberships_actor_id", "ix_activity_events_xact_id_seq"];
+
+        var indexes = await db.Database
+            .SqlQuery<CatalogIndex>($"""
+                SELECT c.relname AS table_name, i.relname AS index_name, a.attname AS first_column
+                FROM pg_index x
+                JOIN pg_class c ON c.oid = x.indrelid
+                JOIN pg_class i ON i.oid = x.indexrelid
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = x.indkey[0]
+                WHERE n.nspname = current_schema() AND NOT x.indisprimary
+                """)
+            .ToListAsync(Ct);
+
+        var tenantIndexes = indexes.Where(i => tables.Contains(i.TableName) && !exceptions.Contains(i.IndexName)).ToList();
+        Assert.Contains(tenantIndexes, i => i.IndexName == "ix_records_workspace_id_search_vector");
+        Assert.All(tenantIndexes, i => Assert.True(i.FirstColumn == "workspace_id", $"{i.IndexName} starts with {i.FirstColumn}"));
+    }
+
+    private sealed class CatalogIndex
+    {
+        public string TableName { get; init; } = string.Empty;
+
+        public string IndexName { get; init; } = string.Empty;
+
+        public string FirstColumn { get; init; } = string.Empty;
+    }
+
     private async Task<AsyncServiceScope> EnterAsync(Guid workspaceId, Guid actorId)
     {
         var scope = factory.Services.CreateAsyncScope();

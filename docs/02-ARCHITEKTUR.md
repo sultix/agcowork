@@ -321,7 +321,7 @@ Regeln:
 | `record_update(recordId, properties?, body?, expectedRevision?, reason?)` | Ändern (Properties als Patch, Body ersetzen) |
 | `record_append(recordId, markdown, section?)` | Markdown anhängen, z. B. Log-Einträge, ohne den Body zu kennen |
 | `record_archive(recordId)` | Soft-Delete |
-| `search(query, spaceId?, collectionId?, mode: fulltext | semantic)` | Suche über Titel, Properties, Body |
+| `search(query, spaceId?, collectionId?, includeArchived?, limit?, cursor?)` | Volltextsuche über Titel, Text-Properties, Optionen und Body-Präfix; Snippet mit Markern ⟦…⟧ (AP-026). Parameter `mode` (semantic) erst mit Phase 3 |
 | `comment_add(recordId, markdown, parentCommentId?)` | Kommentieren |
 | `history_get(recordId, limit?)` | Revisionen (Activity je Record über `activity_recent`, Phase 2 filterbar nach Record) |
 | `view_create(collectionId, type, name, filter?, sorts?, groupBy?, visibleProperties?)` | Ansicht für Menschen anlegen |
@@ -380,7 +380,7 @@ POST   /collections/{id}/query          (Filter-DSL im Body)
 GET    /records/{id}                    POST   /records
 PATCH  /records/{id}                    POST   /records/{id}/append
 GET    /records/{id}/history            POST   /records/{id}/comments
-GET    /search?q=…                      GET    /activity?since=…
+GET    /search?q=&spaceId&collectionId&includeArchived&limit&cursor                      GET    /activity?since=…
 GET    /views/{id}                      POST   /views   POST /views/{id}/query
 GET    /members   POST /members   PATCH /members/{actorId}   DELETE /members/{actorId}
 ```
@@ -490,8 +490,7 @@ Templates), `Records`, `Views`, `Query` (Filter-DSL), `Activity` (Revisions, Eve
   gleicher Code für REST, MCP, UI.
 - **Revisionen**: vollständiger Snapshot (einfach, robust), Diff wird für das ActivityEvent berechnet.
 - **Outbox-Pattern** (AP-024): `activity_events` ist die Outbox; das Ereignis wird in derselben Transaktion wie die Änderung geschrieben. Wer vorwärts liest (Dispatcher, `afterSeq`), liest nur stabile Ereignisse (`xact_id < pg_snapshot_xmin(pg_current_snapshot())`) und sortiert nach (`xact_id`, `seq`), nicht nach `seq` allein: Eine Transaktion mit früher xid kann eine höhere Seq vor einer niedrigeren committen. `afterSeq` ist die Seq eines Ereignisses, der Server schlägt seine Position nach; `lastSeq` ist immer weiterzugeben (kann kleiner sein als vorher gesehene Seqs). Der Dispatcher (`BackgroundService`) pollt alle 250 ms instanzweit über `ix_activity_events_xact_id_seq` (Ausnahme von der workspace_id-Indexregel), hält den Cursor im Speicher (Start beim Kopf, kein Nachliefern) und stellt höchstens einmal zu. Eine lange schreibende Transaktion im PostgreSQL-Cluster verzögert Zustellung und Vorwärtslesen (Betrieb: `idle_in_transaction_session_timeout`). Single-Instance: Mehrere API-Instanzen brauchen einen SignalR-Backplane. Zustellung pro Verbindung über einen begrenzten Postausgang (256) mit Sende-Timeout (`Agcowork:Realtime:SendTimeout`, Standard 5 s): Ein Client, der nicht liest, wird getrennt und hält niemanden auf. Nur `lastSeq` ist ein sicherer Cursor, nicht die `seq` einzelner Ereignisse aus dem Rückblick.
-- **Suche**: generierte `tsvector`-Spalte aus Titel + Body + Text-Properties, GIN-Index.
-  Semantik später via pgvector + Embedding-Provider hinter einem Interface.
+- **Suche** (AP-026): `records.search_vector tsvector`, gepflegt per Trigger; die Spalte ist nicht im EF-Modell (sonst würde sie bei jedem Record mitgelesen). Konfiguration `simple`, gewichtet: A Titel; B text-, markdown-, url-, email-Werte sowie Label und Value gewählter select-/status-/multi_select-Optionen (Typ aus dem Collection-Schema, daher Trigger statt generierter Spalte), höchstens 25.000 Zeichen; C die ersten 75.000 Zeichen des Bodys. Im gemessenen Worst Case (4-Byte-Buchstaben in Bindestrich-Komposita, ≈ 8 Byte/Zeichen) bleibt das unter dem 1-MB-Limit von tsvector; bei `program_limit_exceeded` indexiert die Funktion ein Zehntel der Präfixe, zuletzt nur den Titel; Schreiben und Migration scheitern nie. Schemaänderungen an indexierten Properties indexieren synchron in derselben Transaktion nur Records mit Wert unter einem geänderten Key (Grenze: ein Statement, Command-Timeout; Hintergrund-Reindex ist Folgepaket). GIN-Index `(workspace_id, search_vector)`. Abfragen über `RecordSearchFunctions` (Translator) auf den tenant-gefilterten Records; Records in archivierten Collections oder Spaces gelten als archiviert. Eingabe per `websearch_to_tsquery`, Präfix auf dem letzten Wort ab 2 Zeichen; Rang `float4(ts_rank_cd(…, 32) + 1 bei Titeltreffer)`, Keyset über (Rang, Id). Snippets per `ts_headline` nur für die ausgelieferte Seite und nur aus den ersten 20.000 Zeichen von Property-Text und Body; Marker U+27E6/U+27E7, das Snippet ist reiner Text und kann Markup aus dem Inhalt enthalten (Clients rendern als Text). Semantik später via pgvector hinter einem Interface.
 - **Auth-Pipeline**: Bearer-Key → Actor als ClaimsPrincipal; Cookie-Login für Menschen;
   danach Tenancy-Middleware → Membership → Scopes. Gleiche Authorization-Policies für alle
   Adapter (`CanRead(space)`, `CanWrite(space)`, `WorkspaceAdmin`, `InstanceAdmin`).

@@ -10,7 +10,9 @@ namespace Agcowork.Infrastructure.Persistence.Configurations;
 /// Tenant table. Space, collection and parent are referenced together with <c>workspace_id</c>, so the database rejects
 /// references across workspaces. <c>revision_no</c> is a concurrency token in addition to the row lock of the write use
 /// cases. Properties are JSONB with a GIN index (<c>jsonb_path_ops</c>) behind <c>workspace_id</c> (btree_gin), for the
-/// filter DSL (AP-009). A generated <c>tsvector</c> column for full-text search follows in phase 2.
+/// filter DSL (AP-009). Full-text search (AP-026): the column <c>search_vector tsvector</c>, its triggers and the GIN index
+/// <c>ix_records_workspace_id_search_vector</c> exist only in the migration <c>AddRecordSearch</c>, deliberately not in this
+/// model: a mapped column would be read with every record. Queries reach it through <c>RecordSearchFunctions</c>.
 /// </remarks>
 internal sealed class RecordConfiguration : IEntityTypeConfiguration<Record>
 {

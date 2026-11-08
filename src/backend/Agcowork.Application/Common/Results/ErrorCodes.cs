@@ -41,4 +41,7 @@ public static class ErrorCodes
     public const string InvalidValue = "invalid_value";
     public const string InvalidCursor = "invalid_cursor";
     public const string NotSortable = "not_sortable";
+
+    // Field codes of the full-text search (AP-026).
+    public const string EmptyQuery = "empty_query";
 }

@@ -28,9 +28,10 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-022](AP-022-haertung-backend.md) | Härtung Backend: Passwort ändern/zurücksetzen, Sitzungen entwerten, relation-Hook, OpenAPI-Defaults, Activity-Titel | Härtung | implementer-opus | AP-004–AP-011 | abgeschlossen | 183275b |
 | [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | abgeschlossen | 6e837db |
 | [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | abgeschlossen | 6bd7d04 |
-| [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | abgeschlossen | |
-| [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | im Review | |
+| [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | abgeschlossen | 0cbeecc |
+| [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | abgeschlossen | |
 | [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | angelegt | |
+| [AP-028](AP-028-dispatcher-fehlerpfad-surrogate.md) | Backend-Kleinpaket: Dispatcher „lückenlos oder getrennt“, ungepaarte Surrogate → 400 | 2 | implementer-opus | AP-024, AP-025 | in Arbeit | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -62,9 +63,12 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-024 Bericht | Hängende/„idle in transaction“-Transaktion im Cluster hält Vorwärtslesen und Realtime instanzweit an | Betrieb: `idle_in_transaction_session_timeout` in Compose/Hosting setzen |
 | AP-024 Bericht | Dev-Proxy (`proxy.conf.js`) leitet `/w/{slug}/mcp` nicht weiter; `dotnet-ef` 10.0.11 vs. Runtime 10.0.14 | Kleinigkeit, beim nächsten Tooling-Paket |
 | AP-025 Bericht | Live nicht abgedeckt: `member.*` → MembersStore (Namen im Feed), `view.*`/`collection.schema_changed` → Views-Liste und Schema im CollectionStore, Space-Seite selbst | Kleinpaket Frontend nach Phase-2-Welle |
-| AP-025 Review | `ActivityDispatcher` (Z. ~144): wirft `PublishAsync` (DB-Fehler in Zugriffsprüfung/Titeln), ist der Batch verloren, Verbindungen bleiben offen; Client rückt mit nächstem Live-Ereignis vor und holt nie nach | Kleinpaket Backend direkt nach AP-026: bei Publish-Fehler Verbindungen des Workspaces trennen („lückenlos oder getrennt“) |
+| AP-025 Review | `ActivityDispatcher` (Z. ~144): wirft `PublishAsync` (DB-Fehler in Zugriffsprüfung/Titeln), ist der Batch verloren, Verbindungen bleiben offen; Client rückt mit nächstem Live-Ereignis vor und holt nie nach | → AP-028 |
 | AP-026 Bericht | OpenAPI führt nullable Felder als required, der Serializer lässt `null` weg (z. B. `nextCursor`); `float` erscheint im TS-Typ als `number \| string` (projektweit) | Kleinpaket API-Vertrag: Schema-Transformer oder `WhenWritingNull` abschalten, dann `schema.d.ts` neu |
 | AP-026 Bericht | Suche: E-Mail/Host nur als ganzes Token, Bindestrich-Präfix (`foo-ba`) findet nichts, Positionen > 16383 bei Phrasen, Neuindexierung großer Collections in der UpdateSchema-Transaktion | Beobachten; bei Bedarf Tokenizer-Erweiterung bzw. Hintergrund-Reindex |
+| AP-026 Review | Neuindexierung nach Schemaänderung läuft synchron in der UpdateSchema-Transaktion (Timeout bei großen Collections) | Folgepaket: Reindex im Hintergrund (Batch, Fortschritt), wenn Collections > ~2.000 große Records realistisch werden |
+| AP-026 Nacharbeit | Body mit ungepaartem Surrogat → `DbUpdateException`/`EncoderFallbackException` bei `UpdateRecord` (vermutlich 500 statt 400); Body-Validierung prüft nicht wie `QueryText.IsStorable` | → AP-028 |
+| AP-026 Review | Präfix-Defaults im Migrations-SQL (25.000 Properties) nicht per Test gegen `RecordSearch.PropertiesPrefixLength` geprüft | Konsistenztest beim nächsten Such-Paket |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |

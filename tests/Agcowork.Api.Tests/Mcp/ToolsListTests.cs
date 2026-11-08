@@ -6,13 +6,13 @@ namespace Agcowork.Api.Tests.Mcp;
 [Collection(ApiTestGroup.Name)]
 public sealed class ToolsListTests(AgcoworkApiFactory factory)
 {
-    /// <summary>Architecture §4.2 phase 1 plus records_list, spaces_list, space_create (AP-011); no search, no comment_add.</summary>
+    /// <summary>Architecture §4.2 phase 1 plus records_list, spaces_list, space_create (AP-011) and search (AP-026); no comment_add.</summary>
     public static readonly string[] WorkspaceTools =
     [
         "workspace_overview", "spaces_list", "space_create",
         "collection_describe", "collection_create", "collection_update_schema",
         "records_list", "records_query", "record_get", "record_create", "record_update", "record_append", "record_archive", "history_get",
-        "view_create", "activity_recent",
+        "search", "view_create", "activity_recent",
     ];
 
     public static readonly string[] InstanceTools = ["me", "workspaces_list", "templates_list", "workspace_create", "workspace_add_member"];
@@ -53,6 +53,12 @@ public sealed class ToolsListTests(AgcoworkApiFactory factory)
         Assert.Contains("not with since", tools.Single(tool => tool.Name == "activity_recent").Description, StringComparison.Ordinal);
         Assert.Contains("targetTitle is the current title", tools.Single(tool => tool.Name == "activity_recent").Description, StringComparison.Ordinal);
         Assert.Contains("Call this first", tools.Single(tool => tool.Name == "workspace_overview").Description, StringComparison.Ordinal);
+        var search = tools.Single(tool => tool.Name == "search");
+        Assert.Contains("records_query", search.Description, StringComparison.Ordinal);
+        Assert.Contains("\u27E6", search.Description, StringComparison.Ordinal);
+        Assert.Contains(Application.Search.RecordSearch.BodyPrefixLength.ToString(System.Globalization.CultureInfo.InvariantCulture), search.Description, StringComparison.Ordinal);
+        Assert.Contains("query", search.JsonSchema.GetProperty("required").EnumerateArray().Select(e => e.GetString()));
+        Assert.False(search.JsonSchema.GetProperty("properties").TryGetProperty("mode", out _));
     }
 
     [Fact]

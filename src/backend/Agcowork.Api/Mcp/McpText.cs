@@ -4,7 +4,9 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Agcowork.Application.Activity;
 using Agcowork.Application.Collections;
+using Agcowork.Application.Common.Paging;
 using Agcowork.Application.Records;
+using Agcowork.Application.Search;
 using Agcowork.Application.Views;
 using Agcowork.Application.Workspaces;
 
@@ -170,6 +172,27 @@ internal static class McpText
 
         text.Append(Invariant, $"\n## Example properties\n```json\n{description.Example.ToJsonString(json)}\n```\n");
         text.Append(Invariant, $"\n## JSON Schema of 'properties' (also resource {WorkspaceResources.SchemaUri(c.Id)})\n```json\n{description.JsonSchema.ToJsonString(json)}\n```\n");
+        return text.ToString();
+    }
+
+    /// <summary>Search hits, best first: title, ids, rank and the snippet with its markers.</summary>
+    public static string SearchHits(Page<SearchHitDto> page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        var text = new StringBuilder();
+        text.Append(Invariant, $"{page.Items.Count} hit(s), best first");
+        text.Append(page.NextCursor is null ? "; no further hits.\n" : $"; more with cursor \"{page.NextCursor}\".\n");
+        foreach (var hit in page.Items)
+        {
+            text.Append(Invariant, $"\n- **{hit.Title}** (recordId {hit.RecordId}, ");
+            text.Append(hit.CollectionId is { } collectionId ? $"collectionId {collectionId}" : $"free page in spaceId {hit.SpaceId}");
+            text.Append(Invariant, $", rank {hit.Rank:0.###}{(hit.Archived ? ", archived" : string.Empty)})\n");
+            if (hit.Snippet.Length > 0)
+            {
+                text.Append("  ").Append(hit.Snippet.ReplaceLineEndings(" ")).Append('\n');
+            }
+        }
+
         return text.ToString();
     }
 
