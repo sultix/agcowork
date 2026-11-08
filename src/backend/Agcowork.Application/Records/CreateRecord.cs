@@ -74,6 +74,12 @@ public sealed class CreateRecord(
             return errors.ToError();
         }
 
+        if (idempotencyKey is not null && !StorableText.IsStorable(idempotencyKey))
+        {
+            errors.Add("Idempotency-Key", ErrorCodes.InvalidValue, $"The Idempotency-Key header {StorableText.Hint}");
+            return errors.ToError();
+        }
+
         // A retry with the same key returns the first result, whatever its body says.
         IdempotencyKey? expiredKey = null;
         if (idempotencyKey is not null)

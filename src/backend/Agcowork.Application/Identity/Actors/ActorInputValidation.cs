@@ -9,17 +9,23 @@ internal static class ActorInputValidation
 {
     public static void Name(FieldErrors errors, string? name)
     {
-        if (errors.Required("name", name))
+        if (errors.Required("name", name) && errors.Storable("name", name))
         {
             errors.MaxLength("name", name, Actor.NameMaxLength);
         }
     }
 
-    public static void Role(FieldErrors errors, string? role) => errors.MaxLength("role", role, Actor.RoleMaxLength);
+    public static void Role(FieldErrors errors, string? role)
+    {
+        if (errors.Storable("role", role))
+        {
+            errors.MaxLength("role", role, Actor.RoleMaxLength);
+        }
+    }
 
     public static void Email(FieldErrors errors, string? email)
     {
-        if (email is null)
+        if (email is null || !errors.Storable("email", email))
         {
             return;
         }

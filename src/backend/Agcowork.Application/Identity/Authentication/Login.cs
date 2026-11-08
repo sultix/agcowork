@@ -21,8 +21,13 @@ public sealed class Login(IAgcoworkDbContext db, IPasswordHasher passwordHasher)
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // Input format only, checked before any lookup: says nothing about whether an account exists. NUL or an unpaired
+        // surrogate would fail the query (500) instead.
         var errors = new FieldErrors();
-        errors.Required("email", request.Email);
+        if (errors.Required("email", request.Email))
+        {
+            errors.Storable("email", request.Email);
+        }
         if (string.IsNullOrEmpty(request.Password))
         {
             errors.Add("password", ErrorCodes.Required, "'password' is required.");

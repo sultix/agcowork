@@ -81,8 +81,13 @@ internal static class RecordInput
             return title;
         }
 
-        var value = fromProperties.GetString();
-        if (title is not null && !string.Equals(title.Trim(), value?.Trim(), StringComparison.Ordinal))
+        if (!StorableText.TryRead(fromProperties, out var value))
+        {
+            errors.Add(field, ErrorCodes.InvalidValue, $"'{field}' {StorableText.Hint}");
+            return title;
+        }
+
+        if (title is not null && !string.Equals(title.Trim(), value.Trim(), StringComparison.Ordinal))
         {
             errors.Add(field, ErrorCodes.Conflict, "Send the title once: either as 'title' or as 'properties.title'.");
         }
@@ -92,7 +97,7 @@ internal static class RecordInput
 
     public static void Title(FieldErrors errors, string? title)
     {
-        if (errors.Required("title", title))
+        if (errors.Required("title", title) && errors.Storable("title", title))
         {
             errors.MaxLength("title", title, Record.TitleMaxLength);
         }
@@ -100,13 +105,24 @@ internal static class RecordInput
 
     public static void Body(FieldErrors errors, string field, string? body)
     {
+        if (!errors.Storable(field, body))
+        {
+            return;
+        }
+
         if (!Record.IsBodyWithinLimit(body))
         {
             errors.Add(field, ErrorCodes.TooLong, $"The body must not exceed {Record.BodyMaxBytes / (1024 * 1024)} MiB (UTF-8). Split the content into several records.");
         }
     }
 
-    public static void Reason(FieldErrors errors, string? reason) => errors.MaxLength("reason", reason, Revision.ReasonMaxLength);
+    public static void Reason(FieldErrors errors, string? reason)
+    {
+        if (errors.Storable("reason", reason))
+        {
+            errors.MaxLength("reason", reason, Revision.ReasonMaxLength);
+        }
+    }
 
     /// <summary>
     /// The one place that validates record properties together with the title. <see cref="PropertyValidationMode.Full"/>
@@ -123,8 +139,10 @@ internal static class RecordInput
         PropertyValidationMode mode,
         CancellationToken cancellationToken)
     {
+        // A title that cannot be stored is reported by Title(); it is not mixed in (it could not even be serialized).
+        var titleStorable = title is null || StorableText.IsStorable(title);
         var checkedValues = new Dictionary<string, JsonElement>(properties, StringComparer.Ordinal);
-        if (title is not null)
+        if (title is not null && titleStorable)
         {
             checkedValues[CollectionSchema.TitleKey] = JsonSerializer.SerializeToElement(title.Trim());
         }
@@ -132,7 +150,7 @@ internal static class RecordInput
         var titleField = $"{PropertiesField}.{CollectionSchema.TitleKey}";
         var errors = await validator.ValidateAsync(schema, checkedValues, mode, PropertiesField, cancellationToken).ConfigureAwait(false);
         return [.. errors
-            .Where(e => !(e.Field == titleField && e.Code == ErrorCodes.TooLong))
+            .Where(e => !(e.Field == titleField && (e.Code == ErrorCodes.TooLong || !titleStorable)))
             .Select(e => e.Field == titleField ? e with { Field = "title" } : e)];
     }
 

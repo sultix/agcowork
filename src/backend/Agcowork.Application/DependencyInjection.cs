@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.TryAddScoped<InstanceActivityReader>();
         services.TryAddScoped<RealtimeAccess>();
         services.TryAddScoped<PublishActivity>();
+        services.TryAddScoped<IActivityPublisher>(sp => sp.GetRequiredService<PublishActivity>());
 
         foreach (var useCase in FindUseCases(typeof(DependencyInjection).Assembly))
         {

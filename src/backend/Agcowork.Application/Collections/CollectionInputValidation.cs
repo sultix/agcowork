@@ -12,7 +12,7 @@ internal static class CollectionInputValidation
 {
     public static void Name(FieldErrors errors, string? name)
     {
-        if (errors.Required("name", name))
+        if (errors.Required("name", name) && errors.Storable("name", name))
         {
             errors.MaxLength("name", name, Collection.NameMaxLength);
         }
@@ -30,7 +30,10 @@ internal static class CollectionInputValidation
             return;
         }
 
-        errors.MaxLength("description", description, Collection.DescriptionMaxLength);
+        if (errors.Storable("description", description))
+        {
+            errors.MaxLength("description", description, Collection.DescriptionMaxLength);
+        }
     }
 
     /// <summary>

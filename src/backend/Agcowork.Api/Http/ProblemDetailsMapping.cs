@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Agcowork.Application.Common.Results;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +15,7 @@ namespace Agcowork.Api.Http;
 /// <c>field</c>, <c>code</c>, <c>message</c> and, for enum-like fields, <c>allowed</c>.
 /// 401 and 404 carry no detail, so they reveal nothing about accounts or resources.
 /// </summary>
-public static class ProblemDetailsMapping
+public static partial class ProblemDetailsMapping
 {
     public const string CodeExtension = "code";
     public const string ErrorsExtension = "errors";
@@ -55,6 +57,56 @@ public static class ProblemDetailsMapping
 
         return problem;
     }
+
+    /// <summary>
+    /// The field error behind a request body that is valid JSON but has a value that cannot be read into its field: the
+    /// serializer names it with a JSON path (<c>$.title</c>, <c>$.schema[0].options[1].label</c>). A value of the wrong type,
+    /// one of the wrong format (uuid, date-time) and text with an unpaired surrogate (which no .NET string field accepts) look
+    /// the same here, so the message names all three. Null for malformed JSON (a reader error) and failures without a path; those stay <c>bad_request</c>.
+    /// </summary>
+    public static FieldError? BindingFieldError(BadHttpRequestException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        if (exception.InnerException is not JsonException { Path: { } path } json || json.InnerException is null or JsonException)
+        {
+            return null;
+        }
+
+        var field = FieldOfJsonPath(path);
+        return field is null
+            ? null
+            : new FieldError(
+                field,
+                ErrorCodes.InvalidValue,
+                $"'{field}' could not be read: wrong JSON type, invalid format (e.g. a uuid or date-time) or text with an unpaired "
+                + "surrogate (\\ud800-\\udfff), which cannot be stored. See the request schema of this endpoint.");
+    }
+
+    /// <summary>Turns a framework 400 into <c>validation_failed</c> with <paramref name="error"/> in <c>errors[]</c>, like <see cref="ToProblemDetails"/>.</summary>
+    public static void ApplyBindingFieldError(ProblemDetails problem, FieldError error)
+    {
+        ArgumentNullException.ThrowIfNull(problem);
+        ArgumentNullException.ThrowIfNull(error);
+        problem.Detail = "One or more fields are invalid. See 'errors'.";
+        problem.Extensions[CodeExtension] = ErrorCodes.ValidationFailed;
+        problem.Extensions[ErrorsExtension] = new List<ProblemFieldError> { ProblemFieldError.From(error) };
+    }
+
+    /// <summary><c>$.a.b[0]['c d']</c> → <c>a.b[0].c d</c>; null for the root (<c>$</c>).</summary>
+    internal static string? FieldOfJsonPath(string path)
+    {
+        if (!path.StartsWith('$') || path.Length == 1)
+        {
+            return null;
+        }
+
+        // The serializer quotes member names with special characters as ['name'] without escaping inside.
+        var field = QuotedMember().Replace(path[1..], m => "." + m.Groups[1].Value).TrimStart('.');
+        return field.Length == 0 ? null : field;
+    }
+
+    [GeneratedRegex(@"\['(.*?)'\]")]
+    private static partial Regex QuotedMember();
 
     /// <summary>Fallback <c>code</c> for ProblemDetails produced by the framework (status code pages, exception handler).</summary>
     public static string CodeForStatus(int? status) => status switch

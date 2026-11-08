@@ -114,7 +114,8 @@ public sealed class PropertyValueValidator(IRelationTargetChecker relationTarget
 
     private static bool IsEmpty(JsonElement value) => value.ValueKind switch
     {
-        JsonValueKind.String => string.IsNullOrWhiteSpace(value.GetString()),
+        // Text that cannot be read is not empty: the type check reports it (invalid_value).
+        JsonValueKind.String => StorableText.TryRead(value, out var text) && string.IsNullOrWhiteSpace(text),
         JsonValueKind.Array => value.GetArrayLength() == 0,
         _ => false,
     };

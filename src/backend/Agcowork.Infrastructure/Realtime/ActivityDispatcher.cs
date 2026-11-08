@@ -37,7 +37,7 @@ public sealed class RealtimeOptions
 /// Delivers the activity log to live realtime connections (architecture §5, "Outbox"): the table <c>activity_events</c> is the
 /// outbox, written in the same transaction as every change. The dispatcher polls it for stable events after its cursor, in the
 /// commit-safe order of <see cref="ActivityLog"/> (instance-wide, <see cref="InstanceActivityReader"/>), and hands each
-/// workspace's events to <see cref="PublishActivity"/> in a scope whose tenant is that workspace.
+/// workspace's events to <see cref="IActivityPublisher"/> (<see cref="PublishActivity"/>) in a scope whose tenant is that workspace.
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
@@ -45,8 +45,10 @@ public sealed class RealtimeOptions
 /// events that become stable while no one is connected are skipped. Clients load state over REST and then follow the hub.</item>
 /// <item>Polling, no LISTEN/NOTIFY: an idle poll is one index probe on <c>(xact_id, seq)</c>, and a notification would not make
 /// events stable any sooner. The latency is the poll interval plus the time the oldest running transaction takes.</item>
-/// <item>At most once: the cursor moves on before publishing, so a failing delivery is logged and not retried; clients
-/// reload after reconnecting.</item>
+/// <item>At most once, and gapless or disconnected: the cursor moves past a batch even when its delivery to a workspace
+/// fails, so a failing delivery is logged and not retried. Instead every connection of that workspace is closed (other
+/// workspaces are not affected): a connection is either sent every event or cut off. The client reconnects and reads the
+/// events it missed with <c>GET /activity?afterSeq=</c> (or reloads), as after any lost connection.</item>
 /// <item>Single instance: connections of other instances are not reached. Several API instances need a SignalR backplane
 /// (e.g. Redis) and one dispatcher per instance or a shared one; not built (architecture §5).</item>
 /// </list>
@@ -59,6 +61,13 @@ internal sealed partial class ActivityDispatcher(
     ILogger<ActivityDispatcher> logger) : BackgroundService
 {
     private readonly RealtimeOptions _options = options.Value;
+
+    // Failed deliveries in a row per workspace, so a lasting failure is visible in the log (every delivery attempt closes the
+    // connections again). Only the dispatcher loop touches it.
+    private readonly Dictionary<Guid, int> _failuresInARow = [];
+
+    /// <summary>Deliveries to <paramref name="workspaceId"/> that failed in a row (0 after a successful one).</summary>
+    internal int FailuresInARow(Guid workspaceId) => _failuresInARow.GetValueOrDefault(workspaceId);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -126,6 +135,8 @@ internal sealed partial class ActivityDispatcher(
         {
             if (connections.InWorkspace(workspace.Key).Count == 0)
             {
+                // Nobody to deliver to: nothing failed or succeeded; forget the count so the map stays bounded.
+                _failuresInARow.Remove(workspace.Key);
                 continue;
             }
 
@@ -133,21 +144,53 @@ internal sealed partial class ActivityDispatcher(
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
                 scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>().SetTenant(new RealtimeTenant(workspace.Key));
-                var dropped = await scope.ServiceProvider.GetRequiredService<PublishActivity>()
+                var dropped = await scope.ServiceProvider.GetRequiredService<IActivityPublisher>()
                     .PublishAsync([.. workspace], cancellationToken)
                     .ConfigureAwait(false);
                 if (dropped > 0)
                 {
                     LogDropped(logger, dropped, workspace.Key);
                 }
+
+                if (_failuresInARow.Remove(workspace.Key, out var failed))
+                {
+                    LogPublishRecovered(logger, workspace.Key, failed);
+                }
             }
-            catch (Exception exception) when (exception is not OperationCanceledException)
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
-                LogPublishFailed(logger, exception, workspace.Key);
+                // Any failure that is not the host stopping (database error in the access check or the titles, a cancelled
+                // command, a bug): some connections may have got part of the batch, others nothing. The cursor still moves
+                // on (no endless retry), so every connection of the workspace is closed; clients catch up after reconnecting.
+                var failures = _failuresInARow[workspace.Key] = _failuresInARow.GetValueOrDefault(workspace.Key) + 1;
+                LogPublishFailed(logger, exception, workspace.Key, failures);
+                await DisconnectAllAsync(workspace.Key, cancellationToken).ConfigureAwait(false);
             }
         }
 
         return (ActivityLog.PositionOf(batch[^1]), batch.Count == _options.BatchSize);
+    }
+
+    /// <summary>Closes every connection of a workspace after a failed delivery; never throws unless the host stops.</summary>
+    private async Task DisconnectAllAsync(Guid workspaceId, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<string> ids = [];
+        try
+        {
+            // Connections that joined during the failed delivery are closed too: they may have missed events as well.
+            ids = [.. connections.InWorkspace(workspaceId).Select(c => c.ConnectionId)];
+            if (ids.Count == 0)
+            {
+                return;
+            }
+
+            await connections.DisconnectAsync(workspaceId, ids, cancellationToken).ConfigureAwait(false);
+            LogDisconnectedAfterFailure(logger, ids.Count, workspaceId);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            LogDisconnectFailed(logger, exception, ids.Count, workspaceId);
+        }
     }
 
     /// <summary>Upper bound of the wait after failed polls.</summary>
@@ -173,8 +216,17 @@ internal sealed partial class ActivityDispatcher(
     [LoggerMessage(Level = LogLevel.Information, Message = "Realtime dispatcher reads the activity log again after {Failures} failure(s).")]
     private static partial void LogPollRecovered(ILogger logger, int failures);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Realtime delivery to workspace {WorkspaceId} failed; these events are not sent again.")]
-    private static partial void LogPublishFailed(ILogger logger, Exception exception, Guid workspaceId);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Realtime delivery to workspace {WorkspaceId} failed ({Failures} time(s) in a row); these events are not sent again, its connections are closed.")]
+    private static partial void LogPublishFailed(ILogger logger, Exception exception, Guid workspaceId, int failures);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Realtime delivery to workspace {WorkspaceId} works again after {Failures} failure(s) in a row.")]
+    private static partial void LogPublishRecovered(ILogger logger, Guid workspaceId, int failures);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Closed {Count} realtime connection(s) of workspace {WorkspaceId} after a failed delivery; clients catch up after reconnecting.")]
+    private static partial void LogDisconnectedAfterFailure(ILogger logger, int count, Guid workspaceId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Could not close the {Count} realtime connection(s) of workspace {WorkspaceId} after a failed delivery.")]
+    private static partial void LogDisconnectFailed(ILogger logger, Exception exception, int count, Guid workspaceId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Closed {Count} realtime connection(s) of workspace {WorkspaceId} that lost access.")]
     private static partial void LogDropped(ILogger logger, int count, Guid workspaceId);

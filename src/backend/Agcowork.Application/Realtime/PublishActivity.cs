@@ -6,15 +6,31 @@ using Agcowork.Domain.Activity;
 namespace Agcowork.Application.Realtime;
 
 /// <summary>
+/// Delivers the stable events of one workspace to its live connections; the dispatcher calls it once per workspace and
+/// batch, in a scope whose tenant is that workspace. Implemented by <see cref="PublishActivity"/>; an interface so the
+/// dispatcher's failure path can be tested with a publisher that throws.
+/// </summary>
+public interface IActivityPublisher
+{
+    /// <param name="events">Events of the tenant's workspace, in commit-safe order.</param>
+    /// <param name="cancellationToken">Cancels the delivery.</param>
+    /// <returns>The number of connections that were dropped because their subscriber lost access.</returns>
+    /// <remarks>
+    /// May throw (e.g. a database error in the access check or the title lookup) after handing some events to the transport;
+    /// the caller then closes every connection of the workspace, so no client silently misses the rest.
+    /// </remarks>
+    Task<int> PublishAsync(IReadOnlyList<ActivityEvent> events, CancellationToken cancellationToken);
+}
+
+/// <summary>
 /// Delivers the stable events of one workspace to its live connections, in order: first drops connections whose subscriber
 /// lost access (<see cref="RealtimeAccess"/>), then sends each event as <see cref="ActivityEventDto"/> with its current
 /// <c>targetTitle</c>, like <c>GET /activity</c>. Runs in a scope whose tenant is the workspace (<see cref="RealtimeTenant"/>).
 /// </summary>
 public sealed class PublishActivity(IAgcoworkDbContext db, ITenantContext tenant, RealtimeAccess access, IRealtimeConnections connections)
+    : IActivityPublisher
 {
-    /// <param name="events">Events of the tenant's workspace, in commit-safe order.</param>
-    /// <param name="cancellationToken">Cancels the delivery.</param>
-    /// <returns>The number of connections that were dropped.</returns>
+    /// <inheritdoc />
     public async Task<int> PublishAsync(IReadOnlyList<ActivityEvent> events, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(events);

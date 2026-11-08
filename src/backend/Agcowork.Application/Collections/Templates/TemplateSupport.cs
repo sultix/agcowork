@@ -19,7 +19,7 @@ internal static class TemplateSupport
 
     public static void Name(FieldErrors errors, string? name)
     {
-        if (errors.Required("name", name))
+        if (errors.Required("name", name) && errors.Storable("name", name))
         {
             errors.MaxLength("name", name, Template.NameMaxLength);
         }
@@ -27,7 +27,16 @@ internal static class TemplateSupport
 
     public static void Texts(FieldErrors errors, string? description, string? bodyMarkdown)
     {
-        errors.MaxLength("description", description, Template.DescriptionMaxLength);
+        if (errors.Storable("description", description))
+        {
+            errors.MaxLength("description", description, Template.DescriptionMaxLength);
+        }
+
+        if (!errors.Storable("bodyMarkdown", bodyMarkdown))
+        {
+            return;
+        }
+
         if (bodyMarkdown is { Length: > Template.BodyMaxLength })
         {
             errors.Add("bodyMarkdown", ErrorCodes.TooLong, $"'bodyMarkdown' must not exceed {Template.BodyMaxLength} characters.");

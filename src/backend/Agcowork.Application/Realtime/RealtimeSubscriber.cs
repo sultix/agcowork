@@ -32,9 +32,16 @@ public interface IRealtimeConnections
     /// <summary>The connections of a workspace (snapshot).</summary>
     IReadOnlyList<RealtimeConnection> InWorkspace(Guid workspaceId);
 
-    /// <summary>Sends one <c>activity</c> event to every connection of the workspace except <paramref name="excludedConnectionIds"/>.</summary>
+    /// <summary>
+    /// Sends one <c>activity</c> event to every connection of the workspace except <paramref name="excludedConnectionIds"/>.
+    /// A connection that cannot take the event (its outbox is full or handing it over fails) is closed rather than skipped.
+    /// </summary>
     Task SendActivityAsync(Guid workspaceId, Activity.ActivityEventDto activity, IReadOnlyCollection<string> excludedConnectionIds, CancellationToken cancellationToken);
 
-    /// <summary>Removes connections from the workspace and closes them (access revoked).</summary>
+    /// <summary>
+    /// Removes connections from the workspace and closes them: access revoked, or a delivery to the workspace failed (the client
+    /// reconnects and reads what it missed with <c>afterSeq</c>). Every connection is removed and closed locally before
+    /// anything that can fail, so a failure here never leaves one of them open and receiving.
+    /// </summary>
     Task DisconnectAsync(Guid workspaceId, IReadOnlyCollection<string> connectionIds, CancellationToken cancellationToken);
 }

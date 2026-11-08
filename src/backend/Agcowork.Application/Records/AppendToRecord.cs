@@ -50,7 +50,11 @@ public sealed class AppendToRecord(
             RecordInput.Body(errors, "markdown", request.Markdown);
         }
 
-        errors.MaxLength("section", request.Section, RecordInput.SectionMaxLength);
+        if (errors.Storable("section", request.Section))
+        {
+            errors.MaxLength("section", request.Section, RecordInput.SectionMaxLength);
+        }
+
         RecordInput.Reason(errors, request.Reason);
         if (errors.Any)
         {

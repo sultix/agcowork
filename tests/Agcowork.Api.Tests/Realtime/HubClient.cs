@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace Agcowork.Api.Tests.Realtime;
@@ -49,7 +50,7 @@ internal sealed class HubClient : IAsyncDisposable
     public const string SameOrigin = "http://localhost";
 
     /// <summary>A client with <c>Authorization: Bearer</c>, without Origin unless given (agents are no browsers).</summary>
-    public static HubClient WithKey(AgcoworkApiFactory factory, string slug, string key, HttpTransportType transport = HttpTransportType.WebSockets, string? origin = null) =>
+    public static HubClient WithKey(WebApplicationFactory<Program> factory, string slug, string key, HttpTransportType transport = HttpTransportType.WebSockets, string? origin = null) =>
         Create(factory, slug, Headers(("Authorization", $"Bearer {key}"), ("Origin", origin)), transport);
 
     /// <summary>A client with a session cookie (<c>agcowork_session=…</c>), sending <paramref name="origin"/> like a browser (null: none).</summary>
@@ -109,7 +110,7 @@ internal sealed class HubClient : IAsyncDisposable
     private static Dictionary<string, string> Headers(params (string Name, string? Value)[] headers) =>
         headers.Where(h => h.Value is not null).ToDictionary(h => h.Name, h => h.Value!, StringComparer.OrdinalIgnoreCase);
 
-    private static HubClient Create(AgcoworkApiFactory factory, string slug, Dictionary<string, string> headers, HttpTransportType transport)
+    private static HubClient Create(WebApplicationFactory<Program> factory, string slug, Dictionary<string, string> headers, HttpTransportType transport)
     {
         var server = factory.Server;
         var connection = new HubConnectionBuilder()

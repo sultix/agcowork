@@ -75,6 +75,8 @@ internal static class SchemaInput
         var before = errors.Items.Count;
         var type = ParseType(errors, $"{field}.type", input.Type);
         var options = ParseOptions(errors, $"{field}.options", input.Options);
+
+        CheckStorable(errors, field, input.Name, input.Description, input.Unit, input.Default);
         var isTitle = string.Equals(input.Key, CollectionSchema.TitleKey, StringComparison.Ordinal);
 
         var definition = new PropertyDefinition
@@ -154,11 +156,34 @@ internal static class SchemaInput
                 }
             }
 
+            var valueStorable = errors.Storable($"{field}[{i}].value", input.Value);
+            var labelStorable = errors.Storable($"{field}[{i}].label", input.Label);
+            if (!valueStorable || !labelStorable)
+            {
+                continue;
+            }
+
             var value = input.Value?.Trim() ?? string.Empty;
             options.Add(new PropertyOption(value, Optional(input.Label) ?? value, Optional(input.Color), group));
         }
 
         return options;
+    }
+
+    /// <summary>
+    /// Display texts and the default of a definition are stored with the schema (jsonb): NUL and unpaired surrogates
+    /// (<see cref="StorableText"/>) are field errors <c>invalid_value</c> on <c>{field}.name</c>, <c>.description</c>,
+    /// <c>.unit</c> and <c>.default</c>. Option values and labels are checked by <see cref="ParseOptions"/>.
+    /// </summary>
+    public static void CheckStorable(FieldErrors errors, string field, string? name, string? description, string? unit, JsonElement? defaultValue)
+    {
+        errors.Storable($"{field}.name", name);
+        errors.Storable($"{field}.description", description);
+        errors.Storable($"{field}.unit", unit);
+        if (defaultValue is { } value && !StorableText.IsStorable(value))
+        {
+            errors.Add($"{field}.default", ErrorCodes.InvalidValue, $"'{field}.default' {StorableText.Hint}");
+        }
     }
 
     public static void AddViolations(FieldErrors errors, string prefix, IEnumerable<SchemaViolation> violations)

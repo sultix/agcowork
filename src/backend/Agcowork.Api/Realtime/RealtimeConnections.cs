@@ -30,6 +30,14 @@ internal sealed partial class RealtimeConnections(IHubContext<WorkspaceHub> hub,
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<string, Entry>> _byWorkspace = new();
     private readonly TimeSpan _sendTimeout = options.Value.SendTimeout;
 
+    /// <summary>Creates the outbox of a new connection; replaceable in tests (an outbox that fails to take events).</summary>
+    internal Func<Channel<ActivityEventDto>> CreateOutbox { get; init; } = () =>
+        Channel.CreateBounded<ActivityEventDto>(new BoundedChannelOptions(OutboxCapacity)
+        {
+            SingleReader = true,
+            FullMode = BoundedChannelFullMode.Wait,
+        });
+
     /// <summary>SignalR group of a workspace.</summary>
     public static string Group(Guid workspaceId) => $"ws:{workspaceId}";
 
@@ -37,11 +45,7 @@ internal sealed partial class RealtimeConnections(IHubContext<WorkspaceHub> hub,
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(subscriber);
-        var outbox = Channel.CreateBounded<ActivityEventDto>(new BoundedChannelOptions(OutboxCapacity)
-        {
-            SingleReader = true,
-            FullMode = BoundedChannelFullMode.Wait,
-        });
+        var outbox = CreateOutbox();
         var entry = new Entry(new RealtimeConnection(context.ConnectionId, subscriber), context, outbox);
         _byConnection[context.ConnectionId] = entry;
         _byWorkspace.GetOrAdd(subscriber.WorkspaceId, _ => new ConcurrentDictionary<string, Entry>(StringComparer.Ordinal))[context.ConnectionId] = entry;
@@ -78,11 +82,31 @@ internal sealed partial class RealtimeConnections(IHubContext<WorkspaceHub> hub,
 
         foreach (var entry in workspace.Values)
         {
-            if (!excludedConnectionIds.Contains(entry.Connection.ConnectionId) && !entry.Outbox.Writer.TryWrite(activity))
+            if (excludedConnectionIds.Contains(entry.Connection.ConnectionId))
             {
-                LogOverflow(logger, entry.Connection.ConnectionId, OutboxCapacity);
-                Drop(entry);
+                continue;
             }
+
+            // Gapless or closed: a connection that does not get this event must not get the following ones either.
+            try
+            {
+                if (entry.Outbox.Writer.TryWrite(activity))
+                {
+                    continue;
+                }
+
+                // Not written: the outbox is full, or it was completed because the connection is being removed right now.
+                if (_byConnection.ContainsKey(entry.Connection.ConnectionId))
+                {
+                    LogOverflow(logger, entry.Connection.ConnectionId, OutboxCapacity);
+                }
+            }
+            catch (Exception exception)
+            {
+                LogEnqueueFailed(logger, exception, entry.Connection.ConnectionId);
+            }
+
+            Drop(entry);
         }
 
         return Task.CompletedTask;
@@ -91,13 +115,27 @@ internal sealed partial class RealtimeConnections(IHubContext<WorkspaceHub> hub,
     public async Task DisconnectAsync(Guid workspaceId, IReadOnlyCollection<string> connectionIds, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(connectionIds);
+
+        // Close locally first, all of them: nothing below may leave a connection open and receiving. Closes the transport; a
+        // client that reconnects goes through tenant resolution again (404 without access).
         foreach (var connectionId in connectionIds)
         {
-            await hub.Groups.RemoveFromGroupAsync(connectionId, Group(workspaceId), cancellationToken).ConfigureAwait(false);
             if (_byConnection.TryGetValue(connectionId, out var entry))
             {
-                // Closes the transport; a client that reconnects goes through tenant resolution again (404 without access).
                 Drop(entry);
+            }
+        }
+
+        // The group is only the tenant boundary (delivery goes per connection), and SignalR leaves it on disconnect anyway.
+        foreach (var connectionId in connectionIds)
+        {
+            try
+            {
+                await hub.Groups.RemoveFromGroupAsync(connectionId, Group(workspaceId), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                LogLeaveGroupFailed(logger, exception, connectionId);
             }
         }
     }
@@ -137,10 +175,19 @@ internal sealed partial class RealtimeConnections(IHubContext<WorkspaceHub> hub,
         }
     }
 
+    /// <summary>Removes the connection (no further sends, pending ones are discarded) and closes its transport.</summary>
     private void Drop(Entry entry)
     {
         Remove(entry.Connection.ConnectionId);
-        entry.Context.Abort();
+        try
+        {
+            entry.Context.Abort();
+        }
+        catch (Exception exception)
+        {
+            // Already removed: it gets nothing more even if the transport did not close; the client times out and reconnects.
+            LogAbortFailed(logger, exception, entry.Connection.ConnectionId);
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Closed realtime connection {ConnectionId}: a message took longer than {Timeout} (client not reading).")]
@@ -151,6 +198,15 @@ internal sealed partial class RealtimeConnections(IHubContext<WorkspaceHub> hub,
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Closed realtime connection {ConnectionId}: sending failed.")]
     private static partial void LogSendFailed(ILogger logger, Exception exception, string connectionId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Closed realtime connection {ConnectionId}: the event could not be put into its outbox.")]
+    private static partial void LogEnqueueFailed(ILogger logger, Exception exception, string connectionId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Realtime connection {ConnectionId} is closed but could not leave its workspace group.")]
+    private static partial void LogLeaveGroupFailed(ILogger logger, Exception exception, string connectionId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Realtime connection {ConnectionId} is removed but its transport could not be aborted.")]
+    private static partial void LogAbortFailed(ILogger logger, Exception exception, string connectionId);
 
     private sealed record Entry(RealtimeConnection Connection, HubCallerContext Context, Channel<ActivityEventDto> Outbox);
 }

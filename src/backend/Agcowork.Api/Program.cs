@@ -46,12 +46,23 @@ builder.Services.AddProblemDetails(options =>
             ProblemDetailsMapping.CodeExtension,
             ProblemDetailsMapping.CodeForStatus(context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode));
 
-        // Binding failures (malformed JSON, wrong content type) say which parameter failed; safe to expose.
+        // Binding failures (malformed JSON, wrong content type) say which parameter failed; safe to expose. A JSON value that
+        // cannot be read into its field (wrong type, unpaired surrogate) is a field error like those of the use cases.
         if (context.Exception is BadHttpRequestException badRequest)
         {
-            context.ProblemDetails.Detail ??= badRequest.Message;
+            if (ProblemDetailsMapping.BindingFieldError(badRequest) is { } fieldError)
+            {
+                ProblemDetailsMapping.ApplyBindingFieldError(context.ProblemDetails, fieldError);
+            }
+            else
+            {
+                context.ProblemDetails.Detail ??= badRequest.Message;
+            }
         }
     });
+// Binding failures always throw BadHttpRequestException (the default does so only in Development and otherwise writes a bare
+// 400): only then the exception handler below can answer them as ProblemDetails with field errors in every environment.
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.AddOpenApi(options => options
     .AddSchemaTransformer<ProblemDetailsSchemaTransformer>()
     .AddOperationTransformer<WorkspaceSlugOpenApiTransformer>());
@@ -67,6 +78,9 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
     StatusCodeSelector = exception => exception is BadHttpRequestException badRequest
         ? badRequest.StatusCode
         : StatusCodes.Status500InternalServerError,
+
+    // A client's bad request is no server error: no error log, no exception diagnostics for it.
+    SuppressDiagnosticsCallback = context => context.Exception is BadHttpRequestException,
 });
 app.UseStatusCodePages();
 

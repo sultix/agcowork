@@ -15,6 +15,8 @@ namespace Agcowork.Api.Mcp;
 /// Wraps every tool call (architecture §5 Observability, AP-011): one span per call with <c>tool</c>, <c>actor_id</c> and
 /// <c>workspace_id</c>, and no exception ever leaves a tool.
 /// <list type="number">
+/// <item>Arguments with text that could not be read (unpaired surrogates, see <see cref="McpUnreadableArguments"/>) are
+/// <c>invalid_value</c> on their fields; the tool does not run.</item>
 /// <item>Before the call the top-level arguments are checked against the tool's input schema (required, JSON type, uuid and
 /// date-time formats): such mistakes come back as the same structured validation error as a use-case failure, with the
 /// parameter name as field, independent of the SDK binder's wording.</item>
@@ -52,7 +54,12 @@ internal static partial class McpToolPipeline
 
             var output = services?.GetRequiredService<McpOutput>() ?? throw new InvalidOperationException("MCP tool call without request services.");
             CallToolResult result;
-            if (request.MatchedPrimitive is McpServerTool matched && CheckArguments(matched.ProtocolTool, request.Params?.Arguments) is { } invalid)
+            if (McpUnreadableArguments.ErrorOf(request.Items) is { } unreadable)
+            {
+                // Text with unpaired surrogates, blanked by the message filter so the request could be read at all.
+                result = output.Failure(unreadable);
+            }
+            else if (request.MatchedPrimitive is McpServerTool matched && CheckArguments(matched.ProtocolTool, request.Params?.Arguments) is { } invalid)
             {
                 result = output.Failure(invalid);
             }

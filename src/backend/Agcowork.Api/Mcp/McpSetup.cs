@@ -71,6 +71,7 @@ internal static class McpSetup
                     return Task.CompletedTask;
                 };
             })
+            .WithMessageFilters(filters => filters.AddIncomingFilter(McpUnreadableArguments.Filter))
             .WithRequestFilters(filters => filters.AddCallToolFilter(McpToolPipeline.Filter));
         return services;
     }

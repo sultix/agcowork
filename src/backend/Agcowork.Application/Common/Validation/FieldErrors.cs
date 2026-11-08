@@ -51,6 +51,21 @@ public sealed class FieldErrors
         return false;
     }
 
+    /// <summary>
+    /// Adds <c>invalid_value</c> when the value contains NUL or an unpaired surrogate, which the database cannot store
+    /// (<see cref="StorableText"/>). Returns true when the value is null or storable.
+    /// </summary>
+    public bool Storable(string field, string? value)
+    {
+        if (value is null || StorableText.IsStorable(value))
+        {
+            return true;
+        }
+
+        Add(field, ErrorCodes.InvalidValue, $"'{field}' {StorableText.Hint}");
+        return false;
+    }
+
     /// <summary>Adds <c>not_in_options</c> with the allowed values when the value is not one of them (ordinal).</summary>
     public bool OneOf(string field, string value, IReadOnlyList<string> allowed)
     {

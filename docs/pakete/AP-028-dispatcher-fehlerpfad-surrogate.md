@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | `src/backend/Agcowork.Infrastructure/Realtime/ActivityDispatcher.cs`, `src/backend/Agcowork.Application/Realtime/PublishActivity.cs`, `src/backend/Agcowork.Api/Realtime/RealtimeConnections.cs` (Trennen bei Überlauf/Timeout); Eingabeprüfung `QueryText.IsStorable` (Suche, AP-026) |
@@ -52,3 +52,11 @@ Die Realtime-Zustellung hält ihre Invariante „lückenlos oder getrennt“ auc
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zu AP-026-Abschluss und AP-027) |
+| 2026-11-08 | Bericht: 1212 Tests grün; `IActivityPublisher` als Naht, Trennen bei jedem Zustellfehler, `StorableText` zentral (Records, Properties, Spaces, Collections, Views, Schema); Erweiterungen: REST-Binder-Fehler mit Pfad → `validation_failed`, MCP-Message-Filter für unlesbare Argumente |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: **Blockiert** – REST-Feldfehler nur in Development (`ThrowOnBadRequest` Default = IsDevelopment, Testfactory setzt Development); wichtig: Reconnect-Sturm bei Dauerfehler (Frontend setzt Backoff nach Start zurück), NUL in Workspace-/Actor-/Key-/Template-Namen und Login weiter 500; Dispatcher-Garantie und MCP-Filter in Ordnung |
+| 2026-11-08 | Nacharbeit an implementer-opus (B1, W2 mit allen Stellen, Fehlerzähler, Hinweise) |
+| 2026-11-08 | Nacharbeit: `ThrowOnBadRequest` global mit unterdrücktem Error-Log, Production-Test (Gegenprobe rot), Storable für Workspace/Actor/Template/Login, Fehlerzähler pro Workspace; 1220/1220 |
+| 2026-11-08 | Nachprüfung: Freigabe mit Hinweisen (keine Nebenwirkungen auf Statuscodes, optionale Bodies, MCP, Hub) |
+| 2026-11-08 | abgeschlossen |

@@ -32,7 +32,7 @@ internal static class ViewSupport
 
     public static void Name(FieldErrors errors, string? name)
     {
-        if (errors.Required("name", name))
+        if (errors.Required("name", name) && errors.Storable("name", name))
         {
             errors.MaxLength("name", name, View.NameMaxLength);
         }

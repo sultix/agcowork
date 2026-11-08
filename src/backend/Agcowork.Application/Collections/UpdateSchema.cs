@@ -309,6 +309,7 @@ public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, I
         var count = errors.Items.Count;
         var type = change.Type is null ? before.Type : SchemaInput.ParseType(errors, $"{field}.type", change.Type);
         var options = change.Options is null ? before.Options : SchemaInput.ParseOptions(errors, $"{field}.options", change.Options);
+        SchemaInput.CheckStorable(errors, field, change.Name, change.Description, change.Unit, change.Default);
         if (type is null || errors.Items.Count != count)
         {
             return null;

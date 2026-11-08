@@ -239,16 +239,27 @@ public static partial class PropertyTypeRegistry
         _ => "null",
     };
 
+    /// <summary>The string value; null with an error when the value is no string or has text that cannot be stored.</summary>
     private static string? ExpectString(PropertyDefinition property, JsonElement value, string field, FieldErrors errors)
     {
-        if (value.ValueKind == JsonValueKind.String)
+        if (value.ValueKind != JsonValueKind.String)
         {
-            return value.GetString();
+            InvalidType(property, value, field, errors);
+            return null;
         }
 
-        InvalidType(property, value, field, errors);
+        if (StorableText.TryRead(value, out var text))
+        {
+            return text;
+        }
+
+        Unstorable(field, errors);
         return null;
     }
+
+    /// <summary>NUL or an unpaired surrogate (<see cref="StorableText"/>): PostgreSQL cannot store the value.</summary>
+    private static void Unstorable(string field, FieldErrors errors) =>
+        errors.Add(field, ErrorCodes.InvalidValue, $"'{field}' {StorableText.Hint}");
 
     private static void CheckString(PropertyDefinition property, JsonElement value, string field, FieldErrors errors, int maxLength)
     {
@@ -342,7 +353,12 @@ public static partial class PropertyTypeRegistry
                 continue;
             }
 
-            var text = item.GetString()!;
+            if (!StorableText.TryRead(item, out var text))
+            {
+                Unstorable(itemField, errors);
+                continue;
+            }
+
             if (errors.OneOf(itemField, text, allowed) && !seen.Add(text))
             {
                 errors.Add(itemField, ErrorCodes.Duplicate, $"'{text}' occurs more than once in '{field}'.");
@@ -406,7 +422,7 @@ public static partial class PropertyTypeRegistry
 
     private static JsonElement NormalizeDateTime(JsonElement value)
     {
-        if (value.ValueKind != JsonValueKind.String || !TryParseDateTime(value.GetString()!.Trim(), out var parsed))
+        if (!StorableText.TryRead(value, out var text) || !TryParseDateTime(text.Trim(), out var parsed))
         {
             return value;
         }
@@ -442,9 +458,15 @@ public static partial class PropertyTypeRegistry
 
     private static Guid? ParseId(JsonElement value, string field, FieldErrors errors, string what)
     {
-        if (value.ValueKind == JsonValueKind.String && Guid.TryParseExact(value.GetString(), "D", out var id) && id != Guid.Empty)
+        if (StorableText.TryRead(value, out var text) && Guid.TryParseExact(text, "D", out var id) && id != Guid.Empty)
         {
             return id;
+        }
+
+        if (value.ValueKind == JsonValueKind.String && !StorableText.TryRead(value, out _))
+        {
+            Unstorable(field, errors);
+            return null;
         }
 
         errors.Add(
@@ -527,6 +549,11 @@ public static partial class PropertyTypeRegistry
         {
             errors.Add(field, ErrorCodes.TooLong, $"'{field}' must not exceed {JsonMaxLength} characters when serialized.");
         }
+        else if (!StorableText.IsStorable(value))
+        {
+            // jsonb rejects \u0000 and unpaired surrogates in strings and member names at any depth.
+            Unstorable(field, errors);
+        }
     }
 
     private static void CheckComputed(PropertyDefinition property, JsonElement value, string field, FieldErrors errors, ValueReferences references) =>
@@ -535,20 +562,22 @@ public static partial class PropertyTypeRegistry
             ErrorCodes.ReadOnly,
             $"'{field}' is computed by the system ({PropertyTypes.ToWire(property.Type)}) and cannot be written. Leave it out.");
 
+    // Normalizers leave text that cannot be stored unchanged (reading it may throw); the check reports it as invalid_value.
     private static JsonElement TrimString(JsonElement value) =>
-        value.ValueKind == JsonValueKind.String && value.GetString() is { } text && text.Trim() is var trimmed && trimmed.Length != text.Length
+        StorableText.TryRead(value, out var text) && text.Trim() is var trimmed && trimmed.Length != text.Length
             ? JsonSerializer.SerializeToElement(trimmed)
             : value;
 
     private static JsonElement NormalizeId(JsonElement value) =>
-        value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString()!.Trim(), out var id)
+        StorableText.TryRead(value, out var text) && Guid.TryParse(text.Trim(), out var id)
             ? JsonSerializer.SerializeToElement(id.ToString("D"))
             : value;
 
     /// <summary>Normalizes every item and drops later duplicates (by raw JSON); non-arrays stay as they are.</summary>
     private static JsonElement NormalizeArray(JsonElement value, Func<JsonElement, JsonElement> normalizeItem)
     {
-        if (value.ValueKind != JsonValueKind.Array)
+        // Re-serializing would turn an unpaired surrogate into U+FFFD and hide it from the check.
+        if (value.ValueKind != JsonValueKind.Array || !StorableText.IsStorable(value))
         {
             return value;
         }

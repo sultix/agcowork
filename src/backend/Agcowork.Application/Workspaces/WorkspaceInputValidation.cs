@@ -29,14 +29,19 @@ internal static class WorkspaceInputValidation
 
     public static void Name(FieldErrors errors, string? name)
     {
-        if (errors.Required("name", name))
+        if (errors.Required("name", name) && errors.Storable("name", name))
         {
             errors.MaxLength("name", name, Workspace.NameMaxLength);
         }
     }
 
-    public static void Description(FieldErrors errors, string? description) =>
-        errors.MaxLength("description", description, Workspace.DescriptionMaxLength);
+    public static void Description(FieldErrors errors, string? description)
+    {
+        if (errors.Storable("description", description))
+        {
+            errors.MaxLength("description", description, Workspace.DescriptionMaxLength);
+        }
+    }
 
     /// <summary>Parses a wire role ("owner", …). Adds <c>not_in_options</c> with the allowed values when unknown.</summary>
     public static WorkspaceRole? Role(FieldErrors errors, string? role, bool required)

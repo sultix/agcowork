@@ -30,8 +30,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | abgeschlossen | 6bd7d04 |
 | [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | abgeschlossen | 0cbeecc |
 | [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | abgeschlossen | 923b736 |
-| [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | abgeschlossen | |
-| [AP-028](AP-028-dispatcher-fehlerpfad-surrogate.md) | Backend-Kleinpaket: Dispatcher „lückenlos oder getrennt“, ungepaarte Surrogate → 400 | 2 | implementer-opus | AP-024, AP-025 | in Arbeit | |
+| [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | abgeschlossen | 00615d6 |
+| [AP-028](AP-028-dispatcher-fehlerpfad-surrogate.md) | Backend-Kleinpaket: Dispatcher „lückenlos oder getrennt“, ungepaarte Surrogate → 400 | 2 | implementer-opus | AP-024, AP-025 | abgeschlossen | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -69,6 +69,9 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-026 Review | Neuindexierung nach Schemaänderung läuft synchron in der UpdateSchema-Transaktion (Timeout bei großen Collections) | Folgepaket: Reindex im Hintergrund (Batch, Fortschritt), wenn Collections > ~2.000 große Records realistisch werden |
 | AP-026 Nacharbeit | Body mit ungepaartem Surrogat → `DbUpdateException`/`EncoderFallbackException` bei `UpdateRecord` (vermutlich 500 statt 400); Body-Validierung prüft nicht wie `QueryText.IsStorable` | → AP-028 |
 | AP-026 Review | Präfix-Defaults im Migrations-SQL (25.000 Properties) nicht per Test gegen `RecordSearch.PropertiesPrefixLength` geprüft | Konsistenztest beim nächsten Such-Paket |
+| AP-028 Bericht | NUL/Surrogate noch ungeprüft (vermutlich 500): Templates (Name, Body), Workspaces (Name), Actors, Member-Namen, API-Key-Namen, Login | → AP-028-Nacharbeit |
+| AP-028 Review | Reconnect-Sturm bei dauerhaftem Zustellfehler: Frontend setzt `attempt = 0` direkt nach `start()` (`realtime.service.ts`), nächster Retry 0 ms plus Resync-Reloads | Kleinpaket Frontend: Backoff erst nach Mindestlebensdauer der Verbindung zurücksetzen, Jitter |
+| AP-028 Review | MCP `resources/read`/`prompts/*` und Nicht-Objekt-`arguments` mit Surrogaten → nacktes JSON-RPC -32603; stdio-Proxy ohne Filter | beobachten, mit nächstem MCP-Paket |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |
