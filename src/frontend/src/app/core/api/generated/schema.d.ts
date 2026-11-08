@@ -665,7 +665,7 @@ export interface paths {
         };
         /**
          * Get a record
-         * @description One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown body, includeHistory=n (0..100) the latest n revisions. format=markdown returns text/markdown: a YAML frontmatter block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the easiest form to read for language models. Requires read.
+         * @description One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown body, includeHistory=n (0..100) the latest n revisions, includeComments=true the discussion ('comments': threads with replies, as GET …/comments returns them; with format=markdown a '# Comments' section after the body). format=markdown returns text/markdown: a YAML frontmatter block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the easiest form to read for language models. Requires read.
          */
         get: operations["GetRecord"];
         put?: never;
@@ -780,6 +780,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the comments of a record
+         * @description The discussion of a record as threads: roots oldest first, each with its 'replies' oldest first, authors with name and kind. Deleted comments are left out; a deleted root that still has replies stays as placeholder without 'markdown'. includeResolved=false hides resolved threads. At most 500 threads (the newest); 'omittedThreads' counts older ones left out. Archived records can be read. Requires read.
+         */
+        get: operations["ListComments"];
+        put?: never;
+        /**
+         * Comment on a record
+         * @description Adds a comment: a new thread, or with 'parentCommentId' a reply to the root of a thread on the same record (threads have one level: answering a reply is 400 'not_root'). 'markdown' max. 64 KiB. Mention a member with a Markdown link to its actor id: [@Display name](actor:<uuid>), e.g. [@Tech-Lead](actor:0190f3a2-7c4e-7b1a-9d2e-3f4a5b6c7d8e). Only the actor id counts; the link text is free. Actor ids come from the workspace members, from 'authorId' of comments, from actor properties of records and from the activity feed. Every mentioned member gets an entry in its inbox (mentions), nobody for mentioning themselves; links inside code spans or code blocks are no mentions. Mentioning a non-member: 400 'not_member' on 'markdown' with the id. Comments create no record revision. Send an 'Idempotency-Key' header (e.g. a UUID) to make retries safe: the same key by the same actor within 24 h returns the first comment. Requires write. Archived record, collection or space: 409; deleted parent: 409 'comment_deleted'.
+         */
+        post: operations["AddComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a comment
+         * @description Deletes softly: the text is removed and the comment's mentions leave the inboxes; a root with replies stays as placeholder so the thread keeps its replies. Author or a member with admin, else 403 'not_author'. Deleting a deleted comment changes nothing. Requires write. Archived record: 409.
+         */
+        delete: operations["DeleteComment"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit a comment or resolve its thread
+         * @description 'markdown' replaces the text (author only, else 403 'not_author'; sets 'editedAt', no revision). Mentions follow the text: new links create mentions, removed links delete theirs, kept ones keep their read state. 'resolved' true resolves, false reopens the thread (roots only, else 400 'not_root'). Both can be sent together. Requires write. Deleted comment: 409 'comment_deleted'; archived record: 409.
+         */
+        patch: operations["UpdateComment"];
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/comments/{commentId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a thread
+         * @description Marks the thread of this root comment as resolved ('resolvedAt', 'resolvedBy'); it stays readable. Replies cannot be resolved: 400 'not_root'. Resolving a resolved thread changes nothing. Requires write. Archived record: 409.
+         */
+        post: operations["ResolveComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/comments/{commentId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen a thread
+         * @description Opens a resolved thread again. Roots only: 400 'not_root'. Reopening an open thread changes nothing. Requires write. Archived record: 409.
+         */
+        post: operations["ReopenComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/mentions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List my mentions
+         * @description Where you (the authenticated actor) were mentioned in comments of this workspace, newest first: record title, a plain-text excerpt of the comment (max. 200 characters), who mentioned you, 'readAt'. unreadOnly=true lists only unread ones. 'unreadCount' counts all your unread mentions, independent of filter and page. Paginated: 'limit' (1..200, default 50) and 'cursor' (the 'nextCursor' of the previous page). Mark them read with POST /mentions/read. Requires read.
+         */
+        get: operations["ListMentions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/mentions/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark my mentions read
+         * @description Marks your mentions read: 'ids' (max. 500, from GET /mentions) or 'all': true. Ids that are not yours, unknown or already read are ignored; 'marked' counts what changed now, 'unreadCount' what is left. Requires read.
+         */
+        post: operations["MarkMentionsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/w/{workspaceSlug}/collections/{collectionId}/query": {
         parameters: {
             query?: never;
@@ -829,7 +957,7 @@ export interface paths {
         };
         /**
          * What happened in the workspace
-         * @description Activity events: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). 'targetTitle' is the current title of the record, or name of the space or collection, null if the target no longer exists (and for members and views). Filters: spaceId, collectionId, actorId, targetId (the history of one record, space or collection), since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, view.created, view.updated, view.deleted, member.added, member.updated, member.removed). Two modes. Without afterSeq: newest first, paginated with 'limit' (1..200) and 'cursor' (nextCursor of the previous page); for a look back ('what happened since yesterday?'). With afterSeq: forward, in commit-safe order (transaction order), only events that are final; for keeping up with changes. Start with afterSeq=0 (whole log) or with 'lastSeq' of a newest-first response (from now on), then call again with the 'lastSeq' of each response; with a full page call again at once, otherwise poll. Only lastSeq is a safe cursor: never pass the seq of an item, it can skip events. This never skips an event, even when transactions commit in another order than their seq: a lower seq can follow a higher one, and lastSeq is the seq of the last event, not always the highest. Do not poll with 'since': 'at' is taken before the commit, so an event can appear later with an 'at' before your last poll. afterSeq and cursor do not combine. Requires read.
+         * @description Activity events: who changed which record, space, collection or member, with a diff ('old'/'new' per changed field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). 'targetTitle' is the current title of the record, or name of the space or collection, null if the target no longer exists (and for members and views). Filters: spaceId, collectionId, actorId, targetId (the history of one record, space or collection), since (ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: record.created, record.updated, record.appended, record.archived, record.restored, space.created, space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived, view.created, view.updated, view.deleted, member.added, member.updated, member.removed, comment.created, comment.updated, comment.deleted, comment.resolved, comment.reopened). Two modes. Without afterSeq: newest first, paginated with 'limit' (1..200) and 'cursor' (nextCursor of the previous page); for a look back ('what happened since yesterday?'). With afterSeq: forward, in commit-safe order (transaction order), only events that are final; for keeping up with changes. Start with afterSeq=0 (whole log) or with 'lastSeq' of a newest-first response (from now on), then call again with the 'lastSeq' of each response; with a full page call again at once, otherwise poll. Only lastSeq is a safe cursor: never pass the seq of an item, it can skip events. This never skips an event, even when transactions commit in another order than their seq: a lower seq can follow a higher one, and lastSeq is the seq of the last event, not always the highest. Do not poll with 'since': 'at' is taken before the commit, so an event can appear later with an 'at' before your last poll. afterSeq and cursor do not combine. Requires read.
          */
         get: operations["ListActivity"];
         put?: never;
@@ -881,7 +1009,8 @@ export interface components {
             /**
              * @description What happened: record.created, record.updated, record.appended, record.archived, record.restored, space.created,
              *     space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived,
-             *     member.added, member.updated, member.removed.
+             *     view.created, view.updated, view.deleted, member.added, member.updated, member.removed, comment.created, comment.updated,
+             *     comment.deleted, comment.resolved, comment.reopened.
              */
             type: string;
             /**
@@ -889,7 +1018,7 @@ export interface components {
              * @description Who did it.
              */
             actorId: string;
-            /** @description record, space, collection or member. */
+            /** @description record, space, collection, view, member or comment. */
             targetType: string;
             /**
              * Format: uuid
@@ -898,7 +1027,7 @@ export interface components {
             targetId: string;
             /**
              * @description The current title of a record, or name of a space or collection, read when the feed is listed (so a renamed
-             *     target shows its new name). Null when the target no longer exists, and for members and views.
+             *     target shows its new name); for comments the title of their record. Null when the target no longer exists, and for members and views.
              */
             targetTitle: null | string;
             /**
@@ -913,7 +1042,8 @@ export interface components {
             collectionId: null | string;
             /**
              * @description What changed. Changed fields as `{ "old": …, "new": … }`; records: `title`, `properties.&lt;key&gt;`, and
-             *     `bodyChanged`/`bodyDelta` (`{ added, removed }` characters) instead of the body.
+             *     `bodyChanged`/`bodyDelta` (`{ added, removed }` characters) instead of the body. Comments: `recordId`,
+             *     `parentCommentId` and `mentionedActorIds` (on created: everyone mentioned; on updated: the newly mentioned).
              */
             diff: components["schemas"]["JsonObject"];
             /**
@@ -955,6 +1085,16 @@ export interface components {
          * @enum {unknown}
          */
         ActorKind: "human" | "agent";
+        /** @description Body of `POST /records/{recordId}/comments`; the idempotency key comes as header. */
+        AddCommentBody: {
+            /** @description The comment, Markdown, max. 64 KiB; mentions as `[@Name](actor:&lt;uuid&gt;)`. */
+            markdown: null | string;
+            /**
+             * Format: uuid
+             * @description Root comment to answer; omitted: a new thread.
+             */
+            parentCommentId?: null | string;
+        };
         AddMemberRequest: {
             /**
              * Format: uuid
@@ -1082,6 +1222,84 @@ export interface components {
              * @description Number of records that are not archived.
              */
             recordCount: number | string;
+        };
+        /** @description A comment on a record. The single JSON shape of comments for REST, MCP and `record_get(includeComments)`. */
+        CommentDto: {
+            /**
+             * Format: uuid
+             * @description Comment id (`commentId`; as `parentCommentId` to answer a root).
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description The record the comment is on.
+             */
+            recordId: string;
+            /**
+             * Format: uuid
+             * @description The root this comment answers; null for a root (start of a thread).
+             */
+            parentCommentId: null | string;
+            /**
+             * Format: uuid
+             * @description Who wrote it; actor id, also usable in a mention `[@Name](actor:&lt;id&gt;)`.
+             */
+            authorId: string;
+            /** @description Current display name of the author (also after the author left the workspace). */
+            authorName: string;
+            /** @description `human` or `agent`. */
+            authorKind: components["schemas"]["ActorKind"];
+            /** @description The comment as Markdown; mentions are links `[@Name](actor:&lt;id&gt;)`. Null for a deleted comment (placeholder of a thread that still has replies). */
+            markdown: null | string;
+            /**
+             * Format: date-time
+             * @description When it was written (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When the text was last edited; null if never. Comments keep no revisions.
+             */
+            editedAt: null | string;
+            /**
+             * Format: date-time
+             * @description Roots only: when the thread was resolved; null while open.
+             */
+            resolvedAt: null | string;
+            /**
+             * Format: uuid
+             * @description Roots only: who resolved the thread.
+             */
+            resolvedBy: null | string;
+            /**
+             * Format: date-time
+             * @description Set for a deleted comment; it appears only as the placeholder of a root with replies.
+             */
+            deletedAt: null | string;
+            /**
+             * @description Roots only (in thread listings): the replies, oldest first; at most the newest int ListComments.MaxRepliesPerThread.
+             *     Null for replies and single comments.
+             */
+            replies?: null | components["schemas"]["CommentDto"][];
+            /**
+             * Format: int32
+             * @description Roots only (in thread listings): older replies left out because of the limit; 0 normally.
+             */
+            omittedReplies?: null | number | string;
+        };
+        /** @description The discussion of a record: its threads. */
+        CommentThreadsDto: {
+            /**
+             * @description Roots, oldest first, each with its replies (oldest first). Deleted comments are left out, except a deleted root that still
+             *     has replies: it stays as a placeholder without text.
+             */
+            threads: components["schemas"]["CommentDto"][];
+            /**
+             * Format: int32
+             * @description Older threads left out because a record shows at most int ListComments.MaxThreads; 0 normally. Resolved
+             *     threads can be hidden with `includeResolved=false`.
+             */
+            omittedThreads: number | string;
         };
         CreateActorRequest: {
             /** @description `human` or `agent`. */
@@ -1225,6 +1443,25 @@ export interface components {
             email: null | string;
             password: null | string;
         };
+        MarkMentionsReadRequest: {
+            /** @description Mentions to mark read (ids from the inbox). Either this or All. */
+            ids?: null | string[];
+            /** @description true marks all of the caller's unread mentions in this workspace read. */
+            all?: null | boolean;
+        };
+        /** @description Outcome of marking mentions read. */
+        MarkMentionsReadResult: {
+            /**
+             * Format: int32
+             * @description How many of the caller's unread mentions were marked read now (ids of others, unknown or already read ones do not count).
+             */
+            marked: number | string;
+            /**
+             * Format: int32
+             * @description Unread mentions of the caller left in this workspace.
+             */
+            unreadCount: number | string;
+        };
         /** @description The calling actor. ApiKey is set when the call was made with an API key. */
         MeDto: {
             /**
@@ -1274,6 +1511,62 @@ export interface components {
              * @description When the member was added (UTC).
              */
             createdAt: string;
+        };
+        /** @description One mention of the caller (an entry of the inbox). */
+        MentionDto: {
+            /**
+             * Format: uuid
+             * @description Mention id; send it to `mentions/read`.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description The comment with the mention.
+             */
+            commentId: string;
+            /**
+             * Format: uuid
+             * @description The thread root, if the comment is a reply; to answer, send this (or CommentId for a root) as `parentCommentId`.
+             */
+            parentCommentId: null | string;
+            /**
+             * Format: uuid
+             * @description The record the discussion is on.
+             */
+            recordId: string;
+            /** @description Current title of the record. */
+            recordTitle: string;
+            /**
+             * Format: uuid
+             * @description Who mentioned you.
+             */
+            byActorId: string;
+            /** @description Current display name of that actor. */
+            byActorName: string;
+            /** @description The beginning of the comment as plain text, at most 200 characters. */
+            excerpt: string;
+            /**
+             * Format: date-time
+             * @description When you were mentioned (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When you marked it read; null while unread.
+             */
+            readAt: null | string;
+        };
+        /** @description One page of the caller's mentions, newest first. */
+        MentionPage: {
+            /** @description The mentions of this page. */
+            items: components["schemas"]["MentionDto"][];
+            /** @description Cursor of the next (older) page; null on the last page. */
+            nextCursor: null | string;
+            /**
+             * Format: int32
+             * @description All unread mentions of the caller in this workspace, independent of filter and page (for a badge).
+             */
+            unreadCount: number | string;
         };
         /** @description One page of a list. Pass NextCursor as `cursor` to get the next page. */
         PageOfRecordDto: {
@@ -1571,6 +1864,7 @@ export interface components {
             archivedAt: null | string;
             /** @description Latest revisions, newest first; only with `includeHistory`. */
             history?: null | components["schemas"]["RevisionSummaryDto"][];
+            comments?: null | components["schemas"]["CommentThreadsDto"];
         };
         /** @description Body of `PUT /actors/{id}/password`; the id comes from the route. */
         ResetPasswordBody: {
@@ -1768,6 +2062,13 @@ export interface components {
             name?: null | string;
             /** @description New description; cannot be cleared. */
             description?: null | string;
+        };
+        /** @description Body of `PATCH /comments/{commentId}`; null leaves a field unchanged. */
+        UpdateCommentBody: {
+            /** @description New text (author only); mentions are synchronized with it. */
+            markdown?: null | string;
+            /** @description true resolves the thread, false reopens it (roots only). */
+            resolved?: null | boolean;
         };
         /** @description Body of `PATCH /members/{actorId}`; the actor comes from the route. Omitted fields stay unchanged. */
         UpdateMemberBody: {
@@ -4585,6 +4886,7 @@ export interface operations {
                 format?: string;
                 includeBody?: boolean;
                 includeHistory?: number | string;
+                includeComments?: boolean;
             };
             header?: never;
             path: {
@@ -5006,6 +5308,520 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListComments: {
+        parameters: {
+            query?: {
+                includeResolved?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentThreadsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddComment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddCommentBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommentBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ResolveComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReopenComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListMentions: {
+        parameters: {
+            query?: {
+                unreadOnly?: boolean;
+                limit?: number | string;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MentionPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MarkMentionsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkMentionsReadRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkMentionsReadResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

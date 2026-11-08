@@ -27,7 +27,7 @@ namespace Agcowork.Application.Activity;
 /// commit-safe order (transaction order), only those that are final, so polling with <c>lastSeq</c> never skips an event. Only
 /// <c>lastSeq</c> is a safe cursor; the <c>seq</c> of an item is not.
 /// </param>
-/// <param name="TargetId">Only events of this target (record, space, collection, view; for members the actor id).</param>
+/// <param name="TargetId">Only events of this target (record, space, collection, view, comment; for members the actor id).</param>
 public sealed record ListActivityRequest(
     Guid? SpaceId = null,
     Guid? CollectionId = null,
@@ -201,7 +201,7 @@ public sealed record ActivityPage(IReadOnlyList<ActivityEventDto> Items, string?
 internal static class ActivityTitles
 {
     /// <summary>
-    /// Current titles of the events' records, spaces and collections: at most one query per target type, never one per
+    /// Current titles of the events' records, spaces and collections (comments: the title of their record): at most one query per target type, never one per
     /// event. The queries run through the tenant filter, so a target outside the workspace stays unresolved (null), like
     /// a deleted one. Archived targets still exist and keep their title.
     /// </summary>
@@ -246,6 +246,21 @@ internal static class ActivityTitles
                          .ConfigureAwait(false))
             {
                 titles[(ActivityTargets.Collection, collection.Id)] = collection.Name;
+            }
+        }
+
+        // Comments (AP-029) carry the title of their record, so a feed entry says where the discussion is.
+        if (Ids(ActivityTargets.Comment) is [_, ..] commentIds)
+        {
+            foreach (var comment in await (
+                             from c in db.Comments.AsNoTracking()
+                             join r in db.Records.AsNoTracking() on c.RecordId equals r.Id
+                             where commentIds.Contains(c.Id)
+                             select new { c.Id, r.Title })
+                         .ToListAsync(cancellationToken)
+                         .ConfigureAwait(false))
+            {
+                titles[(ActivityTargets.Comment, comment.Id)] = comment.Title;
             }
         }
 

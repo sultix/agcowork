@@ -4,6 +4,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Agcowork.Application.Activity;
 using Agcowork.Application.Collections;
+using Agcowork.Application.Comments;
 using Agcowork.Application.Common.Paging;
 using Agcowork.Application.Records;
 using Agcowork.Application.Search;
@@ -20,15 +21,18 @@ internal static class McpText
     // Escapes quotes, backslashes and control characters only; umlauts and emoji stay readable.
     private static readonly JsonSerializerOptions QuotedText = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    /// <summary>The workspace overview as Markdown: one section per space, one line per collection.</summary>
-    public static string Overview(WorkspaceOverviewDto overview, bool includeWorkspace = true)
+    /// <summary>
+    /// The workspace overview as Markdown: one section per space, one line per collection; with <paramref name="members"/> a
+    /// members section with the actor ids to mention, and the hint to the inbox (AP-029).
+    /// </summary>
+    public static string Overview(WorkspaceOverviewDto overview, bool includeWorkspace = true, IReadOnlyList<MemberDto>? members = null)
     {
         ArgumentNullException.ThrowIfNull(overview);
         var text = new StringBuilder();
         if (includeWorkspace)
         {
             var w = overview.Workspace;
-            text.Append(Invariant, $"# Workspace {w.Name} (slug {w.Slug}, id {w.Id})\n");
+            text.Append(Invariant, $"# Workspace {OneLine(w.Name)} (slug {w.Slug}, id {w.Id})\n");
             if (!string.IsNullOrWhiteSpace(w.Description))
             {
                 text.Append(Invariant, $"{w.Description}\n");
@@ -44,7 +48,7 @@ internal static class McpText
 
         foreach (var space in overview.Spaces)
         {
-            text.Append(Invariant, $"\n## {(space.Icon is null ? string.Empty : space.Icon + " ")}{space.Name} (spaceId {space.Id})\n");
+            text.Append(Invariant, $"\n## {(space.Icon is null ? string.Empty : OneLine(space.Icon) + " ")}{OneLine(space.Name)} (spaceId {space.Id})\n");
             if (!string.IsNullOrWhiteSpace(space.Description))
             {
                 text.Append(Invariant, $"{space.Description}\n");
@@ -52,7 +56,7 @@ internal static class McpText
 
             foreach (var collection in space.Collections)
             {
-                text.Append(Invariant, $"- **{collection.Name}** (collectionId {collection.Id}, {collection.RecordCount} records): {collection.Description}\n");
+                text.Append(Invariant, $"- **{OneLine(collection.Name)}** (collectionId {collection.Id}, {collection.RecordCount} records): {OneLine(collection.Description)}\n");
             }
 
             if (space.Collections.Count == 0)
@@ -63,6 +67,50 @@ internal static class McpText
             if (space.PageCount > 0)
             {
                 text.Append(Invariant, $"- {space.PageCount} free pages (records_list with spaceId)\n");
+            }
+        }
+
+        if (members is not null)
+        {
+            text.Append("\n## Members\nMention one in a comment with [@Name](actor:<actorId>). mentions_list shows where others mentioned you: the open questions to you.\n");
+            foreach (var member in members)
+            {
+                text.Append(Invariant, $"- {CommentText.Quote(member.Name)} ({CommentText.Wire(member.Kind)}, {CommentText.Wire(member.Role)}, actorId {member.ActorId})\n");
+            }
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>Free text (names, descriptions) on one line, so it cannot break headings, list items or fake sections.</summary>
+    private static string OneLine(string value) => value.ReplaceLineEndings(" ");
+
+    /// <summary>Confirmation of a comment write: what happened, plus the comment.</summary>
+    public static string CommentChanged(string what, CommentDto comment)
+    {
+        ArgumentNullException.ThrowIfNull(comment);
+        return $"{what}: comment {comment.Id} on record {comment.RecordId}.\n\n{CommentText.Comment(comment, indent: string.Empty)}";
+    }
+
+    /// <summary>The threads of a record (<see cref="CommentText.Threads"/>).</summary>
+    public static string Comments(CommentThreadsDto threads) => CommentText.Threads(threads);
+
+    /// <summary>The caller's mentions, newest first.</summary>
+    public static string Mentions(MentionPage page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        var text = new StringBuilder();
+        text.Append(Invariant, $"{page.Items.Count} mention(s), newest first; {page.UnreadCount} unread in total");
+        text.Append(page.NextCursor is null ? "; no further pages.\n" : $"; more with cursor \"{page.NextCursor}\".\n");
+        foreach (var m in page.Items)
+        {
+            var title = JsonSerializer.Serialize(m.RecordTitle, QuotedText);
+            var thread = m.ParentCommentId is { } root ? $"reply in thread {root}" : "thread root";
+            text.Append(Invariant, $"\n- {(m.ReadAt is null ? "UNREAD" : "read")} mention {m.Id} by {CommentText.Quote(m.ByActorName)} (actor {m.ByActorId}) at {m.CreatedAt:O} ");
+            text.Append(Invariant, $"in comment {m.CommentId} ({thread}) on record {title} ({m.RecordId})\n");
+            if (m.Excerpt.Length > 0)
+            {
+                text.Append("  ").Append(m.Excerpt).Append('\n');
             }
         }
 

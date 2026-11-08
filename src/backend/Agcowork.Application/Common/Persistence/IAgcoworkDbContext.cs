@@ -1,5 +1,6 @@
 using Agcowork.Domain.Activity;
 using Agcowork.Domain.Collections;
+using Agcowork.Domain.Comments;
 using Agcowork.Domain.Identity;
 using Agcowork.Domain.Records;
 using Agcowork.Domain.Spaces;
@@ -54,6 +55,10 @@ public interface IAgcoworkDbContext
 
     DbSet<IdempotencyKey> IdempotencyKeys { get; }
 
+    DbSet<Comment> Comments { get; }
+
+    DbSet<Mention> Mentions { get; }
+
     /// <summary>For explicit transactions (<c>BeginTransactionAsync</c>); see architecture §5.</summary>
     DatabaseFacade Database { get; }
 
@@ -71,6 +76,21 @@ public interface IAgcoworkDbContext
     /// not locked. Requires an open transaction.
     /// </summary>
     Task LockRecordAsync(Guid recordId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Shared row lock (<c>FOR SHARE</c>) on a record of the current tenant until the transaction ends. Taken by comment writes
+    /// (AP-029): they do not change the record, so they run in parallel with each other, but an archive or other record change
+    /// waits for them (and they for it), so no comment is written to a record that is being archived. Requires an open transaction.
+    /// </summary>
+    /// <remarks>Lock order: collection → record → comment.</remarks>
+    Task LockRecordSharedAsync(Guid recordId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Exclusive row lock (<c>FOR UPDATE</c>) on a comment of the current tenant until the transaction ends: changes of the same
+    /// comment (edit with its mention sync, resolve, delete, a reply to it) run one after the other. Take it after the record lock.
+    /// Requires an open transaction.
+    /// </summary>
+    Task LockCommentAsync(Guid commentId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Exclusive row lock (<c>FOR UPDATE</c>) on a collection of the current tenant until the transaction ends. Taken by

@@ -17,7 +17,7 @@ public sealed class UnstorableTextToolsTests(AgcoworkApiFactory factory)
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    /// <summary>(tool, arguments, field). Tokens: <c>{X}</c> the bad text (a JSON escape), <c>{S}</c>, <c>{C}</c>, <c>{R}</c>.</summary>
+    /// <summary>(tool, arguments, field). Tokens: <c>{X}</c> the bad text (a JSON escape), <c>{S}</c>, <c>{C}</c>, <c>{R}</c>, <c>{M}</c> (a comment on the record).</summary>
     private static readonly (string Tool, string Arguments, string Field)[] Cases =
     [
         ("record_create", """{ "collectionId": "{C}", "title": "a{X}" }""", "title"),
@@ -34,6 +34,8 @@ public sealed class UnstorableTextToolsTests(AgcoworkApiFactory factory)
         ("collection_create", """{ "spaceId": "{S}", "name": "Neu", "description": "Desc.", "schema": [{ "key": "p", "name": "P", "type": "select", "options": [{ "value": "a", "label": "{X}" }] }] }""", "schema[0].options[0].label"),
         ("collection_update_schema", """{ "collectionId": "{C}", "add": [{ "key": "extra", "name": "{X}", "type": "text" }] }""", "add[0].name"),
         ("view_create", """{ "collectionId": "{C}", "name": "{X}", "type": "table" }""", "name"),
+        ("comment_add", """{ "recordId": "{R}", "markdown": "Frage {X}" }""", "markdown"),
+        ("comment_update", """{ "commentId": "{M}", "markdown": "{X}" }""", "markdown"),
     ];
 
     [Theory]
@@ -50,6 +52,7 @@ public sealed class UnstorableTextToolsTests(AgcoworkApiFactory factory)
             new { key = "notes", name = "Notes", type = "text" },
         ]);
         var record = await RecordsApi.CreateInAsync(owner.Client, workspace.Slug, collection.Id, "Vorher", "Text");
+        var comment = await Comments.CommentsApi.AddAsync(owner.Client, workspace.Slug, record.Id, "Kommentar");
 
         var failures = new List<string>();
         foreach (var (tool, arguments, field) in Cases)
@@ -58,7 +61,8 @@ public sealed class UnstorableTextToolsTests(AgcoworkApiFactory factory)
                 .Replace("{X}", escape, StringComparison.Ordinal)
                 .Replace("{S}", space.Id.ToString(), StringComparison.Ordinal)
                 .Replace("{C}", collection.Id.ToString(), StringComparison.Ordinal)
-                .Replace("{R}", record.Id.ToString(), StringComparison.Ordinal);
+                .Replace("{R}", record.Id.ToString(), StringComparison.Ordinal)
+                .Replace("{M}", comment.Id.ToString(), StringComparison.Ordinal);
             var result = await CallRawAsync(owner.Client, workspace.Slug, tool, filled);
             if (!IsInvalidValueOn(result, field))
             {
@@ -69,6 +73,7 @@ public sealed class UnstorableTextToolsTests(AgcoworkApiFactory factory)
         Assert.True(failures.Count == 0, string.Join("\n", failures));
         var unchanged = await RecordsApi.GetAsync(owner.Client, workspace.Slug, record.Id);
         Assert.Equal(("Vorher", "Text", 1), (unchanged.Title, unchanged.Body, unchanged.Revision));
+        Assert.Equal("Kommentar", Assert.Single((await Comments.CommentsApi.ListAsync(owner.Client, workspace.Slug, record.Id)).Threads).Markdown);
     }
 
     [Fact]

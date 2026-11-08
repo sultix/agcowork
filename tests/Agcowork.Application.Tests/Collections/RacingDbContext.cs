@@ -1,6 +1,7 @@
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Domain.Activity;
 using Agcowork.Domain.Collections;
+using Agcowork.Domain.Comments;
 using Agcowork.Domain.Identity;
 using Agcowork.Domain.Records;
 using Agcowork.Domain.Spaces;
@@ -47,11 +48,19 @@ internal sealed class RacingDbContext(AgcoworkDbContext inner, Func<Task> before
 
     public DbSet<IdempotencyKey> IdempotencyKeys => inner.IdempotencyKeys;
 
+    public DbSet<Comment> Comments => inner.Comments;
+
+    public DbSet<Mention> Mentions => inner.Mentions;
+
     public DatabaseFacade Database => inner.Database;
 
     public Task LockWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken) => inner.LockWorkspaceAsync(workspaceId, cancellationToken);
 
     public Task LockRecordAsync(Guid recordId, CancellationToken cancellationToken) => inner.LockRecordAsync(recordId, cancellationToken);
+
+    public Task LockRecordSharedAsync(Guid recordId, CancellationToken cancellationToken) => inner.LockRecordSharedAsync(recordId, cancellationToken);
+
+    public Task LockCommentAsync(Guid commentId, CancellationToken cancellationToken) => inner.LockCommentAsync(commentId, cancellationToken);
 
     public Task LockCollectionAsync(Guid collectionId, CancellationToken cancellationToken) => inner.LockCollectionAsync(collectionId, cancellationToken);
 

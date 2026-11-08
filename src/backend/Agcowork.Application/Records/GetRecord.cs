@@ -1,3 +1,4 @@
+using Agcowork.Application.Comments;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
@@ -10,7 +11,8 @@ namespace Agcowork.Application.Records;
 /// <param name="RecordId">Record to read.</param>
 /// <param name="IncludeBody">Include the Markdown body.</param>
 /// <param name="IncludeHistory">Attach the latest n revisions (0..100), newest first.</param>
-public sealed record GetRecordRequest(Guid RecordId, bool IncludeBody = false, int IncludeHistory = 0);
+/// <param name="IncludeComments">Attach the discussion (all threads, resolved ones included), as <see cref="ListComments"/> returns it.</param>
+public sealed record GetRecordRequest(Guid RecordId, bool IncludeBody = false, int IncludeHistory = 0, bool IncludeComments = false);
 
 /// <summary>One record as JSON, archived ones included. Requires <c>read</c>. The Markdown form is <see cref="GetRecordMarkdown"/>.</summary>
 public sealed class GetRecord(IAgcoworkDbContext db, ITenantContext tenant) : IUseCase<GetRecordRequest, RecordDto>
@@ -50,7 +52,10 @@ public sealed class GetRecord(IAgcoworkDbContext db, ITenantContext tenant) : IU
             history = [.. revisions.Select(RecordMapper.ToSummary)];
         }
 
-        return RecordMapper.ToDto(record, schema, request.IncludeBody, history);
+        var comments = request.IncludeComments
+            ? await CommentReads.ThreadsAsync(db, record.Id, includeResolved: true, cancellationToken).ConfigureAwait(false)
+            : null;
+        return RecordMapper.ToDto(record, schema, request.IncludeBody, history) with { Comments = comments };
     }
 }
 

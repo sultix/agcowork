@@ -58,7 +58,8 @@ internal static class RecordEndpoints
             .WithSummary("Get a record")
             .WithDescription(
                 "One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown "
-                + "body, includeHistory=n (0..100) the latest n revisions. format=markdown returns text/markdown: a YAML frontmatter "
+                + "body, includeHistory=n (0..100) the latest n revisions, includeComments=true the discussion ('comments': threads with replies, "
+                + "as GET …/comments returns them; with format=markdown a '# Comments' section after the body). format=markdown returns text/markdown: a YAML frontmatter "
                 + "block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the "
                 + "easiest form to read for language models. Requires read.")
             .AddOpenApiOperationTransformer((operation, _, _) =>
@@ -169,6 +170,7 @@ internal static class RecordEndpoints
         [FromQuery] string? format,
         [FromQuery] bool? includeBody,
         [FromQuery] int? includeHistory,
+        [FromQuery] bool? includeComments,
         CancellationToken cancellationToken)
     {
         format ??= "json";
@@ -179,11 +181,11 @@ internal static class RecordEndpoints
 
         if (format == "markdown")
         {
-            var markdown = await getMarkdown.HandleAsync(new GetRecordMarkdownRequest(recordId), cancellationToken);
+            var markdown = await getMarkdown.HandleAsync(new GetRecordMarkdownRequest(recordId, includeComments ?? false), cancellationToken);
             return markdown.IsSuccess ? TypedResults.Text(markdown.Value, MarkdownContentType, Encoding.UTF8) : markdown.Error.ToProblem();
         }
 
-        var result = await getRecord.HandleAsync(new GetRecordRequest(recordId, includeBody ?? false, includeHistory ?? 0), cancellationToken);
+        var result = await getRecord.HandleAsync(new GetRecordRequest(recordId, includeBody ?? false, includeHistory ?? 0, includeComments ?? false), cancellationToken);
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }
 

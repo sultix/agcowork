@@ -1,3 +1,4 @@
+using Agcowork.Application.Comments;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
@@ -8,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Agcowork.Application.Records;
 
 /// <param name="RecordId">Record to read.</param>
-public sealed record GetRecordMarkdownRequest(Guid RecordId);
+/// <param name="IncludeComments">Append the discussion as a <c># Comments</c> section after a separator (<see cref="CommentText.AppendTo"/>).</param>
+public sealed record GetRecordMarkdownRequest(Guid RecordId, bool IncludeComments = false);
 
 /// <summary>
 /// One record as Markdown with YAML frontmatter (architecture §4.4), the form LLMs read best; also the content of the
@@ -37,6 +39,9 @@ public sealed class GetRecordMarkdown(IAgcoworkDbContext db, ITenantContext tena
         var spaceName = await db.Spaces.AsNoTracking().Where(s => s.Id == record.SpaceId).Select(s => s.Name).SingleAsync(cancellationToken).ConfigureAwait(false);
 
         var dto = RecordMapper.ToDto(record, collection?.Schema, includeBody: true);
-        return RecordMarkdown.Render(dto, collection?.Name, spaceName);
+        var markdown = RecordMarkdown.Render(dto, collection?.Name, spaceName);
+        return request.IncludeComments
+            ? CommentText.AppendTo(markdown, await CommentReads.ThreadsAsync(db, record.Id, includeResolved: true, cancellationToken).ConfigureAwait(false))
+            : markdown;
     }
 }

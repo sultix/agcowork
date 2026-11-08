@@ -130,6 +130,11 @@ public static class ActivityTypes
     public const string MemberAdded = "member.added";
     public const string MemberUpdated = "member.updated";
     public const string MemberRemoved = "member.removed";
+    public const string CommentCreated = "comment.created";
+    public const string CommentUpdated = "comment.updated";
+    public const string CommentDeleted = "comment.deleted";
+    public const string CommentResolved = "comment.resolved";
+    public const string CommentReopened = "comment.reopened";
 
     public static IReadOnlyList<string> All { get; } =
     [
@@ -138,6 +143,7 @@ public static class ActivityTypes
         CollectionCreated, CollectionUpdated, CollectionSchemaChanged, CollectionArchived,
         ViewCreated, ViewUpdated, ViewDeleted,
         MemberAdded, MemberUpdated, MemberRemoved,
+        CommentCreated, CommentUpdated, CommentDeleted, CommentResolved, CommentReopened,
     ];
 }
 
@@ -151,4 +157,7 @@ public static class ActivityTargets
 
     /// <summary>A membership; the target id is the member's actor id.</summary>
     public const string Member = "member";
+
+    /// <summary>A comment on a record; space and collection of the event are the record's (AP-029).</summary>
+    public const string Comment = "comment";
 }

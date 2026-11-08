@@ -23,6 +23,7 @@ namespace Agcowork.Application.Records;
 /// <param name="UpdatedAt">Time of the last change (UTC).</param>
 /// <param name="ArchivedAt">Set when archived; archived records are read-only until restored.</param>
 /// <param name="History">Latest revisions, newest first; only with <c>includeHistory</c>.</param>
+/// <param name="Comments">The discussion (threads with replies); only with <c>includeComments</c>.</param>
 public sealed record RecordDto(
     Guid Id,
     Guid SpaceId,
@@ -37,7 +38,8 @@ public sealed record RecordDto(
     Guid UpdatedBy,
     DateTimeOffset UpdatedAt,
     DateTimeOffset? ArchivedAt,
-    IReadOnlyList<RevisionSummaryDto>? History = null);
+    IReadOnlyList<RevisionSummaryDto>? History = null,
+    Comments.CommentThreadsDto? Comments = null);
 
 /// <summary>One revision without its content.</summary>
 /// <param name="No">Revision number, from 1.</param>

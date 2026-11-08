@@ -41,6 +41,11 @@ public sealed class McpIsolationTests(AgcoworkApiFactory factory)
             "record_archive" => new { recordId = Guid.NewGuid() },
             "view_create" => new { collectionId = collection.Id, type = "board", name = "" },
             "search" => new { query = "aufgabe" },
+            "comment_add" => new { recordId = record.Id, markdown = "" },
+            "comments_list" => new { recordId = record.Id },
+            "comment_update" => new { commentId = Guid.NewGuid(), resolved = true },
+            "mentions_list" => new { },
+            "mentions_mark_read" => new { },
             _ => throw new InvalidOperationException($"No arguments for {tool}."),
         };
 
@@ -89,6 +94,7 @@ public sealed class McpIsolationTests(AgcoworkApiFactory factory)
         var t = await TenancyFixture.GetAsync(factory);
         var (betaSpace, betaCollection) = await RecordsApi.SeedCollectionAsync(t.BetaOwner.Client, t.Beta.Slug);
         var betaRecord = await RecordsApi.CreateInAsync(t.BetaOwner.Client, t.Beta.Slug, betaCollection.Id);
+        var betaComment = await Comments.CommentsApi.AddAsync(t.BetaOwner.Client, t.Beta.Slug, betaRecord.Id, "Beta intern");
         await using var client = await McpClientFixture.ConnectAsync(factory, t.AlphaOwner.Key, t.Alpha.Slug);
 
         (string Tool, object Args)[] calls =
@@ -102,6 +108,11 @@ public sealed class McpIsolationTests(AgcoworkApiFactory factory)
             ("record_archive", new { recordId = betaRecord.Id }),
             ("history_get", new { recordId = betaRecord.Id }),
             ("collection_update_schema", new { collectionId = betaCollection.Id, remove = TagsKey, confirmRemoval = true }),
+            ("comment_add", new { recordId = betaRecord.Id, markdown = "Fremd" }),
+            ("comments_list", new { recordId = betaRecord.Id }),
+            ("comment_update", new { commentId = betaComment.Id, markdown = "Fremd" }),
+            ("comment_update", new { commentId = betaComment.Id, resolved = true }),
+            ("comment_update", new { commentId = betaComment.Id, deleted = true }),
         ];
         foreach (var (tool, args) in calls)
         {
@@ -116,6 +127,20 @@ public sealed class McpIsolationTests(AgcoworkApiFactory factory)
         var unchanged = await RecordsApi.GetAsync(t.BetaOwner.Client, t.Beta.Slug, betaRecord.Id);
         Assert.Equal(1, unchanged.Revision);
         Assert.Null(unchanged.ArchivedAt);
+        var betaThread = Assert.Single((await Comments.CommentsApi.ListAsync(t.BetaOwner.Client, t.Beta.Slug, betaRecord.Id)).Threads);
+        Assert.Equal(("Beta intern", null, null), (betaThread.Markdown, betaThread.ResolvedAt, betaThread.DeletedAt));
+
+        // Beta's mentions never show in Alpha's inbox, and Beta's mention ids mark nothing.
+        var betaMention = await Comments.CommentsApi.AddAsync(t.BetaOwner.Client, t.Beta.Slug, betaRecord.Id, $"An {Comments.CommentsApi.Mention(t.RestrictedToAlpha.ActorId)}");
+        var betaInbox = await TenancyFixture.CreateKeyClientAsync(factory, t.RestrictedToAlpha.ActorId, new { workspaceId = t.Beta.Id });
+        var betaMentionId = Assert.Single((await Comments.CommentsApi.MentionsAsync(betaInbox, t.Beta.Slug)).Items, m => m.CommentId == betaMention.Id).Id;
+        await using var restricted = await McpClientFixture.ConnectAsync(factory, t.RestrictedToAlpha.Key, t.Alpha.Slug);
+        var alphaInbox = McpClientFixture.Ok(await McpClientFixture.CallAsync(restricted, "mentions_list"));
+        Assert.DoesNotContain(alphaInbox.GetProperty("items").EnumerateArray(), m => m.GetProperty("id").GetGuid() == betaMentionId);
+        var marked = McpClientFixture.Ok(await McpClientFixture.CallAsync(restricted, "mentions_mark_read", new { mentionIds = new[] { betaMentionId } }));
+        Assert.Equal(0, marked.GetProperty("marked").GetInt32());
+        Assert.Null(Assert.Single((await Comments.CommentsApi.MentionsAsync(betaInbox, t.Beta.Slug)).Items, m => m.Id == betaMentionId).ReadAt);
+        betaInbox.Dispose();
     }
 
     [Fact]

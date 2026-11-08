@@ -15,11 +15,20 @@ internal static class WorkspaceTools
         "Call this first. Returns the workspace this server is bound to (name, description, your role and scopes) and all its "
         + "spaces with their collections: ids, descriptions written for agents (what a record is, when to add one) and record "
         + "counts. Use the descriptions to decide where something belongs, then call collection_describe before you create "
-        + "records in a collection. Archived spaces and collections are left out. Requires read.")]
-    public static async Task<CallToolResult> Overview(GetWorkspaceOverview useCase, McpOutput output, CancellationToken cancellationToken)
+        + "records in a collection. Archived spaces and collections are left out. The text also lists the members with their actor "
+        + "ids, for mentions in comments ([@Name](actor:<actorId>)); mentions_list shows where others mentioned you, i.e. the open "
+        + "questions to you. Requires read.")]
+    public static async Task<CallToolResult> Overview(GetWorkspaceOverview useCase, ListMembers members, McpOutput output, CancellationToken cancellationToken)
     {
         var result = await useCase.HandleAsync(new GetWorkspaceOverviewRequest(), cancellationToken);
-        return output.From(result, overview => McpText.Overview(overview));
+        if (result.IsFailure)
+        {
+            return output.Failure(result.Error);
+        }
+
+        // Members only in the text (the structured content stays the overview of REST): agents read their ids from it.
+        var memberList = await members.HandleAsync(new ListMembersRequest(), cancellationToken);
+        return output.Success(result.Value, McpText.Overview(result.Value, members: memberList.IsSuccess ? memberList.Value : null));
     }
 
     [McpServerTool(Name = "spaces_list", ReadOnly = true, Idempotent = true, OpenWorld = false)]

@@ -51,6 +51,24 @@ public sealed class HubTests(AgcoworkApiFactory factory)
     }
 
     [Fact]
+    public async Task Hub_CommentCreated_DeliveredWithRecordTitleAndMentions()
+    {
+        var (workspace, owner, editor, collectionId) = await ArrangeAsync();
+        var record = await RecordsApi.CreateInAsync(owner.Client, workspace.Slug, collectionId, "Diskutiert");
+        await using var hub = await HubClient.WithKey(factory, workspace.Slug, editor.Key).StartAsync();
+
+        var comment = await Comments.CommentsApi.AddAsync(owner.Client, workspace.Slug, record.Id, $"Frage an {Comments.CommentsApi.Mention(editor.ActorId)}");
+        var activity = await hub.WaitForAsync(e => HubClient.Is(e, "comment.created", comment.Id), HubClient.Patience);
+
+        Assert.Equal("comment", activity.GetProperty("targetType").GetString());
+        Assert.Equal("Diskutiert", activity.GetProperty("targetTitle").GetString());
+        Assert.Equal(collectionId, activity.GetProperty("collectionId").GetGuid());
+        var diff = activity.GetProperty("diff");
+        Assert.Equal(record.Id, diff.GetProperty("recordId").GetGuid());
+        Assert.Equal(editor.ActorId, Assert.Single(diff.GetProperty("mentionedActorIds").EnumerateArray()).GetGuid());
+    }
+
+    [Fact]
     public async Task Hub_SessionCookie_WebSocketsAndLongPolling_ReceiveActivity()
     {
         var (workspace, owner, _, collectionId) = await ArrangeAsync();

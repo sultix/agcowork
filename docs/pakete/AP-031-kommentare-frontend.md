@@ -28,6 +28,12 @@ Menschen lesen und führen Diskussionen direkt am Record, sehen Kommentare von A
 **Ausdrücklich nicht drin:**
 - Posteingang/Erwähnungs-Badge in der Shell (AP-032), Kommentare in Tabelle/Board, Reaktionen, Body-Erwähnungen, Backend.
 
+## Fachlicher Kontext
+
+- Vertrag aus AP-029 (siehe OpenAPI nach dem Commit): `GET|POST /api/v1/w/{slug}/records/{id}/comments` (`POST` mit `Idempotency-Key` wie beim Record-Anlegen), `PATCH /comments/{id}` (`markdown?`, `resolved?`), `DELETE /comments/{id}`, `POST /comments/{id}/resolve|reopen`. `CommentDto` flach mit `authorId`, `authorName`, `authorKind`, `markdown` (`null` bei gelöschtem Platzhalter), `parentCommentId`, `createdAt`, `editedAt`, `resolvedAt`, `resolvedBy`, `deletedAt`; Liste liefert Threads (Wurzel + Antworten) und `omittedThreads` (höchstens 500 neueste Threads). Fehlercodes: `not_member` (am Feld `markdown`, ID in `message`), `not_author` (403), `not_root`, `comment_deleted` (409, Antwort auf gelöschte Wurzel), 409 bei archiviertem Record/Collection/Space für alle Schreibaktionen.
+- Erwähnungs-Chips nur nach denselben Regeln wie der Server-Parser (`src/backend/Agcowork.Domain/Comments/CommentMarkdown.cs`, XML-Kommentar): keine Erwähnungen in Code-Spans, Codeblöcken und HTML-Kommentaren; sonst zeigt die UI Chips ohne Posteingang-Eintrag. Der Antwort-Platzhalter `omittedReplies` (falls vorhanden) wird als „N ältere Antworten nicht angezeigt“ dargestellt.
+- Live: Activity `comment.created|updated|deleted|resolved|reopened`, `targetType = comment`, `targetId` = Kommentar-ID, Diff mit `recordId`, `parentCommentId`, `mentionedActorIds`. Gefiltert wird über `diff.recordId` (nicht über `targetId`).
+
 ## Akzeptanzkriterien
 
 1. Threads werden in der Reihenfolge des Servers mit allen Zuständen angezeigt; erledigte eingeklappt.

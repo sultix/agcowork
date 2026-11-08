@@ -6,12 +6,13 @@ namespace Agcowork.Api.Tests.Mcp;
 [Collection(ApiTestGroup.Name)]
 public sealed class ToolsListTests(AgcoworkApiFactory factory)
 {
-    /// <summary>Architecture §4.2 phase 1 plus records_list, spaces_list, space_create (AP-011) and search (AP-026); no comment_add.</summary>
+    /// <summary>Architecture §4.2 phase 1 plus records_list, spaces_list, space_create (AP-011), search (AP-026) and comments (AP-029).</summary>
     public static readonly string[] WorkspaceTools =
     [
         "workspace_overview", "spaces_list", "space_create",
         "collection_describe", "collection_create", "collection_update_schema",
         "records_list", "records_query", "record_get", "record_create", "record_update", "record_append", "record_archive", "history_get",
+        "comment_add", "comments_list", "comment_update", "mentions_list", "mentions_mark_read",
         "search", "view_create", "activity_recent",
     ];
 
@@ -59,6 +60,18 @@ public sealed class ToolsListTests(AgcoworkApiFactory factory)
         Assert.Contains(Application.Search.RecordSearch.BodyPrefixLength.ToString(System.Globalization.CultureInfo.InvariantCulture), search.Description, StringComparison.Ordinal);
         Assert.Contains("query", search.JsonSchema.GetProperty("required").EnumerateArray().Select(e => e.GetString()));
         Assert.False(search.JsonSchema.GetProperty("properties").TryGetProperty("mode", out _));
+
+        // Comments (AP-029): the mention syntax with an example, where actor ids come from, the inbox, no revision.
+        var add = tools.Single(tool => tool.Name == "comment_add").Description;
+        Assert.Contains("[@Display name](actor:<uuid>)", add, StringComparison.Ordinal);
+        Assert.Contains("(actor:0190f3a2-", add, StringComparison.Ordinal);
+        Assert.Contains("workspace_overview", add, StringComparison.Ordinal);
+        Assert.Contains("mentions_list", add, StringComparison.Ordinal);
+        Assert.Contains("no record revision", add, StringComparison.Ordinal);
+        Assert.Contains("open questions", tools.Single(tool => tool.Name == "mentions_list").Description, StringComparison.Ordinal);
+        Assert.Contains("'deleted': true", tools.Single(tool => tool.Name == "comment_update").Description, StringComparison.Ordinal);
+        Assert.Contains("mentions_list", client.ServerInstructions, StringComparison.Ordinal);
+        Assert.True(tools.Single(tool => tool.Name == "record_get").JsonSchema.GetProperty("properties").TryGetProperty("includeComments", out _));
     }
 
     [Fact]

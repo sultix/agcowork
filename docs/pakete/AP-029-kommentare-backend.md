@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (neues Modul); Muster: Records (`src/backend/Agcowork.Application/Records/`: Sperren, Activity, Idempotenz), Views (`Views/`, CRUD-Endpunkte), Activity-Titel (`Activity/ListActivity.cs`, gebündelte Auflösung), `StorableText`/`FieldErrors.Storable` (AP-028), Keyset-Paginierung (`Query/`), MCP-Tools (`Api/Mcp/Tools/`) |
@@ -86,3 +86,10 @@ Agenten und Menschen diskutieren an Records in Threads und erwähnen einander. J
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zu AP-030) |
+| 2026-11-08 | Bericht: 1296 Tests grün, Migration `AddComments`; fünf Tools (`comment_add`, `comments_list`, `comment_update` inkl. resolved/deleted, `mentions_list`, `mentions_mark_read`); Erledigen in `UpdateComment`, `ListComments` bis 500 Threads mit `omittedThreads`, Idempotenz über `idempotency_keys.comment_id` (Guard in `CreateRecord`), `workspace_overview` mit Members-Abschnitt, `unreadCount`; offen: Activity-Filter `targetId=<recordId>` findet Kommentar-Events nicht |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – Tenancy, Sicherheit, Sperr-Reihenfolge, Parser gegen ReDoS in Ordnung; wichtig: keine Nebenläufigkeitstests für das neue Sperrmuster; Hinweise: Idempotency-Key mit anderem Record, Parser-Randfälle gegenüber CommonMark, unbegrenzte Antworten je Thread, REST/MCP-Unterschied bei markdown, Fehlerverstärkung, Kopplung Records→Comments, Test entferntes Mitglied, Mitgliedsnamen unmaskiert im Overview |
+| 2026-11-08 | Orchestrator: Architektur §2/§4.2 nachgezogen; Nacharbeit an implementer-opus (W1, Hinweise 1–4, 6, 7, 10, 11) |
+| 2026-11-08 | Nacharbeit: Nebenläufigkeitstests mit Warten auf echte Sperre (`pg_stat_activity`), 409 bei Key mit anderem Record, Parser an CommonMark angeglichen, 100 Antworten je Thread (`omittedReplies`), REST markdown mit Kommentaren, Fehler auf 20 gekappt, `IdempotencyKeyReused` nach `RecordConflicts`, Test entferntes Mitglied, freie Namen in `McpText` entschärft; 1310/1310, Frontend-Build grün |
+| 2026-11-08 | abgeschlossen |

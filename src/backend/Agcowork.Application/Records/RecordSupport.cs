@@ -25,6 +25,16 @@ public static class RecordConflicts
         new("record_not_archived", "The record is not archived; there is nothing to restore.");
 
     /// <summary>Another change of the same idempotency key is in progress or was stored concurrently.</summary>
+    /// <summary>
+    /// 409 <c>idempotency_key_reused</c>: the key already belongs to another request (creating a record, or adding a comment to
+    /// another record). Keys are shared by both kinds of request (AP-029).
+    /// </summary>
+    public static ConflictError IdempotencyKeyReused(string field) =>
+        new(
+            "idempotency_key_reused",
+            "This Idempotency-Key was already used within 24 h for another request (creating a record, or a comment on another record). Use a new key for every request.",
+            field);
+
     public static UniqueConflict IdempotencyKey { get; } = new(
         "ix_idempotency_keys_workspace_id_actor_id_key",
         new ConflictError("idempotency_key_in_use", "A request with this Idempotency-Key was processed concurrently. Retry the same request to get its result."));

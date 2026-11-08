@@ -240,6 +240,118 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                     b.ToTable("templates", (string)null);
                 });
 
+            modelBuilder.Entity("Agcowork.Domain.Comments.Comment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("BodyMarkdown")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body_markdown");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTimeOffset?>("EditedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("edited_at");
+
+                    b.Property<Guid?>("ParentCommentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_comment_id");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid?>("ResolvedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_comments");
+
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_comments_workspace_id_id");
+
+                    b.HasIndex("WorkspaceId", "ParentCommentId")
+                        .HasDatabaseName("ix_comments_workspace_id_parent_comment_id");
+
+                    b.HasIndex("WorkspaceId", "RecordId", "CreatedAt")
+                        .HasDatabaseName("ix_comments_workspace_id_record_id_created_at");
+
+                    b.ToTable("comments", (string)null);
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Comments.Mention", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ByActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("by_actor_id");
+
+                    b.Property<Guid>("CommentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("comment_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("MentionedActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentioned_actor_id");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_mentions");
+
+                    b.HasIndex("WorkspaceId", "CommentId", "MentionedActorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_mentions_workspace_id_comment_id_mentioned_actor_id");
+
+                    b.HasIndex("WorkspaceId", "MentionedActorId", "CreatedAt", "Id")
+                        .HasDatabaseName("ix_mentions_workspace_id_mentioned_actor_id_created_at_id");
+
+                    b.HasIndex("WorkspaceId", "MentionedActorId", "ReadAt", "CreatedAt")
+                        .HasDatabaseName("ix_mentions_workspace_id_mentioned_actor_id_read_at_created_at");
+
+                    b.ToTable("mentions", (string)null);
+                });
+
             modelBuilder.Entity("Agcowork.Domain.Identity.Actor", b =>
                 {
                     b.Property<Guid>("Id")
@@ -396,6 +508,10 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("at");
 
+                    b.Property<Guid?>("CommentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("comment_id");
+
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -412,6 +528,9 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_idempotency_keys");
+
+                    b.HasIndex("WorkspaceId", "CommentId")
+                        .HasDatabaseName("ix_idempotency_keys_workspace_id_comment_id");
 
                     b.HasIndex("WorkspaceId", "RecordId")
                         .HasDatabaseName("ix_idempotency_keys_workspace_id_record_id");
@@ -848,6 +967,35 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_templates_collections_workspace_id_collection_id");
                 });
 
+            modelBuilder.Entity("Agcowork.Domain.Comments.Comment", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Comments.Comment", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ParentCommentId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_comments_comments_workspace_id_parent_comment_id");
+
+                    b.HasOne("Agcowork.Domain.Records.Record", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "RecordId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_comments_records_workspace_id_record_id");
+                });
+
+            modelBuilder.Entity("Agcowork.Domain.Comments.Mention", b =>
+                {
+                    b.HasOne("Agcowork.Domain.Comments.Comment", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "CommentId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentions_comments_workspace_id_comment_id");
+                });
+
             modelBuilder.Entity("Agcowork.Domain.Identity.ApiKey", b =>
                 {
                     b.HasOne("Agcowork.Domain.Identity.Actor", null)
@@ -876,6 +1024,13 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Agcowork.Domain.Records.IdempotencyKey", b =>
                 {
+                    b.HasOne("Agcowork.Domain.Comments.Comment", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "CommentId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_idempotency_keys_comments_workspace_id_comment_id");
+
                     b.HasOne("Agcowork.Domain.Records.Record", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId", "RecordId")

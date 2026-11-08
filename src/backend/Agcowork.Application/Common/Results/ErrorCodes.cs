@@ -44,4 +44,9 @@ public static class ErrorCodes
 
     // Field codes of the full-text search (AP-026).
     public const string EmptyQuery = "empty_query";
+
+    // Comments and mentions (AP-029): field codes not_member, not_root; 403 code not_author.
+    public const string NotMember = "not_member";
+    public const string NotRoot = "not_root";
+    public const string NotAuthor = "not_author";
 }

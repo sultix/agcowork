@@ -87,7 +87,7 @@ public sealed class CreateRecord(
             var existing = await FindKeyAsync(idempotencyKey, cancellationToken).ConfigureAwait(false);
             if (existing is not null && !existing.IsExpired(timeProvider.GetUtcNow()))
             {
-                return await ReplayAsync(existing.RecordId, cancellationToken).ConfigureAwait(false);
+                return await ReplayAsync(existing, cancellationToken).ConfigureAwait(false);
             }
 
             expiredKey = existing;
@@ -193,7 +193,7 @@ public sealed class CreateRecord(
             // A concurrent request with the same key won: answer with its record (nothing of ours was stored).
             await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
             return await FindKeyAsync(idempotencyKey!, cancellationToken).ConfigureAwait(false) is { } winner
-                ? await ReplayAsync(winner.RecordId, cancellationToken).ConfigureAwait(false)
+                ? await ReplayAsync(winner, cancellationToken).ConfigureAwait(false)
                 : conflict;
         }
 
@@ -232,8 +232,15 @@ public sealed class CreateRecord(
     private Task<IdempotencyKey?> FindKeyAsync(string key, CancellationToken cancellationToken) =>
         db.IdempotencyKeys.AsNoTracking().SingleOrDefaultAsync(k => k.ActorId == currentActor.Id && k.Key == key, cancellationToken);
 
-    private async Task<Result<RecordDto>> ReplayAsync(Guid recordId, CancellationToken cancellationToken)
+    private async Task<Result<RecordDto>> ReplayAsync(IdempotencyKey key, CancellationToken cancellationToken)
     {
+        // Keys are shared with adding comments (AP-029): a key of a comment is no record to replay.
+        if (key.IsForComment)
+        {
+            return RecordConflicts.IdempotencyKeyReused("Idempotency-Key");
+        }
+
+        var recordId = key.RecordId;
         var record = await db.Records.AsNoTracking().SingleAsync(r => r.Id == recordId, cancellationToken).ConfigureAwait(false);
         var schema = record.CollectionId is { } collectionId
             ? await db.Collections.AsNoTracking().Where(c => c.Id == collectionId).Select(c => c.Schema).SingleAsync(cancellationToken).ConfigureAwait(false)

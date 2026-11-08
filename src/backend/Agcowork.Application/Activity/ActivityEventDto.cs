@@ -13,20 +13,22 @@ namespace Agcowork.Application.Activity;
 /// <param name="Type">
 /// What happened: record.created, record.updated, record.appended, record.archived, record.restored, space.created,
 /// space.updated, space.archived, collection.created, collection.updated, collection.schema_changed, collection.archived,
-/// member.added, member.updated, member.removed.
+/// view.created, view.updated, view.deleted, member.added, member.updated, member.removed, comment.created, comment.updated,
+/// comment.deleted, comment.resolved, comment.reopened.
 /// </param>
 /// <param name="ActorId">Who did it.</param>
-/// <param name="TargetType">record, space, collection or member.</param>
+/// <param name="TargetType">record, space, collection, view, member or comment.</param>
 /// <param name="TargetId">Id of the target; for members the actor id.</param>
 /// <param name="TargetTitle">
 /// The current title of a record, or name of a space or collection, read when the feed is listed (so a renamed
-/// target shows its new name). Null when the target no longer exists, and for members and views.
+/// target shows its new name); for comments the title of their record. Null when the target no longer exists, and for members and views.
 /// </param>
 /// <param name="SpaceId">Space of the target, if any.</param>
 /// <param name="CollectionId">Collection of the target, if any.</param>
 /// <param name="Diff">
 /// What changed. Changed fields as <c>{ "old": …, "new": … }</c>; records: <c>title</c>, <c>properties.&lt;key&gt;</c>, and
-/// <c>bodyChanged</c>/<c>bodyDelta</c> (<c>{ added, removed }</c> characters) instead of the body.
+/// <c>bodyChanged</c>/<c>bodyDelta</c> (<c>{ added, removed }</c> characters) instead of the body. Comments: <c>recordId</c>,
+/// <c>parentCommentId</c> and <c>mentionedActorIds</c> (on created: everyone mentioned; on updated: the newly mentioned).
 /// </param>
 /// <param name="At">When it happened (UTC).</param>
 public sealed record ActivityEventDto(

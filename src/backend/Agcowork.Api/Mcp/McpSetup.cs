@@ -28,7 +28,9 @@ internal static class McpSetup
         "This server is bound to one agcowork workspace (a structured knowledge and work space: spaces, typed collections, records "
         + "with Markdown bodies). Start with workspace_overview to see the spaces and collections and what belongs where. Call "
         + "collection_describe before writing to a collection. Read with records_query or record_get; find records by words with search; write with record_create, "
-        + "record_update (send expectedRevision from record_get) and record_append (preferred for log-like additions). Errors are "
+        + "record_update (send expectedRevision from record_get) and record_append (preferred for log-like additions). Discuss records "
+        + "with comment_add and comments_list; mentions_list shows where others mentioned you, the open questions to you: check it "
+        + "and answer in the thread. Errors are "
         + "structured: 'code', 'errors[]' with 'field' and 'allowed' values; correct the input and retry.";
 
     public const string InstanceInstructions =
@@ -37,7 +39,7 @@ internal static class McpSetup
 
     /// <summary>Workspace tool classes, in listing order.</summary>
     public static IReadOnlyList<Type> WorkspaceToolTypes { get; } =
-        [typeof(WorkspaceTools), typeof(CollectionTools), typeof(RecordTools), typeof(SearchTools), typeof(ViewAndActivityTools)];
+        [typeof(WorkspaceTools), typeof(CollectionTools), typeof(RecordTools), typeof(CommentTools), typeof(SearchTools), typeof(ViewAndActivityTools)];
 
     public static IReadOnlyList<Type> InstanceToolTypes { get; } = [typeof(InstanceTools)];
 

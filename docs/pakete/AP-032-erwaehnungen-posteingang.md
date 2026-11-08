@@ -25,6 +25,11 @@ Menschen sehen auf einen Blick, wo sie erwähnt wurden, springen zum Kommentar u
 **Ausdrücklich nicht drin:**
 - Backend, Kommentar-Seitenleiste (AP-031), Browser-Benachrichtigungen, workspaceübergreifender Posteingang.
 
+## Fachlicher Kontext
+
+- Vertrag aus AP-029: `GET /api/v1/w/{slug}/mentions?unreadOnly&limit&cursor` → `{ items, nextCursor, unreadCount }`; je Eintrag u. a. `id`, `commentId`, `parentCommentId`, `recordId`, Record-Titel, Auszug (reiner Text, max. 200 Zeichen), `byActorId`, `byActorName`, `createdAt`, `readAt`. `POST /mentions/read` mit `{ ids?, all? }` → `{ marked, unreadCount }`; fremde IDs werden still ignoriert.
+- Live: `comment.*`-Ereignisse tragen `mentionedActorIds` im Diff (bei `updated` nur hinzugekommene).
+
 ## Akzeptanzkriterien
 
 1. Liste lädt aus der URL, „Nur ungelesene“ filtert, „Mehr laden“ ohne Duplikate.

@@ -1,6 +1,7 @@
 using Agcowork.Api.Auth;
 using Agcowork.Api.Endpoints.Activity;
 using Agcowork.Api.Endpoints.Collections;
+using Agcowork.Api.Endpoints.Comments;
 using Agcowork.Api.Endpoints.Identity;
 using Agcowork.Api.Endpoints.Records;
 using Agcowork.Api.Endpoints.Search;
@@ -46,6 +47,7 @@ internal static class ApiV1
         workspace.MapCollectionEndpoints();
         workspace.MapViewEndpoints();
         workspace.MapRecordEndpoints();
+        workspace.MapCommentEndpoints();
         workspace.MapQueryEndpoints();
         workspace.MapActivityEndpoints();
         workspace.MapSearchEndpoints();

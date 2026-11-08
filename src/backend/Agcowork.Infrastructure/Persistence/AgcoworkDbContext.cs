@@ -5,6 +5,7 @@ using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Tenancy;
 using Agcowork.Domain.Activity;
 using Agcowork.Domain.Collections;
+using Agcowork.Domain.Comments;
 using Agcowork.Domain.Common;
 using Agcowork.Domain.Identity;
 using Agcowork.Domain.Records;
@@ -51,6 +52,10 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
 
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
 
+    public DbSet<Comment> Comments => Set<Comment>();
+
+    public DbSet<Mention> Mentions => Set<Mention>();
+
     public DbSet<Actor> Actors => Set<Actor>();
 
     public DbSet<LocalLogin> LocalLogins => Set<LocalLogin>();
@@ -82,6 +87,28 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
 
         // Raw SQL bypasses the query filter, so the tenant condition is spelled out.
         return Database.ExecuteSqlAsync($"SELECT 1 FROM records WHERE id = {recordId} AND workspace_id = {TenantWorkspaceId} FOR UPDATE", cancellationToken);
+    }
+
+    public Task LockRecordSharedAsync(Guid recordId, CancellationToken cancellationToken)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("LockRecordSharedAsync requires an open transaction; the lock is released at commit.");
+        }
+
+        // Raw SQL bypasses the query filter, so the tenant condition is spelled out.
+        return Database.ExecuteSqlAsync($"SELECT 1 FROM records WHERE id = {recordId} AND workspace_id = {TenantWorkspaceId} FOR SHARE", cancellationToken);
+    }
+
+    public Task LockCommentAsync(Guid commentId, CancellationToken cancellationToken)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("LockCommentAsync requires an open transaction; the lock is released at commit.");
+        }
+
+        // Raw SQL bypasses the query filter, so the tenant condition is spelled out.
+        return Database.ExecuteSqlAsync($"SELECT 1 FROM comments WHERE id = {commentId} AND workspace_id = {TenantWorkspaceId} FOR UPDATE", cancellationToken);
     }
 
     public Task LockCollectionAsync(Guid collectionId, CancellationToken cancellationToken) => LockCollection(collectionId, shared: false, cancellationToken);

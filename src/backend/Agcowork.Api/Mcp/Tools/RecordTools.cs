@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using Agcowork.Application.Comments;
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Query;
 using Agcowork.Application.Records;
@@ -77,15 +78,18 @@ internal static class RecordTools
         "Reads one record, archived ones included. Default format 'markdown': YAML frontmatter (id, collection, space, title, all "
         + "properties, revision, timestamps, actors) followed by the Markdown body, the easiest form to read. format 'json' returns "
         + "the record object (id, title, properties, body, revision, …) and allows includeHistory. Note 'revision': send it as "
-        + "'expectedRevision' to record_update so you do not overwrite a concurrent change. Requires read.")]
+        + "'expectedRevision' to record_update so you do not overwrite a concurrent change. includeComments: true adds the "
+        + "discussion (threads with replies, as comments_list) in both formats. Requires read.")]
     public static async Task<CallToolResult> Get(
         GetRecord getRecord,
         GetRecordMarkdown getMarkdown,
+        ListComments listComments,
         McpOutput output,
         [Description("Record id.")] Guid recordId,
         [Description("'markdown' (default) or 'json'.")] string? format = null,
         [Description("json only: include the Markdown body. Default true.")] bool? includeBody = null,
         [Description("json only: attach the latest n revisions (0..100). Default 0.")] int? includeHistory = null,
+        [Description("Attach the comments (threads with replies). Default false.")] bool? includeComments = null,
         CancellationToken cancellationToken = default)
     {
         format ??= FormatMarkdown;
@@ -97,12 +101,25 @@ internal static class RecordTools
         if (format == FormatMarkdown)
         {
             var markdown = await getMarkdown.HandleAsync(new GetRecordMarkdownRequest(recordId), cancellationToken);
-            return markdown.IsSuccess
-                ? output.Success(new RecordMarkdownResult(recordId, FormatMarkdown, markdown.Value), markdown.Value)
-                : output.Failure(markdown.Error);
+            if (markdown.IsFailure)
+            {
+                return output.Failure(markdown.Error);
+            }
+
+            if (includeComments != true)
+            {
+                return output.Success(new RecordMarkdownResult(recordId, FormatMarkdown, markdown.Value), markdown.Value);
+            }
+
+            var comments = await listComments.HandleAsync(new ListCommentsRequest(recordId), cancellationToken);
+            return comments.IsSuccess
+                ? output.Success(
+                    new RecordMarkdownResult(recordId, FormatMarkdown, markdown.Value, comments.Value),
+                    CommentText.AppendTo(markdown.Value, comments.Value))
+                : output.Failure(comments.Error);
         }
 
-        var result = await getRecord.HandleAsync(new GetRecordRequest(recordId, includeBody ?? true, includeHistory ?? 0), cancellationToken);
+        var result = await getRecord.HandleAsync(new GetRecordRequest(recordId, includeBody ?? true, includeHistory ?? 0, includeComments ?? false), cancellationToken);
         return output.From(result, record => output.SummaryWithJson($"Record {record.Title} (id {record.Id}, revision {record.Revision}).", record));
     }
 
@@ -247,4 +264,5 @@ internal static class RecordTools
 /// <param name="Id">Record id.</param>
 /// <param name="Format">Always <c>markdown</c>.</param>
 /// <param name="Markdown">Frontmatter plus body.</param>
-internal sealed record RecordMarkdownResult(Guid Id, string Format, string Markdown);
+/// <param name="Comments">The discussion; only with <c>includeComments</c>.</param>
+internal sealed record RecordMarkdownResult(Guid Id, string Format, string Markdown, CommentThreadsDto? Comments = null);

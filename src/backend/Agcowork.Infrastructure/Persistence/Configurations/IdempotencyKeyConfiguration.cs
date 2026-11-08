@@ -1,10 +1,14 @@
+using Agcowork.Domain.Comments;
 using Agcowork.Domain.Records;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Agcowork.Infrastructure.Persistence.Configurations;
 
-/// <remarks>Tenant table. (workspace_id, actor_id, key) is unique: the database decides concurrent retries.</remarks>
+/// <remarks>
+/// Tenant table. (workspace_id, actor_id, key) is unique: the database decides concurrent retries. Keys of added comments
+/// (AP-029) also reference the comment.
+/// </remarks>
 internal sealed class IdempotencyKeyConfiguration : IEntityTypeConfiguration<IdempotencyKey>
 {
     public void Configure(EntityTypeBuilder<IdempotencyKey> builder)
@@ -17,10 +21,15 @@ internal sealed class IdempotencyKeyConfiguration : IEntityTypeConfiguration<Ide
             .HasForeignKey(k => new { k.WorkspaceId, k.RecordId })
             .HasPrincipalKey(r => new { r.WorkspaceId, r.Id })
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Comment>().WithMany()
+            .HasForeignKey(k => new { k.WorkspaceId, k.CommentId })
+            .HasPrincipalKey(c => new { c.WorkspaceId, c.Id })
+            .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(k => new { k.WorkspaceId, k.ActorId, k.Key }).IsUnique();
 
         builder.Property(k => k.Key).HasMaxLength(IdempotencyKey.KeyMaxLength).IsRequired();
         builder.Property(k => k.ActorId).IsRequired();
         builder.Property(k => k.At).IsRequired();
+        builder.Ignore(k => k.IsForComment);
     }
 }
