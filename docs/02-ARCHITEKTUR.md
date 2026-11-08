@@ -83,8 +83,19 @@ erDiagram
 | **ApiKey** | Zugang eines Agenten | `ActorId`, `Prefix` (sichtbar), `Hash` (SHA-256), `WorkspaceId?` (optionale Einschränkung), `Scopes`, `ExpiresAt?`, `LastUsedAt`, `RevokedAt?` |
 | **Revision** | Vollständiger Snapshot eines Records je Änderung | `RecordId`, `No`, `Properties`, `Body`, `ActorId`, `At`, `Reason?` |
 | **ActivityEvent** | Append-only Log, pro Workspace | `WorkspaceId`, `Type` (record.created, record.updated, schema.changed, member.added …), `ActorId`, `Target`, `Diff: JSON`, `At` |
-| **Comment** | Diskussion am Record | `RecordId`, `ActorId`, `BodyMarkdown`, `ParentCommentId?`, `Resolved` |
+| **Comment** | Diskussion am Record (AP-029) | `RecordId`, `AuthorId`, `BodyMarkdown`, `ParentCommentId?` (eine Ebene), `ResolvedAt?`/`ResolvedBy?` (nur Wurzel), `EditedAt?`, `DeletedAt?` (weich) |
+| **Mention** | Erwähnung eines Actors in einem Kommentar (AP-029) | `CommentId`, `RecordId`, `MentionedActorId`, `ByActorId`, `CreatedAt`, `ReadAt?` |
 | **Attachment** (Phase 3) | Datei am Record | `RecordId`, `FileName`, `ContentType`, `Size`, `StorageKey` |
+
+### Kommentare und Erwähnungen (Entscheidungen 2026-11-08, AP-029)
+
+- **Threads mit einer Ebene:** Ein Kommentar ist Wurzel oder Antwort auf eine Wurzel (`ParentCommentId` zeigt nie auf eine Antwort). Nur Wurzeln lassen sich erledigen (`resolve`/`reopen`); erledigte Threads bleiben lesbar.
+- **Bearbeiten und Löschen:** Nur der Autor bearbeitet. Löschen darf der Autor oder ein Actor mit `admin`; gelöscht wird weich (`DeletedAt`, Body geleert), damit Antworten ihren Thread behalten. Kein Revisionsverlauf für Kommentare; `EditedAt` zeigt Bearbeitung an.
+- **Rechte:** Lesen `read`, Kommentieren `write`. Ein eigener `comment`-Scope (Kommentieren ohne Schreibrecht) ist möglich, aber nicht Teil von AP-029.
+- **Erwähnungen nur in Kommentaren**, nicht im Record-Body (Body-Erwähnungen bräuchten Abgleich über Revisionen; später möglich).
+- **Syntax (kanonisch, Markdown, E2):** `[@Anzeigename](actor:<uuid>)`. Der Server erkennt Erwähnungen ausschließlich an `actor:<uuid>`-Links; der Anzeigename ist frei und wird nicht geprüft. Erwähnt werden können nur Mitglieder des Workspaces (sonst 400 `not_member` am Feld `markdown` mit der ID). Es gibt bewusst nur diesen einen Weg (kein separater `mentions`-Parameter), damit Text und Erwähnungen nie auseinanderlaufen; `comment_add` beschreibt die Syntax, `workspace_overview`/Members liefern die IDs.
+- **Posteingang:** Jede Erwähnung erzeugt eine `Mention`-Zeile pro erwähntem Actor (nicht für sich selbst). `GET /mentions` und MCP `mentions_list` liefern die eigenen Erwähnungen (neueste zuerst, Filter `unreadOnly`), `mentions_mark_read` setzt `ReadAt`. Beim Bearbeiten werden neue Erwähnungen angelegt, entfernte gelöscht; beim Löschen des Kommentars alle seine Erwähnungen.
+- **Activity:** `comment.created|updated|deleted|resolved|reopened` mit `targetType = comment`, `targetId = CommentId`, Diff enthält `recordId`, `parentCommentId` und `mentionedActorIds`. Damit liefern Realtime (AP-024) und `activity_recent` Kommentare und Erwähnungen ohne neuen Kanal.
 
 ### Schema-Regeln (aus AP-006)
 
@@ -323,7 +334,9 @@ Regeln:
 | `record_append(recordId, markdown, section?)` | Markdown anhängen, z. B. Log-Einträge, ohne den Body zu kennen |
 | `record_archive(recordId)` | Soft-Delete |
 | `search(query, spaceId?, collectionId?, includeArchived?, limit?, cursor?)` | Volltextsuche über Titel, Text-Properties, Optionen und Body-Präfix; Snippet mit Markern ⟦…⟧ (AP-026). Parameter `mode` (semantic) erst mit Phase 3 |
-| `comment_add(recordId, markdown, parentCommentId?)` | Kommentieren |
+| `comment_add(recordId, markdown, parentCommentId?)` | Kommentieren, Antworten, Erwähnen (AP-029) |
+| `comments_list(recordId, includeResolved?)` / `comment_update(commentId, markdown? , resolved?)` | Diskussion lesen, bearbeiten, erledigen (AP-029) |
+| `mentions_list(unreadOnly?, limit?, cursor?)` / `mentions_mark_read(mentionIds? , all?)` | „Wo wurde ich gefragt?“ (AP-029) |
 | `history_get(recordId, limit?)` | Revisionen (Activity je Record über `activity_recent`, Phase 2 filterbar nach Record) |
 | `view_create(collectionId, type, name, filter?, sorts?, groupBy?, visibleProperties?)` | Ansicht für Menschen anlegen |
 | `activity_recent(spaceId?, collectionId?, actorId?, targetId?, since?, types?, afterSeq?, limit?, cursor?)` | Rückblick („Was ist seit gestern passiert?“, absteigend) oder lückenloses Mitlesen mit `afterSeq`/`lastSeq` (AP-024) |
@@ -381,6 +394,8 @@ POST   /collections/{id}/query          (Filter-DSL im Body)
 GET    /records/{id}                    POST   /records
 PATCH  /records/{id}                    POST   /records/{id}/append
 GET    /records/{id}/history            POST   /records/{id}/comments
+GET    /records/{id}/comments   PATCH|DELETE /comments/{id}   POST /comments/{id}/resolve|reopen
+GET    /mentions?unreadOnly=        POST   /mentions/read   ({ids?, all?})
 GET    /search?q=&spaceId&collectionId&includeArchived&limit&cursor                      GET    /activity?since=…
 GET    /views/{id}                      POST   /views   POST /views/{id}/query
 GET    /members   POST /members   PATCH /members/{actorId}   DELETE /members/{actorId}
