@@ -150,6 +150,27 @@ describe('createMilkdownEditor', () => {
     expect(anchor?.getAttribute('href') ?? '').toBe('');
   });
 
+  it('click_NeutralisedLinkInReadonlyBody_DoesNotNavigate', async () => {
+    const { root } = await mount('[x](javascript:alert(1)) und [y](https://example.com)', true);
+    const [neutralised, normal] = Array.from(root.querySelectorAll('.ProseMirror a'));
+    /** Whether the editor cancelled the click (seen after it, on the document). */
+    const click = (anchor: Element) => {
+      let prevented = false;
+      const record = (event: Event) => {
+        prevented = event.defaultPrevented;
+        event.preventDefault(); // jsdom must not try to navigate
+      };
+      document.addEventListener('click', record, { once: true });
+      anchor.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      return prevented;
+    };
+
+    // the empty href would reload the page
+    expect(click(neutralised)).toBe(true);
+    // a normal link is left to the browser (counter-check)
+    expect(click(normal)).toBe(false);
+  });
+
   it('render_HttpsLink_KeepsHref', async () => {
     const { root } = await mount('[x](https://example.com/a?b=1)');
 

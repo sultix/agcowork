@@ -150,6 +150,77 @@ describe('ActivityEntryComponent', () => {
     expect(text(q('activity-link'))).toBe('Öffnen');
   });
 
+  const COMMENT_ID = '0190f3a2-7c4e-7b1a-9d2e-3f4a5b6c7d01';
+  const comment = (type: string, diff: unknown = {}) =>
+    activityEvent({
+      type,
+      targetType: 'comment',
+      targetId: COMMENT_ID,
+      targetTitle: 'Login bauen',
+      diff: {
+        recordId: RECORD_ID,
+        parentCommentId: null,
+        mentionedActorIds: [],
+        ...(diff as object),
+      },
+    });
+
+  it('render_CommentEvents_NameRecordAndLinkToTheComment', async () => {
+    const cases: [string, string][] = [
+      ['comment.created', 'geschrieben'],
+      ['comment.updated', 'bearbeitet'],
+      ['comment.deleted', 'gelöscht'],
+      ['comment.resolved', 'als erledigt markiert'],
+      ['comment.reopened', 'wieder geöffnet'],
+    ];
+    for (const [type, verb] of cases) {
+      TestBed.resetTestingModule();
+      await render(comment(type));
+
+      expect(text(q('entry-text')), type).toBe('hat einen Kommentar zu');
+      expect(text(q('activity-link')), type).toBe('Login bauen');
+      expect(text(q('entry-text-after')), type).toBe(verb);
+      expect(q('activity-link')!.getAttribute('href'), type).toBe(
+        `/w/demo/records/${RECORD_ID}?comment=${COMMENT_ID}`,
+      );
+      expect(q('entry-name'), type).toBeNull();
+      expect(q('entry-toggle'), type).toBeNull();
+      http.verify();
+    }
+  });
+
+  it('render_CommentReply_SaysAnswer', async () => {
+    await render(comment('comment.created', { parentCommentId: 'p1' }));
+
+    expect(text(q('entry-text'))).toBe('hat eine Antwort zu');
+    expect(text(q('entry-text-after'))).toBe('geschrieben');
+  });
+
+  it('render_CommentWithMentions_DetailsNameTheMentionedActors', async () => {
+    await render(comment('comment.created', { mentionedActorIds: [AGENT_ID] }));
+
+    q('entry-toggle')!.click();
+    harness.fixture.detectChanges();
+
+    expect(text(q('entry-extra'))).toBe('Erwähnt: Coder');
+    expect(text(q('entry-diff'))).not.toContain(RECORD_ID);
+  });
+
+  it('render_CommentWithoutRecordTitle_SaysARecord', async () => {
+    await render({ ...comment('comment.resolved'), targetTitle: null });
+
+    expect(text(q('activity-link'))).toBe('einem Record');
+    expect(text(q('entry-text-after'))).toBe('als erledigt markiert');
+  });
+
+  it('render_CommentWithoutRecordId_ShowsTextWithoutLink', async () => {
+    await render({ ...comment('comment.deleted'), diff: {} as never });
+
+    expect(text(q('entry-text'))).toBe('hat einen Kommentar gelöscht');
+    expect(q('activity-link')).toBeNull();
+    expect(q('entry-text-after')).toBeNull();
+  });
+
   it('render_UnknownType_ShowsRawType', async () => {
     await render(activityEvent({ type: 'thing.exploded', targetType: 'thing' }));
 

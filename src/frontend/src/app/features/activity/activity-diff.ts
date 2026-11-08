@@ -69,3 +69,24 @@ export function viewDiff(diff: unknown): ActivityDiffView {
 export function hasDetails(view: ActivityDiffView): boolean {
   return view.changes.length > 0 || view.body !== null || view.extras.length > 0;
 }
+
+/** What the diff of a comment event carries (`comment.*`). */
+export interface CommentDiff {
+  readonly recordId: string | null;
+  readonly parentCommentId: string | null;
+  readonly mentionedActorIds: readonly string[];
+}
+
+/** Reads the diff of a comment event; missing or malformed fields become `null` or empty. */
+export function commentDiff(diff: unknown): CommentDiff {
+  const value = isRecord(diff) ? diff : {};
+  const text = (v: unknown) => (typeof v === 'string' && v !== '' ? v : null);
+  const mentioned = value['mentionedActorIds'];
+  return {
+    recordId: text(value['recordId']),
+    parentCommentId: text(value['parentCommentId']),
+    mentionedActorIds: Array.isArray(mentioned)
+      ? mentioned.filter((id): id is string => typeof id === 'string')
+      : [],
+  };
+}

@@ -198,6 +198,34 @@ describe('ActivityFeedComponent', () => {
     await settle(harness.fixture);
   });
 
+  it('filter_CommentTypes_AreOfferedAndSent', async () => {
+    await render({ items: [], nextCursor: null });
+
+    q('filter-types-summary')!.click();
+    await harness.fixture.whenStable();
+    const box = (type: string) =>
+      document.body.querySelector<HTMLElement>(`[data-testid="filter-type-${type}"]`);
+    for (const type of [
+      'comment.created',
+      'comment.updated',
+      'comment.deleted',
+      'comment.resolved',
+      'comment.reopened',
+    ]) {
+      expect(box(type), type).not.toBeNull();
+    }
+    expect(text(document.body.querySelector('label[for="filter-type-comment.resolved"]'))).toBe(
+      'Kommentar als erledigt markiert',
+    );
+    box('comment.resolved')!.querySelector('button')!.click();
+    harness.fixture.detectChanges();
+    await respond(http, 'GET', `${API}/activity?types=comment.resolved&limit=30`, {
+      items: [],
+      nextCursor: null,
+    });
+    await settle(harness.fixture);
+  });
+
   it('filter_TypesPopover_DialogHasAccessibleName', async () => {
     await render({ items: [], nextCursor: null });
 

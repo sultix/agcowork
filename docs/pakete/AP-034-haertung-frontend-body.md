@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 (Härtung) |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Kommentar-Schutz `src/frontend/src/app/features/comments/comment-markdown.ts` (`isPathological`, Klartext-Fallback, Messung) und `comment-renderer.ts` (Budget); Editor `shared/editor/milkdown-adapter.ts`, `markdown-editor.component.ts`; Feed `features/activity/activity-entry.component.ts` (`EVENTS`); Fehlertexte `shared/ui/api-error-text.ts` |
@@ -51,3 +51,13 @@ Ein Record-Body, den ein Agent schreibt, kann den Browser eines Menschen nicht e
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zu AP-035) |
+| 2026-11-08 | Bericht: Messung in headless Chrome – ohne Schutz Stack Overflow (`>`-Kette, `*`-Läufe, `- `-Kette) und bis 26 s Einfrieren (Lazy Continuation 78 KB), Serializer teils quadratisch; Schutz `exceedsMarkdownLimits` (linear, ≤ 6 ms bei 512 KiB) mit Schwellen 512 KiB, Σ Zeilen²/Block, Σ Marker²/Block, Blöcke, Überschriften, Struktur; Fallback als Klartext mit Raw-Link, try/catch, kein Speichern; Feed kennt `comment.*`; 1036 Tests |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: **Blockiert** – Gesamtmengen nur über die Größe begrenzt: Tabellen (500×500) und viele Inline-Marker über viele Absätze öffnen in 4–8 s unter allen Schwellen, mit Live-Neuladen dauerhaft gesperrter Tab; Hinweise: Readonly serialisiert unnötig, Init-Fehler als „zu groß“ getarnt, Properties ohne Raw-Ausweg, Doc-Kommentar falsch; Datenverlust keiner |
+| 2026-11-08 | Nacharbeit an implementer-opus (gewichtetes Arbeitsbudget ≤ 1 s, H1–H4) |
+| 2026-11-08 | Nacharbeit: Arbeitsbudget `markdownWork` (µs-Gewichte aus Chrome-Messung, Grenze 1 s), am Budget readonly 617–866 ms; 500 KB Prosa im Editor, 300 KB dichter Synthetik-Markdown im Fallback; readonly ohne Serialisieren, nur RangeError als Fallback, Raw-Link für Markdown-Properties; 1043 Tests |
+| 2026-11-08 | Nachprüfung gestartet |
+| 2026-11-08 | Nachprüfung: Freigabe mit Hinweisen (66 Muster in Chrome am Budget, keine Mehrsekunden-Lücke); W1 Fußnoten-Paare bis 1,6 s, H1 Serialisieren beim ersten Fokus im Lesemodus → letzte Kleinigkeit an implementer-opus |
+| 2026-11-08 | Nacharbeit: `[^` mit 100 µs im Budget (Fußnoten-Paare am Budget ≤ 687 ms readonly), Lesemodus erfasst keine Baseline beim Fokus; 1046 Tests |
+| 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit geprüft) |

@@ -10,6 +10,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { MembersStore } from '../../core/workspace/members.store';
@@ -49,6 +51,7 @@ function sameJson(a: unknown, b: unknown): boolean {
   selector: 'ag-property-editor',
   imports: [
     DatePipe,
+    HlmButton,
     HlmInput,
     HlmLabel,
     NgTemplateOutlet,
@@ -56,6 +59,7 @@ function sameJson(a: unknown, b: unknown): boolean {
     MarkdownEditorComponent,
     RawViewComponent,
     RelationEditorComponent,
+    RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-property-type]': 'definition().type' },
@@ -67,7 +71,19 @@ function sameJson(a: unknown, b: unknown): boolean {
           [value]="text()"
           [readonly]="locked()"
           (valueChange)="emitText($event)"
-        />
+        >
+          @if (rawLink(); as link) {
+            <a
+              agEditorFallbackAction
+              hlmBtn
+              variant="outline"
+              size="sm"
+              data-testid="property-raw-link"
+              [routerLink]="link"
+              >{{ locked() ? 'Im Raw-View ansehen' : 'Im Raw-View bearbeiten' }}</a
+            >
+          }
+        </ag-markdown-editor>
       }
       @case ('number') {
         <input
@@ -248,6 +264,11 @@ export class PropertyEditorComponent {
   readonly definition = input.required<PropertyDefinition>();
   readonly value = input<PropertyValue>(null);
   readonly readonly = input(false);
+  /**
+   * Route of the record's raw view: offered when a Markdown value is too large or too complex
+   * for the editor and shown as plain text.
+   */
+  readonly rawLink = input<readonly string[] | null>(null);
   /** Validation messages for this property (from the API's `errors[]`). */
   readonly errors = input<readonly string[]>([]);
 

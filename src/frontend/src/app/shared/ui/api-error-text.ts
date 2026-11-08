@@ -21,6 +21,8 @@ const ERROR_TEXTS: Record<string, string> = {
   revision_mismatch: 'Der Record wurde zwischenzeitlich von jemand anderem geändert.',
   record_archived:
     'Der Record ist archiviert und damit schreibgeschützt. Stelle ihn zuerst wieder her.',
+  collection_archived: 'Die Collection ist archiviert, ihre Records sind schreibgeschützt.',
+  space_archived: 'Der Space ist archiviert, sein Inhalt ist schreibgeschützt.',
   workspace_archived: 'Der Workspace ist archiviert und damit schreibgeschützt.',
   forbidden: 'Dafür fehlen die nötigen Rechte.',
   not_found: 'Nicht gefunden. Möglicherweise wurde der Eintrag inzwischen gelöscht.',

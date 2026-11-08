@@ -648,7 +648,7 @@ describe('CommentsPanelComponent', () => {
       await change();
 
       expect(text(q('composer-errors'))).toBe(
-        'Der Workspace ist archiviert, Kommentare sind schreibgeschützt.',
+        'Der Workspace ist archiviert und damit schreibgeschützt.',
       );
     });
 

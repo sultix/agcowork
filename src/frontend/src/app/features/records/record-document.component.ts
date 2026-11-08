@@ -16,6 +16,7 @@ import {
   viewChildren,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideCircleAlert,
@@ -93,6 +94,7 @@ interface RemoteChange {
     PropertyEditorComponent,
     RawViewComponent,
     RecordTabsComponent,
+    RouterLink,
   ],
   providers: [
     RecordSaveService,
@@ -299,6 +301,7 @@ interface RemoteChange {
                       [value]="saver.properties()[def.key]"
                       [readonly]="readonly()"
                       [errors]="saver.fieldErrors()[def.key] ?? []"
+                      [rawLink]="rawLink()"
                       (valueChange)="saver.setProperty(def.key, $event)"
                     />
                   </dd>
@@ -314,7 +317,17 @@ interface RemoteChange {
                 [value]="saver.editorValue()"
                 [readonly]="readonly()"
                 (valueChange)="onBody($event)"
-              />
+              >
+                <a
+                  agEditorFallbackAction
+                  hlmBtn
+                  variant="outline"
+                  size="sm"
+                  data-testid="body-raw-link"
+                  [routerLink]="rawLink()"
+                  >{{ readonly() ? 'Im Raw-View ansehen' : 'Im Raw-View bearbeiten' }}</a
+                >
+              </ag-markdown-editor>
             }
           </div>
         } @else {
@@ -482,6 +495,15 @@ export class RecordDocumentComponent {
           .get('/collections/{collectionId}', { path: { collectionId: params.id } }),
       ),
   });
+
+  /** The raw view of this record: the way out when the body or a Markdown value is too large. */
+  protected readonly rawLink = computed(() => [
+    '/w',
+    this.context.slug() ?? '',
+    'records',
+    this.recordId(),
+    'raw',
+  ]);
 
   protected readonly canWrite = computed(() => {
     const ws = this.workspaces.find(this.context.slug());
@@ -765,7 +787,8 @@ export class RecordDocumentComponent {
   }
 
   protected captureBaseline(): void {
-    if (this.baseline === null) {
+    // read-only: nothing can be typed, and serializing a large body just for a click is costly
+    if (this.baseline === null && !this.readonly()) {
       this.baseline = this.editor()?.getMarkdown() ?? null;
     }
   }

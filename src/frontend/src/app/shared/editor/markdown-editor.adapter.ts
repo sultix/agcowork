@@ -1,4 +1,5 @@
 import { InjectionToken } from '@angular/core';
+import { EDITOR_MARKDOWN_LIMITS, MarkdownLimits } from '../markdown/markdown-limits';
 
 /**
  * Library-neutral contract between `ag-markdown-editor` and the WYSIWYG engine.
@@ -57,3 +58,12 @@ export const MARKDOWN_EDITOR_FACTORY = new InjectionToken<() => Promise<Markdown
     factory: () => () => import('./milkdown-adapter').then((m) => m.createMilkdownEditor),
   },
 );
+
+/**
+ * Limits beyond which the editor shows its value as plain text instead of parsing it (see
+ * {@link EDITOR_MARKDOWN_LIMITS} for the measurements). Override in tests.
+ */
+export const MARKDOWN_EDITOR_LIMITS = new InjectionToken<MarkdownLimits>('MARKDOWN_EDITOR_LIMITS', {
+  providedIn: 'root',
+  factory: () => EDITOR_MARKDOWN_LIMITS,
+});

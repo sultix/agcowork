@@ -6,16 +6,15 @@ export type CommentAction = 'add' | 'reply' | 'edit' | 'delete' | 'resolve';
 
 const UUID_IN_TEXT = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
-/** Texts for the 409 codes of comment writes. */
+/**
+ * Texts for the 409 codes of comment writes. Archived collections, spaces and workspaces use the
+ * shared texts of {@link describeError}.
+ */
 const CONFLICTS: Record<string, string> = {
   comment_deleted:
     'Der Kommentar wurde inzwischen gelöscht. Er kann weder bearbeitet noch beantwortet werden; starte einen neuen Thread.',
   record_archived:
     'Der Record ist archiviert, seine Kommentare sind schreibgeschützt. Stelle ihn zuerst wieder her.',
-  collection_archived:
-    'Die Collection dieses Records ist archiviert, Kommentare sind schreibgeschützt.',
-  space_archived: 'Der Space dieses Records ist archiviert, Kommentare sind schreibgeschützt.',
-  workspace_archived: 'Der Workspace ist archiviert, Kommentare sind schreibgeschützt.',
   idempotency_key_reused: 'Die Anfrage ließ sich nicht zuordnen. Bitte erneut senden.',
 };
 

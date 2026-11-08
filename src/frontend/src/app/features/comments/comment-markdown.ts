@@ -2,6 +2,7 @@ import type { Definition, Nodes, Parents, RootContent, TableRow } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { gfm } from 'micromark-extension-gfm';
+import { MarkdownLimits, exceedsMarkdownLimits } from '../../shared/markdown/markdown-limits';
 import { ACTOR_SCHEME, findMentions, isUuid } from './comment-mentions';
 
 /**
@@ -139,59 +140,26 @@ export const MAX_INDENT = 64;
  */
 export const MAX_DELIMITERS = 1_000;
 
-/** A run of more than {@link MAX_DELIMITER_RUN} of one delimiter (the literal must match it). */
-const DELIMITER_RUN = /([*_~>[\]()<`!\\])\1{100,}/;
-const LINE_PREFIX = /^(?:[ \t]*(?:>|[*+-](?=[ \t])|\d{1,9}[.)](?=[ \t])))+/gm;
+/** The limits above for {@link exceedsMarkdownLimits}. */
+export const COMMENT_MARKDOWN_LIMITS: MarkdownLimits = {
+  maxLength: MAX_FORMATTED_LENGTH,
+  maxLines: MAX_LINES,
+  maxDelimiterRun: MAX_DELIMITER_RUN,
+  maxLineNesting: MAX_LINE_NESTING,
+  maxIndent: MAX_INDENT,
+  maxDelimiters: MAX_DELIMITERS,
+};
 
 /**
  * Input that would make the parser slow or overflow its stack (it recurses on nesting and
  * resolves emphasis in quadratic time): long runs of one delimiter (`'*'.repeat(10000)`),
  * deep quote or list nesting on one line (`'>'.repeat(20000)`), deep indentation, very many
  * delimiters overall, or simply a very long comment. Such comments are shown as plain text
- * (still readable, without formatting); normal comments never come close.
+ * (still readable, without formatting); normal comments never come close. The check is shared
+ * with the editor ({@link exceedsMarkdownLimits}), the limits are the comments' own.
  */
 export function isPathological(markdown: string): boolean {
-  if (markdown.length > MAX_FORMATTED_LENGTH || DELIMITER_RUN.test(markdown)) {
-    return true;
-  }
-  let lines = 1;
-  for (let i = markdown.indexOf('\n'); i >= 0; i = markdown.indexOf('\n', i + 1)) {
-    if (++lines > MAX_LINES) {
-      return true;
-    }
-  }
-  for (const match of markdown.matchAll(LINE_PREFIX)) {
-    const markers = match[0].replace(/\d{1,9}[.)]/g, '#').replace(/[ \t]/g, '').length;
-    if (markers > MAX_LINE_NESTING) {
-      return true;
-    }
-  }
-  for (const line of markdown.split('\n')) {
-    let columns = 0;
-    for (const c of line) {
-      if (c === ' ') {
-        columns++;
-      } else if (c === '\t') {
-        columns += 4 - (columns % 4);
-      } else {
-        break;
-      }
-    }
-    if (columns > MAX_INDENT) {
-      return true;
-    }
-  }
-  let delimiters = 0;
-  for (let i = 0; i < markdown.length; i++) {
-    const c = markdown.charCodeAt(i);
-    // * _ ~ [ ] `
-    if (c === 42 || c === 95 || c === 126 || c === 91 || c === 93 || c === 96) {
-      if (++delimiters > MAX_DELIMITERS) {
-        return true;
-      }
-    }
-  }
-  return false;
+  return exceedsMarkdownLimits(markdown, COMMENT_MARKDOWN_LIMITS);
 }
 
 interface Context {

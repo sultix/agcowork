@@ -11,7 +11,7 @@ import { WorkspaceContext } from '../../core/workspace/workspace-context.service
 import { ActorLabelComponent } from '../../shared/ui/actor-label.component';
 import { formatValue } from '../records/history/diff';
 import { WorkspaceTreeStore } from '../spaces/workspace-tree.store';
-import { hasDetails, viewDiff } from './activity-diff';
+import { ActivityDiffView, commentDiff, hasDetails, viewDiff } from './activity-diff';
 
 export type ActivityEvent = components['schemas']['ActivityEventDto'];
 
@@ -35,7 +35,15 @@ const EVENTS: Record<string, { article: string; noun: string; verb: string }> = 
   'member.added': { article: 'ein', noun: 'Mitglied', verb: 'hinzugefügt' },
   'member.updated': { article: 'ein', noun: 'Mitglied', verb: 'geändert' },
   'member.removed': { article: 'ein', noun: 'Mitglied', verb: 'entfernt' },
+  'comment.created': { article: 'einen', noun: 'Kommentar', verb: 'geschrieben' },
+  'comment.updated': { article: 'einen', noun: 'Kommentar', verb: 'bearbeitet' },
+  'comment.deleted': { article: 'einen', noun: 'Kommentar', verb: 'gelöscht' },
+  'comment.resolved': { article: 'einen', noun: 'Kommentar', verb: 'als erledigt markiert' },
+  'comment.reopened': { article: 'einen', noun: 'Kommentar', verb: 'wieder geöffnet' },
 };
+
+/** A reply is a `comment.created` with a parent: „hat eine Antwort zu … geschrieben“. */
+const REPLY = { article: 'eine', noun: 'Antwort', verb: 'geschrieben' };
 
 /** Readable type texts, e.g. for the type filter. */
 export const ACTIVITY_TYPE_LABELS: Readonly<Record<string, string>> = Object.fromEntries(
@@ -56,17 +64,21 @@ export const ACTIVITY_TYPE_LABELS: Readonly<Record<string, string>> = Object.fro
     <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
       <span class="flex flex-wrap items-baseline gap-x-1.5">
         <ag-actor-label [actorId]="event().actorId" />
-        <span data-testid="entry-text">{{ text() }}</span>
+        <span data-testid="entry-text">{{ phrase().before }}</span>
         @if (shownName(); as name) {
           <span class="text-muted-foreground" data-testid="entry-name">„{{ name }}“</span>
         }
         @if (link(); as link) {
           <a
             [routerLink]="link"
+            [queryParams]="queryParams()"
             class="font-medium underline underline-offset-4"
             data-testid="activity-link"
-            >{{ event().targetTitle || 'Öffnen' }}</a
+            >{{ event().targetTitle || (isComment() ? 'einem Record' : 'Öffnen') }}</a
           >
+        }
+        @if (phrase().after; as after) {
+          <span data-testid="entry-text-after">{{ after }}</span>
         }
         @if (diff().affectedRecords !== null) {
           <span class="text-muted-foreground" data-testid="entry-affected"
@@ -143,18 +155,49 @@ export class ActivityEntryComponent {
   readonly event = input.required<ActivityEvent>();
 
   protected readonly open = signal(false);
-  protected readonly diff = computed(() => viewDiff(this.event().diff));
+  protected readonly isComment = computed(() => this.event().targetType === 'comment');
+  /** The comment's diff (`recordId`, `parentCommentId`, `mentionedActorIds`), if it is one. */
+  private readonly commentDiff = computed(() =>
+    this.isComment() ? commentDiff(this.event().diff) : null,
+  );
+  protected readonly diff = computed<ActivityDiffView>(() => {
+    const comment = this.commentDiff();
+    if (!comment) {
+      return viewDiff(this.event().diff);
+    }
+    // Ids mean nothing to a reader: of a comment's diff only the mentioned actors are shown.
+    const names = comment.mentionedActorIds.map((id) => this.members.nameOf(id));
+    return {
+      changes: [],
+      body: null,
+      extras: names.length > 0 ? [{ key: 'Erwähnt', text: names.join(', ') }] : [],
+      affectedRecords: null,
+    };
+  });
   protected readonly expandable = computed(() => hasDetails(this.diff()));
 
-  protected readonly text = computed(() => {
-    const info = EVENTS[this.event().type];
-    if (!info) {
-      return this.event().type;
+  /**
+   * The text around the link. Comments name their record in the middle („hat einen Kommentar zu
+   * <Record> geschrieben“), everything else ends before the link.
+   */
+  protected readonly phrase = computed<{ before: string; after: string | null }>(() => {
+    const event = this.event();
+    const known = EVENTS[event.type];
+    if (!known) {
+      return { before: event.type, after: null };
+    }
+    const info =
+      event.type === 'comment.created' && this.commentDiff()?.parentCommentId ? REPLY : known;
+    if (this.isComment() && this.link()) {
+      return { before: `hat ${info.article} ${info.noun} zu`, after: info.verb };
     }
     // With a name the noun is followed by it („Record „X“ geändert“); without, it is "einen Record".
-    return this.shownName()
-      ? `hat ${info.noun} ${info.verb}`
-      : `hat ${info.article} ${info.noun} ${info.verb}`;
+    return {
+      before: this.shownName()
+        ? `hat ${info.noun} ${info.verb}`
+        : `hat ${info.article} ${info.noun} ${info.verb}`,
+      after: null,
+    };
   });
 
   /** The target's name: from the diff (new title or name) or the navigation tree. */
@@ -198,10 +241,19 @@ export class ActivityEntryComponent {
         return event.collectionId ? ['/w', slug, 'collections', event.collectionId] : null;
       case 'member':
         return ['/w', slug, 'settings', 'members'];
+      case 'comment': {
+        const recordId = this.commentDiff()?.recordId;
+        return recordId ? ['/w', slug, 'records', recordId] : null;
+      }
       default:
         return null;
     }
   });
+
+  /** A comment opens its record with the comment shown in the sidebar (`?comment=<id>`). */
+  protected readonly queryParams = computed(() =>
+    this.isComment() ? { comment: this.event().targetId } : null,
+  );
 
   protected format(value: unknown): string {
     return formatValue(value);

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ErrorHandler, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { HttpTestingController } from '@angular/common/http/testing';
@@ -100,6 +100,7 @@ describe('RecordDocumentComponent', () => {
       schema?: ReturnType<typeof propertyDefinition>[];
       comments?: unknown;
       query?: string;
+      providers?: Provider[];
     } = {},
   ): Promise<void> {
     engines = [];
@@ -126,6 +127,7 @@ describe('RecordDocumentComponent', () => {
           ],
         }),
         provideFakeCodeEditor(codeEditors),
+        ...(options.providers ?? []),
         {
           provide: MARKDOWN_EDITOR_FACTORY,
           useValue: () =>
@@ -666,6 +668,27 @@ describe('RecordDocumentComponent', () => {
       expect(q('show-markdown')).not.toBeNull();
     });
 
+    it('focus_Viewer_DoesNotSerializeTheBody', async () => {
+      await render({ scopes: ['read'] });
+      const serialize = vi.spyOn(bodyEditor(), 'getMarkdown');
+
+      q('record-body')!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      await harness.navigateByUrl(`/w/demo/spaces/${SPACE_ID}`);
+
+      expect(serialize).not.toHaveBeenCalled();
+    });
+
+    it('focus_Writer_CapturesTheBaselineOnce', async () => {
+      // counter-check: writable, the focus takes the editor's Markdown as baseline
+      await render();
+      const serialize = vi.spyOn(bodyEditor(), 'getMarkdown');
+
+      q('record-body')!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      q('record-body')!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+      expect(serialize).toHaveBeenCalledTimes(1);
+    });
+
     it('canDeactivate_Viewer_NavigatesWithoutSaving', async () => {
       await render({ scopes: ['read'] });
 
@@ -688,6 +711,99 @@ describe('RecordDocumentComponent', () => {
       await render({ scopes: ['read'], record: { archivedAt: '2026-11-07T12:00:00Z' } });
 
       expect(q('archive-toggle')).toBeNull();
+    });
+  });
+
+  describe('body too large or too complex for the editor', () => {
+    /** Patterns from the AP-031 review plus a body beyond the size limit. */
+    const PATHOLOGICAL: readonly [string, string][] = [
+      ['quote run', '>'.repeat(10000)],
+      ['emphasis run', '*'.repeat(10000) + 'x' + '*'.repeat(10000)],
+      ['lazy continuation', '> a\n' + 'b\n'.repeat(3900)],
+      ['too large', 'Ein ganz normaler Satz.\n\n'.repeat(90_000)],
+    ];
+
+    it.each(PATHOLOGICAL)(
+      'render_%s_ShowsPlainTextNoticeAndRawLinkWithoutErrors',
+      async (_name, body) => {
+        const handleError = vi.fn();
+        await render({
+          record: { body },
+          providers: [{ provide: ErrorHandler, useValue: { handleError } }],
+        });
+
+        expect(text(q('editor-fallback-notice'))).toContain(
+          'Dieser Text ist zu groß oder zu komplex für den Editor.',
+        );
+        expect(q('editor-fallback-text')!.textContent).toBe(body);
+        expect(text(q('body-raw-link'))).toBe('Im Raw-View bearbeiten');
+        expect(q('body-raw-link')!.getAttribute('href')).toBe(`/w/demo/records/${RECORD_ID}/raw`);
+        expect(engines.filter(isBody)).toEqual([]);
+        expect(handleError).not.toHaveBeenCalled();
+      },
+    );
+
+    it('save_FallbackBody_IsNeverSent', async () => {
+      const body = '>'.repeat(10000);
+      await render({ record: { body } });
+      // focus inside the body area (the raw link), Ctrl+S: nothing to save
+      q('body-raw-link')!.focus();
+      q('record-body')!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }));
+      await change();
+      expect(http.match(RECORD_URL)).toHaveLength(0);
+      expect(text(q('save-status'))).toBe('');
+
+      // a title edit saves the title only, never the body shown as text
+      typeInto(q<HTMLInputElement>('record-title')!, 'Neu');
+      await change();
+      q('save')!.click();
+      const patch = await expectRequest(http, 'PATCH', RECORD_URL);
+      expect(patch.request.body).toEqual({ title: 'Neu', expectedRevision: 3 });
+      patch.flush(recordDto({ title: 'Neu', body, revision: 4 }));
+      await settle(harness.fixture);
+
+      expect(q('editor-fallback-text')!.textContent).toBe(body);
+    });
+
+    it('canDeactivate_FallbackBody_NavigatesWithoutRequest', async () => {
+      await render({ record: { body: '>'.repeat(10000) } });
+      q('record-body')!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+      await harness.navigateByUrl(`/w/demo/spaces/${SPACE_ID}`);
+
+      expect(TestBed.inject(Router).url).toBe(`/w/demo/spaces/${SPACE_ID}`);
+    });
+
+    it('render_FallbackForViewer_OffersToViewInRawView', async () => {
+      await render({ scopes: ['read'], record: { body: '>'.repeat(10000) } });
+
+      expect(text(q('body-raw-link'))).toBe('Im Raw-View ansehen');
+    });
+
+    it('render_MarkdownPropertyTooComplex_OffersTheRawViewThere', async () => {
+      await render({
+        schema: [propertyDefinition({ key: 'notes', name: 'Notizen', type: 'markdown' })],
+        record: { properties: { status: 'todo', notes: '>'.repeat(10000) } as never },
+      });
+
+      const link = row('notes').querySelector<HTMLElement>('[data-testid="property-raw-link"]');
+      expect(text(row('notes').querySelector('[data-testid="editor-fallback-text"]'))).toBe(
+        '>'.repeat(10000),
+      );
+      expect(text(link)).toBe('Im Raw-View bearbeiten');
+      expect(link!.getAttribute('href')).toBe(`/w/demo/records/${RECORD_ID}/raw`);
+      // the body is normal and stays in the editor
+      expect(bodyEditor().current).toBe('Hallo');
+    });
+
+    it('render_NormalBody_LoadsTheEditorWithoutRawLink', async () => {
+      const body = '## Abschnitt\n\nText mit **fett** und einer Liste:\n\n- a\n- b\n\n'.repeat(500);
+      await render({ record: { body } });
+
+      expect(bodyEditor().current).toBe(body);
+      expect(q('editor-fallback-notice')).toBeNull();
+      expect(q('body-raw-link')).toBeNull();
     });
   });
 

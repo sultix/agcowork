@@ -108,6 +108,17 @@ export async function createMilkdownEditor(
               options.onBlur();
               return false;
             },
+            // A link whose unsafe target (`javascript:` …) Milkdown neutralised has `href=""`:
+            // following it would reload the page.
+            click: (_view, event) => {
+              const target = event.target;
+              const anchor = target instanceof Element ? target.closest('a') : null;
+              if (anchor && !anchor.getAttribute('href')) {
+                event.preventDefault();
+                return true;
+              }
+              return false;
+            },
           },
         },
         view: () => ({
