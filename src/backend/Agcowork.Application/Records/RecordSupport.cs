@@ -26,13 +26,15 @@ public static class RecordConflicts
 
     /// <summary>Another change of the same idempotency key is in progress or was stored concurrently.</summary>
     /// <summary>
-    /// 409 <c>idempotency_key_reused</c>: the key already belongs to another request (creating a record, or adding a comment to
-    /// another record). Keys are shared by both kinds of request (AP-029).
+    /// 409 <c>idempotency_key_reused</c>: the key already belongs to another request: another kind (creating a record, adding a
+    /// comment; keys are shared, AP-029), another target, or other content (AP-035, <see cref="IdempotencyFingerprint"/>).
     /// </summary>
     public static ConflictError IdempotencyKeyReused(string field) =>
         new(
             "idempotency_key_reused",
-            "This Idempotency-Key was already used within 24 h for another request (creating a record, or a comment on another record). Use a new key for every request.",
+            "Same key, different request: this Idempotency-Key was already used within 24 h for a request with other content or "
+            + "another target (another title, properties, body, text, record or parent, or the other kind of request). Use a new key "
+            + "for every new request; resend a request unchanged to get its first result.",
             field);
 
     public static UniqueConflict IdempotencyKey { get; } = new(

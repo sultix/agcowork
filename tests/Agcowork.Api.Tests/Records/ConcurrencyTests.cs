@@ -99,6 +99,39 @@ public sealed class ConcurrencyTests(AgcoworkApiFactory factory)
         Assert.Single(all!.Items);
     }
 
+    [Fact]
+    public async Task ParallelCreates_SameKeyDifferentContent_OneCreated_OneConflict()
+    {
+        var owner = await factory.CreateAgentAsync(["workspaces:create"], cancellationToken: Ct);
+        var workspace = await TenancyFixture.CreateWorkspaceAsync(owner.Client, "conc");
+        var (_, collection) = await RecordsApi.SeedCollectionAsync(owner.Client, workspace.Slug);
+
+        for (var round = 0; round < 5; round++)
+        {
+            var key = Guid.NewGuid().ToString();
+
+            async Task<(HttpStatusCode Status, string Body)> PostAsync(string title)
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(TenancyFixture.Path(workspace.Slug, "/records"), UriKind.Relative))
+                {
+                    Content = JsonContent.Create(new { collectionId = collection.Id, title }),
+                };
+                request.Headers.Add("Idempotency-Key", key);
+                using var response = await owner.Client.SendAsync(request, Ct);
+                return (response.StatusCode, await response.Content.ReadAsStringAsync(Ct));
+            }
+
+            var results = await Task.WhenAll(PostAsync($"A {round}"), PostAsync($"B {round}"));
+
+            Assert.Single(results, r => r.Status == HttpStatusCode.Created);
+            var conflict = Assert.Single(results, r => r.Status == HttpStatusCode.Conflict);
+            Assert.Contains("idempotency_key_reused", conflict.Body, StringComparison.Ordinal);
+        }
+
+        var all = await owner.Client.GetFromJsonAsync<Page<RecordDto>>(TenancyFixture.Path(workspace.Slug, $"/records?collectionId={collection.Id}&limit=50"), AgcoworkApiFactory.Json, Ct);
+        Assert.Equal(5, all!.Items.Count);
+    }
+
     private async Task<(TestAgent Owner, WorkspaceDto Workspace, CollectionDto Collection)> OptionCollectionAsync()
     {
         var owner = await factory.CreateAgentAsync(["workspaces:create"], cancellationToken: Ct);

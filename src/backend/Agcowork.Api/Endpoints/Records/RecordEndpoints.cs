@@ -46,7 +46,10 @@ internal static class RecordEndpoints
                 + "members. 'body' is Markdown (max. 2 MiB). The collection's default template (or 'templateId') provides preset "
                 + "values and the body when none is sent; sent values win. 'parentRecordId' nests the record below another one. "
                 + "Send an 'Idempotency-Key' header (e.g. a UUID) to make retries safe: the same key by the same actor within 24 h "
-                + "returns the first record instead of creating another. The response has no body; read it with GET ?includeBody=true. "
+                + "with the same request returns the first record instead of creating another; the same key with a different request "
+                + "(other collectionId, spaceId, title, properties, body, templateId or parentRecordId; key order in JSON does not "
+                + "count) is 409 'idempotency_key_reused'. Use a new key for every new record. The response has no body; read it with "
+                + "GET ?includeBody=true. "
                 + "Requires write. Invalid values: 400 with 'errors[]' on 'properties.<key>' (e.g. 'unknown_property' or "
                 + "'not_in_options' with 'allowed'); archived collection or space: 409.")
             .ProducesProblem(StatusCodes.Status400BadRequest)

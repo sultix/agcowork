@@ -37,6 +37,14 @@ public sealed record SchemaChange(
     /// </summary>
     public JsonObject Effects { get; } = [];
 
+    /// <summary>
+    /// A relation under <paramref name="key"/> that held one reference and now holds several (the only allowed direction, see
+    /// <c>CollectionSchema.ValidateChange</c>). Not a type change: the type stays relation, single values become arrays.
+    /// </summary>
+    public bool RelationBecomesMultiple(string key) =>
+        Before.Find(key) is { Type: PropertyType.Relation, Multiple: false }
+        && After.Find(key) is { Type: PropertyType.Relation, Multiple: true };
+
     public static SchemaChange Between(IReadOnlyList<PropertyDefinition> before, IReadOnlyList<PropertyDefinition> after)
     {
         ArgumentNullException.ThrowIfNull(before);

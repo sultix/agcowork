@@ -129,7 +129,8 @@ internal static class RecordTools
         + "'properties' must follow its schema (keys, types, allowed option values); omitted properties get their default. The "
         + "collection's default template (or 'templateId') fills preset values and the body when you send none, e.g. the ADR "
         + "structure of 'Entscheidungen'; values you send win. 'body' is Markdown. Send 'idempotencyKey' (e.g. a UUID) so a retry "
-        + "within 24 h returns the first record instead of creating a duplicate. Invalid values come back as errors[] on "
+        + "within 24 h returns the first record instead of creating a duplicate; a retry must repeat the call unchanged, the same "
+        + "key with other arguments is 'idempotency_key_reused' (use a new key for every new record). Invalid values come back as errors[] on "
         + "'properties.<key>' (e.g. 'unknown_property' or 'not_in_options' with 'allowed'). Returns the record with 'body': null; read "
         + "it with record_get. Requires write.")]
     public static async Task<CallToolResult> Create(
@@ -142,7 +143,7 @@ internal static class RecordTools
         [Description("Markdown body, max. 2 MiB. Omit to use the template's body.")] string? body = null,
         [Description("Template of the collection (templateId from collection_describe); default: the collection's default template.")] Guid? templateId = null,
         [Description("Parent record for nested pages.")] Guid? parentRecordId = null,
-        [Description("Makes retries safe: the same key by you within 24 h returns the first record. 1-200 characters, e.g. a UUID.")] string? idempotencyKey = null,
+        [Description("Makes retries safe: the same key by you within 24 h with the same arguments returns the first record; with other arguments it is 'idempotency_key_reused'. 1-255 characters, e.g. a UUID.")] string? idempotencyKey = null,
         CancellationToken cancellationToken = default)
     {
         var result = await useCase.HandleAsync(
@@ -226,10 +227,15 @@ internal static class RecordTools
         return output.From(result, page => McpText.History(page.Items, page.NextCursor));
     }
 
-    /// <summary>Renames a field of a validation error (adapter naming); other errors pass unchanged.</summary>
-    private static Error RenameField(Error error, string from, string to) => error is ValidationError validation
-        ? new ValidationError([.. validation.Errors.Select(e => e.Field == from ? e with { Field = to, Message = e.Message.Replace("The Idempotency-Key header", "'idempotencyKey'", StringComparison.Ordinal) } : e)])
-        : error;
+    /// <summary>Renames a field of a validation error or conflict (adapter naming); other errors pass unchanged.</summary>
+    private static Error RenameField(Error error, string from, string to) => error switch
+    {
+        ValidationError validation => new ValidationError([.. validation.Errors.Select(e => e.Field == from
+            ? e with { Field = to, Message = e.Message.Replace("The Idempotency-Key header", "'idempotencyKey'", StringComparison.Ordinal) }
+            : e)]),
+        ConflictError { Field: { } field } conflict when field == from => conflict with { Field = to },
+        _ => error,
+    };
 
     /// <summary>Reads a filter argument into the DSL node; a malformed node is reported like a REST binding error, as a field error.</summary>
     internal static bool TryReadFilter(McpOutput output, JsonElement? filter, string field, out ViewFilterNode? node, out CallToolResult invalid)

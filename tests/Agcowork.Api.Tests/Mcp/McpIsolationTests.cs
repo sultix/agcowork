@@ -160,4 +160,27 @@ public sealed class McpIsolationTests(AgcoworkApiFactory factory)
         var foreign = McpClientFixture.Error(await McpClientFixture.CallAsync(alphaOwner, "activity_recent", new { afterSeq = betaSeq }), 400, "validation_failed");
         Assert.Equal("invalid_cursor", foreign.GetProperty("errors")[0].GetProperty("code").GetString());
     }
+
+    [Fact]
+    public async Task ActivityRecent_RecordId_Isolated_ForeignRecordEmpty()
+    {
+        var t = await TenancyFixture.GetAsync(factory);
+        var (_, betaCollection) = await RecordsApi.SeedCollectionAsync(t.BetaOwner.Client, t.Beta.Slug);
+        var betaRecord = await RecordsApi.CreateInAsync(t.BetaOwner.Client, t.Beta.Slug, betaCollection.Id);
+        await Comments.CommentsApi.AddAsync(t.BetaOwner.Client, t.Beta.Slug, betaRecord.Id, "Geheim");
+        await using var betaClient = await McpClientFixture.ConnectAsync(factory, t.BetaOwner.Key, t.Beta.Slug);
+        await using var alphaOwner = await McpClientFixture.ConnectAsync(factory, t.AlphaOwner.Key, t.Alpha.Slug);
+
+        await McpClientFixture.AssertToolIsolatedAsync(t, alphaOwner, "activity_recent", new { recordId = betaRecord.Id });
+
+        // In its own workspace the record has its creation and its comment.
+        var own = McpClientFixture.Ok(await McpClientFixture.CallAsync(betaClient, "activity_recent", new { recordId = betaRecord.Id }));
+        Assert.Equal(["comment.created", "record.created"], own.GetProperty("items").EnumerateArray().Select(e => e.GetProperty("type").GetString()));
+        var forward = McpClientFixture.Ok(await McpClientFixture.CallAsync(betaClient, "activity_recent", new { recordId = betaRecord.Id, afterSeq = 0 }));
+        Assert.Equal(["record.created", "comment.created"], forward.GetProperty("items").EnumerateArray().Select(e => e.GetProperty("type").GetString()));
+
+        // From Alpha: nothing, newest first and forward.
+        Assert.Empty(McpClientFixture.Ok(await McpClientFixture.CallAsync(alphaOwner, "activity_recent", new { recordId = betaRecord.Id })).GetProperty("items").EnumerateArray());
+        Assert.Empty(McpClientFixture.Ok(await McpClientFixture.CallAsync(alphaOwner, "activity_recent", new { recordId = betaRecord.Id, afterSeq = 0 })).GetProperty("items").EnumerateArray());
+    }
 }

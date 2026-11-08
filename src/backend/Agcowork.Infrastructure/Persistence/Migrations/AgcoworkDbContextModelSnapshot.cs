@@ -46,6 +46,10 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("diff");
 
+                    b.Property<Guid?>("RelatedRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("related_record_id");
+
                     b.Property<long>("Seq")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
@@ -97,6 +101,9 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("WorkspaceId", "CollectionId", "Seq")
                         .HasDatabaseName("ix_activity_events_workspace_id_collection_id_seq");
+
+                    b.HasIndex("WorkspaceId", "RelatedRecordId", "Seq")
+                        .HasDatabaseName("ix_activity_events_workspace_id_related_record_id_seq");
 
                     b.HasIndex("WorkspaceId", "SpaceId", "Seq")
                         .HasDatabaseName("ix_activity_events_workspace_id_space_id_seq");
@@ -521,6 +528,11 @@ namespace Agcowork.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("RecordId")
                         .HasColumnType("uuid")
                         .HasColumnName("record_id");
+
+                    b.Property<string>("RequestHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_hash");
 
                     b.Property<Guid>("WorkspaceId")
                         .HasColumnType("uuid")

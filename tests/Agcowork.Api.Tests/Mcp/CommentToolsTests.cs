@@ -115,8 +115,10 @@ public sealed class CommentToolsTests(AgcoworkApiFactory factory)
         Assert.Equal("not_member", notMember.GetProperty("errors")[0].GetProperty("code").GetString());
 
         var first = McpClientFixture.Ok(await McpClientFixture.CallAsync(client, "comment_add", new { recordId, markdown = "Einmal", idempotencyKey = "mcp-key" }));
-        var second = McpClientFixture.Ok(await McpClientFixture.CallAsync(client, "comment_add", new { recordId, markdown = "Zweimal", idempotencyKey = "mcp-key" }));
+        var second = McpClientFixture.Ok(await McpClientFixture.CallAsync(client, "comment_add", new { recordId, markdown = "Einmal", idempotencyKey = "mcp-key" }));
         Assert.Equal(first.GetProperty("id").GetGuid(), second.GetProperty("id").GetGuid());
+        var reused = McpClientFixture.Error(await McpClientFixture.CallAsync(client, "comment_add", new { recordId, markdown = "Zweimal", idempotencyKey = "mcp-key" }), 409, "idempotency_key_reused");
+        Assert.Equal("idempotencyKey", reused.GetProperty("errors")[0].GetProperty("field").GetString());
         var invalidKey = McpClientFixture.Error(await McpClientFixture.CallAsync(client, "comment_add", new { recordId, markdown = "x", idempotencyKey = new string('k', 300) }), 400, "validation_failed");
         Assert.Equal("idempotencyKey", invalidKey.GetProperty("errors")[0].GetProperty("field").GetString());
 

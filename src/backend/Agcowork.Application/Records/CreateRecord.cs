@@ -25,7 +25,10 @@ namespace Agcowork.Application.Records;
 /// <param name="Body">Markdown body, max. 2 MiB. Omitted: the template's body.</param>
 /// <param name="TemplateId">Template of the collection to start from; omitted: the collection's default template, if any.</param>
 /// <param name="ParentRecordId">Parent page in the same workspace, for nested pages.</param>
-/// <param name="IdempotencyKey">From the <c>Idempotency-Key</c> header: the same key by the same actor within 24 h returns the first result.</param>
+/// <param name="IdempotencyKey">
+/// From the <c>Idempotency-Key</c> header: the same key by the same actor within 24 h with the same request returns the first
+/// result; with a different request (see <see cref="IdempotencyFingerprint"/>) it is 409 <c>idempotency_key_reused</c>.
+/// </param>
 public sealed record CreateRecordRequest(
     Guid? CollectionId = null,
     Guid? SpaceId = null,
@@ -80,14 +83,15 @@ public sealed class CreateRecord(
             return errors.ToError();
         }
 
-        // A retry with the same key returns the first result, whatever its body says.
+        // A retry (same key, same request) returns the first result; the same key with another request is a conflict.
+        var requestHash = IdempotencyFingerprint.Of(request);
         IdempotencyKey? expiredKey = null;
         if (idempotencyKey is not null)
         {
             var existing = await FindKeyAsync(idempotencyKey, cancellationToken).ConfigureAwait(false);
             if (existing is not null && !existing.IsExpired(timeProvider.GetUtcNow()))
             {
-                return await ReplayAsync(existing, cancellationToken).ConfigureAwait(false);
+                return await ReplayAsync(existing, requestHash, cancellationToken).ConfigureAwait(false);
             }
 
             expiredKey = existing;
@@ -185,7 +189,7 @@ public sealed class CreateRecord(
                 await db.IdempotencyKeys.Where(k => k.Id == expiredKey.Id).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            db.IdempotencyKeys.Add(IdempotencyKey.Create(tenant.WorkspaceId, currentActor.Id, idempotencyKey, record.Id, timeProvider));
+            db.IdempotencyKeys.Add(IdempotencyKey.Create(tenant.WorkspaceId, currentActor.Id, idempotencyKey, record.Id, requestHash, timeProvider));
         }
 
         if (await db.SaveChangesOrConflictAsync(cancellationToken, RecordConflicts.IdempotencyKey).ConfigureAwait(false) is { } conflict)
@@ -193,7 +197,7 @@ public sealed class CreateRecord(
             // A concurrent request with the same key won: answer with its record (nothing of ours was stored).
             await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
             return await FindKeyAsync(idempotencyKey!, cancellationToken).ConfigureAwait(false) is { } winner
-                ? await ReplayAsync(winner, cancellationToken).ConfigureAwait(false)
+                ? await ReplayAsync(winner, requestHash, cancellationToken).ConfigureAwait(false)
                 : conflict;
         }
 
@@ -232,10 +236,13 @@ public sealed class CreateRecord(
     private Task<IdempotencyKey?> FindKeyAsync(string key, CancellationToken cancellationToken) =>
         db.IdempotencyKeys.AsNoTracking().SingleOrDefaultAsync(k => k.ActorId == currentActor.Id && k.Key == key, cancellationToken);
 
-    private async Task<Result<RecordDto>> ReplayAsync(IdempotencyKey key, CancellationToken cancellationToken)
+    /// <summary>
+    /// The first result of a retried request. A key of a comment (keys are shared with adding comments, AP-029), or of a create
+    /// with other content (AP-035), is no retry of this request: 409 <c>idempotency_key_reused</c>.
+    /// </summary>
+    private async Task<Result<RecordDto>> ReplayAsync(IdempotencyKey key, string requestHash, CancellationToken cancellationToken)
     {
-        // Keys are shared with adding comments (AP-029): a key of a comment is no record to replay.
-        if (key.IsForComment)
+        if (key.IsForComment || !key.Matches(requestHash))
         {
             return RecordConflicts.IdempotencyKeyReused("Idempotency-Key");
         }

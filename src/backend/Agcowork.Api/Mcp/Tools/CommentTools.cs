@@ -26,14 +26,15 @@ internal static class CommentTools
         + "'actorId' in activity_recent. Every mentioned member is notified: it finds the comment in its mentions_list. Only "
         + "members can be mentioned ('not_member' with the id); links inside code are no mentions. A comment creates no record "
         + "revision and does not change the record. Send 'idempotencyKey' (e.g. a UUID) so a retry within 24 h returns the first "
-        + "comment instead of a duplicate. Archived records cannot be commented (409). Requires write.")]
+        + "comment instead of a duplicate; a retry must repeat the call unchanged, the same key with another recordId, "
+        + "parentCommentId or markdown is 'idempotency_key_reused'. Archived records cannot be commented (409). Requires write.")]
     public static async Task<CallToolResult> Add(
         AddComment useCase,
         McpOutput output,
         [Description("Record to comment on.")] Guid recordId,
         [Description("The comment as Markdown, max. 64 KiB. Mentions: [@Name](actor:<uuid>).")] string markdown,
         [Description("Root comment to reply to; omit to start a thread.")] Guid? parentCommentId = null,
-        [Description("Makes retries safe: the same key by you within 24 h returns the first comment. 1-255 characters, e.g. a UUID.")] string? idempotencyKey = null,
+        [Description("Makes retries safe: the same key by you within 24 h with the same arguments returns the first comment; with other arguments it is 'idempotency_key_reused'. 1-255 characters, e.g. a UUID.")] string? idempotencyKey = null,
         CancellationToken cancellationToken = default)
     {
         var result = await useCase.HandleAsync(new AddCommentRequest(recordId, markdown, parentCommentId, idempotencyKey), cancellationToken);

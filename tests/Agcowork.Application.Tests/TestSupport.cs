@@ -163,10 +163,10 @@ internal sealed class TestActor : ICurrentActor
 /// <summary>The production <see cref="ActivityRecorder"/>, with the caller taken from the current test tenant.</summary>
 internal sealed class TestActivityRecorder(AgcoworkDbContext db, TestTenantAccessor tenant, TimeProvider clock) : IActivityRecorder
 {
-    public ActivityEvent Record(string type, string targetType, Guid targetId, Guid? spaceId = null, Guid? collectionId = null, JsonObject? diff = null)
+    public ActivityEvent Record(string type, string targetType, Guid targetId, Guid? spaceId = null, Guid? collectionId = null, JsonObject? diff = null, Guid? relatedRecordId = null)
     {
         var current = tenant.Current ?? throw new InvalidOperationException("No tenant set.");
         return new ActivityRecorder(db, TestActor.Agent(current.Membership.ActorId), current, clock)
-            .Record(type, targetType, targetId, spaceId, collectionId, diff);
+            .Record(type, targetType, targetId, spaceId, collectionId, diff, relatedRecordId);
     }
 }

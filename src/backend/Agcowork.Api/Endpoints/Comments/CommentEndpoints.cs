@@ -41,7 +41,8 @@ internal static class CommentEndpoints
                 "Adds a comment: a new thread, or with 'parentCommentId' a reply to the root of a thread on the same record (threads "
                 + "have one level: answering a reply is 400 'not_root'). 'markdown' max. 64 KiB. " + MentionSyntax + " Comments create "
                 + "no record revision. Send an 'Idempotency-Key' header (e.g. a UUID) to make retries safe: the same key by the same "
-                + "actor within 24 h returns the first comment. Requires write. Archived record, collection or space: 409; deleted "
+                + "actor within 24 h with the same request returns the first comment; the same key with a different request (other "
+                + "record, parentCommentId or markdown) is 409 'idempotency_key_reused'. Requires write. Archived record, collection or space: 409; deleted "
                 + "parent: 409 'comment_deleted'.")
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)

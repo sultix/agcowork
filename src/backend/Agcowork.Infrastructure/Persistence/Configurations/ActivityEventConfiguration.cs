@@ -27,6 +27,9 @@ internal sealed class ActivityEventConfiguration : IEntityTypeConfiguration<Acti
         builder.HasIndex(e => new { e.WorkspaceId, e.SpaceId, e.Seq });
         builder.HasIndex(e => new { e.WorkspaceId, e.TargetId, e.Seq });
 
+        // The history of one record including its comments (AP-035): record events carry the record, comment events its record.
+        builder.HasIndex(e => new { e.WorkspaceId, e.RelatedRecordId, e.Seq });
+
         // Forward reading in commit-safe order: per workspace (afterSeq) and instance-wide for the realtime dispatcher. The
         // second one is a documented exception to "tenant indexes start with workspace_id": the dispatcher polls all
         // workspaces at once and must not scan the table when nothing happened.

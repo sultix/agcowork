@@ -28,6 +28,10 @@ namespace Agcowork.Application.Activity;
 /// <c>lastSeq</c> is a safe cursor; the <c>seq</c> of an item is not.
 /// </param>
 /// <param name="TargetId">Only events of this target (record, space, collection, view, comment; for members the actor id).</param>
+/// <param name="RecordId">
+/// The history of one record including its discussion: the record's own events and the events of its comments. Combines with
+/// every other filter (with <paramref name="TargetId"/>: only events matching both).
+/// </param>
 public sealed record ListActivityRequest(
     Guid? SpaceId = null,
     Guid? CollectionId = null,
@@ -37,7 +41,8 @@ public sealed record ListActivityRequest(
     int? Limit = null,
     string? Cursor = null,
     long? AfterSeq = null,
-    Guid? TargetId = null);
+    Guid? TargetId = null,
+    Guid? RecordId = null);
 
 /// <summary>
 /// The activity feed of the workspace. Requires <c>read</c>. Two modes:
@@ -159,6 +164,11 @@ public sealed class ListActivity(IAgcoworkDbContext db, ITenantContext tenant) :
         if (request.TargetId is { } targetId)
         {
             query = query.Where(e => e.TargetId == targetId);
+        }
+
+        if (request.RecordId is { } recordId)
+        {
+            query = query.Where(e => e.RelatedRecordId == recordId);
         }
 
         if (request.Since is { } since)

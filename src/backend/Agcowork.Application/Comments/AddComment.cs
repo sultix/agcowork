@@ -17,7 +17,10 @@ namespace Agcowork.Application.Comments;
 /// <param name="RecordId">Record to comment on.</param>
 /// <param name="Markdown">The comment, Markdown, max. 64 KiB. Mention members with <c>[@Name](actor:&lt;uuid&gt;)</c>.</param>
 /// <param name="ParentCommentId">Root comment to answer (a reply); omitted: a new thread.</param>
-/// <param name="IdempotencyKey">From the <c>Idempotency-Key</c> header: the same key by the same actor within 24 h returns the first comment.</param>
+/// <param name="IdempotencyKey">
+/// From the <c>Idempotency-Key</c> header: the same key by the same actor within 24 h with the same request (record, parent,
+/// markdown) returns the first comment; with a different request it is 409 <c>idempotency_key_reused</c>.
+/// </param>
 public sealed record AddCommentRequest(Guid RecordId, string? Markdown, Guid? ParentCommentId = null, string? IdempotencyKey = null);
 
 /// <summary>
@@ -65,13 +68,14 @@ public sealed class AddComment(
             return errors.ToError();
         }
 
+        var requestHash = IdempotencyFingerprint.Of(request);
         IdempotencyKey? expiredKey = null;
         if (idempotencyKey is not null)
         {
             var existing = await FindKeyAsync(idempotencyKey, cancellationToken).ConfigureAwait(false);
             if (existing is not null && !existing.IsExpired(timeProvider.GetUtcNow()))
             {
-                return await ReplayAsync(existing, request.RecordId, cancellationToken).ConfigureAwait(false);
+                return await ReplayAsync(existing, request.RecordId, requestHash, cancellationToken).ConfigureAwait(false);
             }
 
             expiredKey = existing;
@@ -138,7 +142,7 @@ public sealed class AddComment(
                     await db.IdempotencyKeys.Where(k => k.Id == expiredKey.Id).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
                 }
 
-                db.IdempotencyKeys.Add(IdempotencyKey.ForComment(tenant.WorkspaceId, currentActor.Id, idempotencyKey, record.Id, comment.Id, timeProvider));
+                db.IdempotencyKeys.Add(IdempotencyKey.ForComment(tenant.WorkspaceId, currentActor.Id, idempotencyKey, record.Id, comment.Id, requestHash, timeProvider));
             }
 
             if (await db.SaveChangesOrConflictAsync(cancellationToken, RecordConflicts.IdempotencyKey).ConfigureAwait(false) is { } conflict)
@@ -146,7 +150,7 @@ public sealed class AddComment(
                 // A concurrent request with the same key won: answer with its result (nothing of ours was stored).
                 await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
                 return await FindKeyAsync(idempotencyKey!, cancellationToken).ConfigureAwait(false) is { } winner
-                    ? await ReplayAsync(winner, request.RecordId, cancellationToken).ConfigureAwait(false)
+                    ? await ReplayAsync(winner, request.RecordId, requestHash, cancellationToken).ConfigureAwait(false)
                     : conflict;
             }
 
@@ -159,12 +163,13 @@ public sealed class AddComment(
         db.IdempotencyKeys.AsNoTracking().SingleOrDefaultAsync(k => k.ActorId == currentActor.Id && k.Key == key, cancellationToken);
 
     /// <summary>
-    /// The first result of a retried request. A key of a record create, or of a comment on another record, is no retry of this
-    /// request: 409 <c>idempotency_key_reused</c> instead of answering with something unrelated.
+    /// The first result of a retried request. A key of a record create, of a comment on another record, or of a comment with
+    /// another text or parent (AP-035) is no retry of this request: 409 <c>idempotency_key_reused</c> instead of answering with
+    /// something unrelated. Keys without hash (before AP-035) are checked by kind and record only.
     /// </summary>
-    private async Task<Result<CommentDto>> ReplayAsync(IdempotencyKey key, Guid recordId, CancellationToken cancellationToken)
+    private async Task<Result<CommentDto>> ReplayAsync(IdempotencyKey key, Guid recordId, string requestHash, CancellationToken cancellationToken)
     {
-        if (key.CommentId is not { } commentId || key.RecordId != recordId)
+        if (key.CommentId is not { } commentId || key.RecordId != recordId || !key.Matches(requestHash))
         {
             return RecordConflicts.IdempotencyKeyReused(IdempotencyKeyField);
         }

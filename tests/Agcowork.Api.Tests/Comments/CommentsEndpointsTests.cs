@@ -235,23 +235,52 @@ public sealed class CommentsEndpointsTests(AgcoworkApiFactory factory)
     {
         var (slug, owner, _, record) = await ArrangeAsync();
 
-        async Task<CommentDto> SendAsync(string markdown)
+        async Task<HttpResponseMessage> SendAsync(string markdown)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(Path(slug, $"/records/{record.Id}/comments"), UriKind.Relative))
             {
                 Content = JsonContent.Create(new { markdown }, options: AgcoworkApiFactory.Json),
             };
             request.Headers.Add("Idempotency-Key", "comment-key-1");
-            using var response = await owner.Client.SendAsync(request, Ct);
-            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            return (await response.Content.ReadFromJsonAsync<CommentDto>(AgcoworkApiFactory.Json, Ct))!;
+            return await owner.Client.SendAsync(request, Ct);
         }
 
-        var first = await SendAsync("Einmal");
-        var second = await SendAsync("Nochmal");
+        using var first = await SendAsync("Einmal");
+        using var second = await SendAsync("Einmal");
+        using var changed = await SendAsync("Nochmal");
 
-        Assert.Equal(first.Id, second.Id);
+        Assert.Equal((HttpStatusCode.Created, HttpStatusCode.Created), (first.StatusCode, second.StatusCode));
+        Assert.Equal(
+            (await first.Content.ReadFromJsonAsync<CommentDto>(AgcoworkApiFactory.Json, Ct))!.Id,
+            (await second.Content.ReadFromJsonAsync<CommentDto>(AgcoworkApiFactory.Json, Ct))!.Id);
+        Assert.Equal(HttpStatusCode.Conflict, changed.StatusCode);
+        var problem = await changed.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>(Ct);
+        Assert.Equal("idempotency_key_reused", problem!["code"]!.GetValue<string>());
         Assert.Single((await CommentsApi.ListAsync(owner.Client, slug, record.Id)).Threads);
+    }
+
+    [Fact]
+    public async Task Activity_RecordId_RecordAndCommentEvents_OtherWorkspaceEmpty()
+    {
+        var (slug, owner, _, record) = await ArrangeAsync();
+        var root = await CommentsApi.AddAsync(owner.Client, slug, record.Id, "Frage");
+        var other = await RecordsApi.CreateInAsync(owner.Client, slug, record.CollectionId!.Value);
+        await CommentsApi.AddAsync(owner.Client, slug, other.Id, "Woanders");
+
+        var page = (await owner.Client.GetFromJsonAsync<ActivityPage>(Path(slug, $"/activity?recordId={record.Id}"), AgcoworkApiFactory.Json, Ct))!;
+        var forward = (await owner.Client.GetFromJsonAsync<ActivityPage>(Path(slug, $"/activity?recordId={record.Id}&afterSeq=0"), AgcoworkApiFactory.Json, Ct))!;
+
+        Assert.Equal(["comment.created", "record.created"], page.Items.Select(e => e.Type));
+        Assert.Equal(root.Id, page.Items[0].TargetId);
+        Assert.Equal(page.Items.Reverse().Select(e => e.Id), forward.Items.Select(e => e.Id));
+
+        // A record of another workspace: nothing, like any filter on a foreign id.
+        var (foreignSlug, foreignOwner, _, foreignRecord) = await ArrangeAsync();
+        await CommentsApi.AddAsync(foreignOwner.Client, foreignSlug, foreignRecord.Id, "Fremd");
+        var foreign = (await owner.Client.GetFromJsonAsync<ActivityPage>(Path(slug, $"/activity?recordId={foreignRecord.Id}"), AgcoworkApiFactory.Json, Ct))!;
+        var foreignForward = (await owner.Client.GetFromJsonAsync<ActivityPage>(Path(slug, $"/activity?recordId={foreignRecord.Id}&afterSeq=0"), AgcoworkApiFactory.Json, Ct))!;
+        Assert.Empty(foreign.Items);
+        Assert.Empty(foreignForward.Items);
     }
 
     [Fact]

@@ -48,7 +48,8 @@ internal static class ViewAndActivityTools
         "What happened in the workspace: who created, changed, appended, archived or restored which record, space, collection or "
         + "member, with a diff ('old'/'new' per changed field). targetTitle is the current title (record) or name (space, "
         + "collection), null if the target no longer exists or is a member or view. Filters: spaceId, collectionId, actorId, "
-        + "targetId (the history of one record, space or collection), since, types (allowed: {{activityTypes}}). "
+        + "targetId (the events of one record, space or collection), recordId (the whole history of one record: its own events "
+        + "and those of its comments), since, types (allowed: {{activityTypes}}). "
         + "Two modes. Without afterSeq: newest first, paginated with 'limit' (1..200, default 50) and 'cursor'; for a look back. "
         + "With afterSeq: forward in commit-safe order (transaction order), only final events; to keep up with changes. Start "
         + "with afterSeq=0 (whole log) or with lastSeq of a newest-first call (from now on), then always call again with the "
@@ -69,10 +70,11 @@ internal static class ViewAndActivityTools
         [Description("Newest first: nextCursor of the previous page, unchanged.")] string? cursor = null,
         [Description("Forward reading: 0 for the whole log, otherwise lastSeq of the previous result, unchanged (never the seq of an item).")] long? afterSeq = null,
         [Description("Only events of this target: record, space, collection or view id; for members the actor id.")] Guid? targetId = null,
+        [Description("The history of one record: its own events and the events of its comments (comment.*). Combines with the other filters.")] Guid? recordId = null,
         CancellationToken cancellationToken = default)
     {
         var result = await useCase.HandleAsync(
-            new ListActivityRequest(spaceId, collectionId, actorId, since, types, limit, cursor, afterSeq, targetId),
+            new ListActivityRequest(spaceId, collectionId, actorId, since, types, limit, cursor, afterSeq, targetId, recordId),
             cancellationToken);
         return output.From(result, page => McpText.Activity(page, forward: afterSeq is not null));
     }

@@ -7,7 +7,7 @@ namespace Agcowork.Infrastructure.Persistence.Configurations;
 
 /// <remarks>
 /// Tenant table. (workspace_id, actor_id, key) is unique: the database decides concurrent retries. Keys of added comments
-/// (AP-029) also reference the comment.
+/// (AP-029) also reference the comment. <c>request_hash</c> (AP-035) is the SHA-256 of the normalized request; null for older keys.
 /// </remarks>
 internal sealed class IdempotencyKeyConfiguration : IEntityTypeConfiguration<IdempotencyKey>
 {
@@ -29,6 +29,7 @@ internal sealed class IdempotencyKeyConfiguration : IEntityTypeConfiguration<Ide
 
         builder.Property(k => k.Key).HasMaxLength(IdempotencyKey.KeyMaxLength).IsRequired();
         builder.Property(k => k.ActorId).IsRequired();
+        builder.Property(k => k.RequestHash).HasMaxLength(IdempotencyKey.RequestHashLength);
         builder.Property(k => k.At).IsRequired();
         builder.Ignore(k => k.IsForComment);
     }

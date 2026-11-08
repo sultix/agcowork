@@ -19,15 +19,19 @@ public interface IActivityRecorder
     /// <param name="spaceId">Space of the target, for the <c>spaceId</c> filter.</param>
     /// <param name="collectionId">Collection of the target, for the <c>collectionId</c> filter.</param>
     /// <param name="diff">What changed; see <see cref="ActivityDiff"/> and <c>RecordDiff</c>.</param>
-    ActivityEvent Record(string type, string targetType, Guid targetId, Guid? spaceId = null, Guid? collectionId = null, JsonObject? diff = null);
+    /// <param name="relatedRecordId">
+    /// For comment events the record of the comment (required); record events belong to their target anyway, other events to
+    /// no record (see <see cref="ActivityEvent.RelatedRecordId"/>).
+    /// </param>
+    ActivityEvent Record(string type, string targetType, Guid targetId, Guid? spaceId = null, Guid? collectionId = null, JsonObject? diff = null, Guid? relatedRecordId = null);
 }
 
 /// <summary>Adds the event to the context; the caller saves.</summary>
 public sealed class ActivityRecorder(IAgcoworkDbContext db, ICurrentActor currentActor, ITenantContext tenant, TimeProvider timeProvider) : IActivityRecorder
 {
-    public ActivityEvent Record(string type, string targetType, Guid targetId, Guid? spaceId = null, Guid? collectionId = null, JsonObject? diff = null)
+    public ActivityEvent Record(string type, string targetType, Guid targetId, Guid? spaceId = null, Guid? collectionId = null, JsonObject? diff = null, Guid? relatedRecordId = null)
     {
-        var activity = ActivityEvent.Create(tenant.WorkspaceId, type, currentActor.Id, targetType, targetId, spaceId, collectionId, diff, timeProvider);
+        var activity = ActivityEvent.Create(tenant.WorkspaceId, type, currentActor.Id, targetType, targetId, spaceId, collectionId, diff, timeProvider, relatedRecordId);
         db.ActivityEvents.Add(activity);
         return activity;
     }

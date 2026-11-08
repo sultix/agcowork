@@ -152,8 +152,8 @@ internal static class CommentWrites
         db.Comments.AsNoTracking().Where(c => c.Id == commentId).Select(c => (Guid?)c.RecordId).SingleOrDefaultAsync(cancellationToken);
 
     /// <summary>
-    /// Records the event of a comment change: target <c>comment</c>, space and collection of the record (so the activity filters
-    /// find it), diff with <c>recordId</c>, <c>parentCommentId</c> and <c>mentionedActorIds</c> (new mentions).
+    /// Records the event of a comment change: target <c>comment</c>, space and collection of the record and the record as related
+    /// record (so the activity filters, including <c>recordId</c>, find it), diff with <c>recordId</c>, <c>parentCommentId</c> and <c>mentionedActorIds</c> (new mentions).
     /// </summary>
     public static void Record(IActivityRecorder activity, string type, Comment comment, Record record, IEnumerable<Guid> mentionedActorIds)
     {
@@ -162,7 +162,7 @@ internal static class CommentWrites
             .Set("parentCommentId", comment.ParentCommentId is { } parent ? JsonValue.Create(parent) : null)
             .Set("mentionedActorIds", new JsonArray([.. mentionedActorIds.Select(id => (JsonNode?)JsonValue.Create(id))]))
             .ToJson();
-        activity.Record(type, ActivityTargets.Comment, comment.Id, record.SpaceId, record.CollectionId, diff);
+        activity.Record(type, ActivityTargets.Comment, comment.Id, record.SpaceId, record.CollectionId, diff, relatedRecordId: comment.RecordId);
     }
 }
 

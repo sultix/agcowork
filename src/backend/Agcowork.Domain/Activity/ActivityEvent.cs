@@ -23,6 +23,7 @@ public sealed class ActivityEvent : ITenantEntity
         Guid targetId,
         Guid? spaceId,
         Guid? collectionId,
+        Guid? relatedRecordId,
         JsonObject diff,
         DateTimeOffset at)
     {
@@ -34,6 +35,7 @@ public sealed class ActivityEvent : ITenantEntity
         TargetId = targetId;
         SpaceId = spaceId;
         CollectionId = collectionId;
+        RelatedRecordId = relatedRecordId;
         Diff = diff;
         At = at;
     }
@@ -75,6 +77,12 @@ public sealed class ActivityEvent : ITenantEntity
 
     public Guid? CollectionId { get; private set; }
 
+    /// <summary>
+    /// The record the event belongs to (AP-035), for the history of one record including its discussion: for record events the
+    /// record itself (<see cref="TargetId"/>), for comment events the record of the comment; null for all other events.
+    /// </summary>
+    public Guid? RelatedRecordId { get; private set; }
+
     /// <summary>What changed; format per type (see <c>Records.RecordDiff</c> for records). Empty object when nothing to show.</summary>
     public JsonObject Diff { get; private set; }
 
@@ -89,7 +97,8 @@ public sealed class ActivityEvent : ITenantEntity
         Guid? spaceId,
         Guid? collectionId,
         JsonObject? diff,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        Guid? relatedRecordId = null)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
@@ -104,8 +113,19 @@ public sealed class ActivityEvent : ITenantEntity
             throw new ArgumentException("Workspace, actor and target must be set.");
         }
 
+        // Record events always belong to their record; comment events name it; other targets belong to no record.
+        relatedRecordId = targetType switch
+        {
+            ActivityTargets.Record when relatedRecordId is null || relatedRecordId == targetId => targetId,
+            ActivityTargets.Comment when relatedRecordId is { } recordId && recordId != Guid.Empty => recordId,
+            ActivityTargets.Record or ActivityTargets.Comment => throw new ArgumentException(
+                "Record events belong to their target record; comment events need the record of the comment.", nameof(relatedRecordId)),
+            _ when relatedRecordId is null => null,
+            _ => throw new ArgumentException("Only record and comment events belong to a record.", nameof(relatedRecordId)),
+        };
+
         var at = timeProvider.GetUtcNow();
-        return new ActivityEvent(Guid.CreateVersion7(at), workspaceId, type, actorId, targetType, targetId, spaceId, collectionId, diff ?? [], at);
+        return new ActivityEvent(Guid.CreateVersion7(at), workspaceId, type, actorId, targetType, targetId, spaceId, collectionId, relatedRecordId, diff ?? [], at);
     }
 }
 

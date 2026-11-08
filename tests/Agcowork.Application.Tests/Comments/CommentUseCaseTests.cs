@@ -394,7 +394,7 @@ public sealed class CommentUseCaseTests(PostgresFixture postgres) : CommentTestB
         var tenant = As(d, d.A.Seed.AlphaOwner);
 
         var first = await TryAddAsync(tenant, new AddCommentRequest(d.Record.Id, "Einmal", IdempotencyKey: "k-1"));
-        var second = await TryAddAsync(tenant, new AddCommentRequest(d.Record.Id, "Anderer Text", IdempotencyKey: "k-1"));
+        var second = await TryAddAsync(tenant, new AddCommentRequest(d.Record.Id, "Einmal", IdempotencyKey: "k-1"));
         Db.ChangeTracker.Clear();
         var record = await CreateUseCase(tenant, d.A.Seed.AlphaOwner).HandleAsync(new CreateRecordRequest(d.A.Collection.Id, Title: "R", IdempotencyKey: "k-1"), Ct);
         Db.ChangeTracker.Clear();
@@ -412,6 +412,47 @@ public sealed class CommentUseCaseTests(PostgresFixture postgres) : CommentTestB
         var elsewhere = await TryAddAsync(tenant, new AddCommentRequest(otherRecord.Id, "Einmal", IdempotencyKey: "k-1"));
         Assert.Equal(("idempotency_key_reused", "Idempotency-Key"), (Assert.IsType<ConflictError>(elsewhere.Error).Code, ((ConflictError)elsewhere.Error).Field));
         Assert.Equal(0, await Db.Comments.CountAsync(c => c.RecordId == otherRecord.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Idempotency_SameKeyDifferentTextOrParent_Conflict_NothingStored()
+    {
+        var d = await ArrangeDiscussionAsync();
+        var tenant = As(d, d.A.Seed.AlphaOwner);
+        var root = await AddAsync(d, "Wurzel");
+        var request = new AddCommentRequest(d.Record.Id, "Einmal", root.Id, IdempotencyKey: "k-1");
+        var first = await TryAddAsync(tenant, request);
+
+        var retry = await TryAddAsync(tenant, request);
+        var otherText = await TryAddAsync(tenant, request with { Markdown = "Einmal!" });
+        var otherWhitespace = await TryAddAsync(tenant, request with { Markdown = "Einmal\n" });
+        var newThread = await TryAddAsync(tenant, request with { ParentCommentId = null });
+
+        Assert.Equal(first.Value, retry.Value);
+        foreach (var result in new[] { otherText, otherWhitespace, newThread })
+        {
+            var conflict = Assert.IsType<ConflictError>(result.Error);
+            Assert.Equal(("idempotency_key_reused", "Idempotency-Key"), (conflict.Code, conflict.Field));
+        }
+
+        Assert.Equal(2, await Db.Comments.CountAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Idempotency_KeyStoredWithoutHash_ReplaysLikeBefore()
+    {
+        var d = await ArrangeDiscussionAsync();
+        var tenant = As(d, d.A.Seed.AlphaOwner);
+        var first = await TryAddAsync(tenant, new AddCommentRequest(d.Record.Id, "Einmal", IdempotencyKey: "alt"));
+        await Db.Database.ExecuteSqlAsync($"UPDATE idempotency_keys SET request_hash = NULL", Ct);
+
+        var second = await TryAddAsync(tenant, new AddCommentRequest(d.Record.Id, "Anderer Text", IdempotencyKey: "alt"));
+        var otherRecord = await CreateRecordAsync(d.A, "Anderer Record");
+        var elsewhere = await TryAddAsync(tenant, new AddCommentRequest(otherRecord.Id, "Einmal", IdempotencyKey: "alt"));
+
+        Assert.Equal(first.Value, second.Value);
+        Assert.Equal("idempotency_key_reused", Assert.IsType<ConflictError>(elsewhere.Error).Code);
+        Assert.Equal(1, await Db.Comments.CountAsync(Ct));
     }
 
     private static string CommentMarkdownLink(Guid id) => Domain.Comments.CommentMarkdown.MentionLink("Fremd", id);

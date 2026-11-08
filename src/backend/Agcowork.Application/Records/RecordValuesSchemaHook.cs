@@ -90,12 +90,7 @@ public sealed class RecordValuesSchemaHook(IAgcoworkDbContext db) : ISchemaChang
         || change.RemovedOptions.Count > 0
         || change.Before.Any(before => change.After.Find(before.Key) is { Type: PropertyType.Number, Precision: { } precision }
             && (before.Precision is null || precision < before.Precision))
-        || change.Before.Any(before => BecomesMultiple(change, before.Key));
-
-    /// <summary>A relation that held one reference and now holds several (the only allowed direction, see <c>CollectionSchema.ValidateChange</c>).</summary>
-    private static bool BecomesMultiple(SchemaChange change, string key) =>
-        change.Before.Find(key) is { Type: PropertyType.Relation, Multiple: false }
-        && change.After.Find(key) is { Type: PropertyType.Relation, Multiple: true };
+        || change.Before.Any(before => change.RelationBecomesMultiple(before.Key));
 
     /// <summary>The adjusted values, or null when nothing changes.</summary>
     internal static Dictionary<string, JsonElement>? Adjust(SchemaChange change, IReadOnlyDictionary<string, JsonElement> properties)
@@ -127,7 +122,7 @@ public sealed class RecordValuesSchemaHook(IAgcoworkDbContext db) : ISchemaChang
         }
 
         change.TypeChanges.TryGetValue(key, out var typeChange);
-        if ((typeChange is { From: PropertyType.Select, To: PropertyType.MultiSelect } || BecomesMultiple(change, key))
+        if ((typeChange is { From: PropertyType.Select, To: PropertyType.MultiSelect } || change.RelationBecomesMultiple(key))
             && value.ValueKind == JsonValueKind.String)
         {
             value = JsonSerializer.SerializeToElement(new[] { value });

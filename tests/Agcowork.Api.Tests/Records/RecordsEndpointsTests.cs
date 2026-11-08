@@ -226,6 +226,60 @@ public sealed class RecordsEndpointsTests(AgcoworkApiFactory factory)
     }
 
     [Fact]
+    public async Task IdempotencyKey_SameContentOtherJsonSpelling_SameRecord()
+    {
+        var (owner, workspace) = await OwnWorkspaceAsync();
+        var (_, collection) = await RecordsApi.SeedCollectionAsync(owner.Client, workspace.Slug);
+        var key = Guid.NewGuid().ToString();
+
+        async Task<RecordDto> PostAsync(string json)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(Path(workspace, "/records"), UriKind.Relative))
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
+            };
+            request.Headers.Add("Idempotency-Key", key);
+            using var response = await owner.Client.SendAsync(request, Ct);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            return (await response.Content.ReadFromJsonAsync<RecordDto>(AgcoworkApiFactory.Json, Ct))!;
+        }
+
+        // Escaped and unescaped characters, as different clients and the MCP adapter send them.
+        var first = await PostAsync($$"""{ "collectionId": "{{collection.Id}}", "title": "Café", "properties": { "status": "doing", "tags": ["db"] } }""");
+        var retry = await PostAsync($$"""{"properties":{"tags":["db"],"status":"doing"},"title":"Café","collectionId":"{{collection.Id}}"}""");
+
+        Assert.Equal(first.Id, retry.Id);
+    }
+
+    [Fact]
+    public async Task IdempotencyKey_SameKeyDifferentContent_409_KeyReused()
+    {
+        var (owner, workspace) = await OwnWorkspaceAsync();
+        var (_, collection) = await RecordsApi.SeedCollectionAsync(owner.Client, workspace.Slug);
+        var key = Guid.NewGuid().ToString();
+
+        async Task<HttpResponseMessage> PostAsync(object body)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(Path(workspace, "/records"), UriKind.Relative)) { Content = JsonContent.Create(body) };
+            request.Headers.Add("Idempotency-Key", key);
+            return await owner.Client.SendAsync(request, Ct);
+        }
+
+        using var first = await PostAsync(new { collectionId = collection.Id, title = "Einmal", body = "Text" });
+        using var retry = await PostAsync(new { body = "Text", title = "Einmal", collectionId = collection.Id });
+        using var changed = await PostAsync(new { collectionId = collection.Id, title = "Anders", body = "Text" });
+
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, changed.StatusCode);
+        var problem = await changed.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>(Ct);
+        Assert.Equal("idempotency_key_reused", problem!["code"]!.GetValue<string>());
+        Assert.Contains("Same key, different request", problem["detail"]!.GetValue<string>(), StringComparison.Ordinal);
+        var all = await owner.Client.GetFromJsonAsync<Page<RecordDto>>(Path(workspace, $"/records?collectionId={collection.Id}"), AgcoworkApiFactory.Json, Ct);
+        Assert.Single(all!.Items);
+    }
+
+    [Fact]
     public async Task Viewer_CannotWrite_403()
     {
         var (owner, workspace) = await OwnWorkspaceAsync();

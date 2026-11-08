@@ -14,6 +14,11 @@ namespace Agcowork.Application.Views;
 /// (emptied groups vanish) and the cover; a lost <c>groupBy</c> becomes null (the view keeps its type, boards report
 /// <c>needsAttention</c>). A <c>groupBy</c> whose property is no longer select/status is treated the same way; sorts on a property
 /// that can no longer be sorted (select → multi_select) are removed.
+/// <para>
+/// A relation becoming <c>multiple</c> (AP-035) needs no change: relations have the same operators either way (contains, in,
+/// nin, is_empty, is_not_empty with record ids, see <c>OperatorMatrix</c>), are never sortable or groupable, and the query
+/// translation matches single ids and arrays alike. Conditions on such a relation stay valid and keep matching the same records.
+/// </para>
 /// </summary>
 public sealed class ViewSchemaHook(IAgcoworkDbContext db) : ISchemaChangedHook
 {

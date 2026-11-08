@@ -9,9 +9,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Agcowork.Application.Collections.Templates;
 
 /// <summary>
-/// Keeps template presets in line with a changed schema: drops removed keys, wraps values of select → multi_select,
-/// drops removed option values from multi_select presets and drops every remaining value the new schema rejects
-/// (removed option, lowered precision, markdown → text over length).
+/// Keeps template presets in line with a changed schema: drops removed keys, wraps values of select → multi_select and of a
+/// relation becoming <c>multiple</c> (single id → array with that id, like the record values), drops removed option values
+/// from multi_select presets and drops every remaining value the new schema rejects (removed option, lowered precision,
+/// markdown → text over length).
 /// </summary>
 public sealed class TemplatePresetSchemaHook(IAgcoworkDbContext db) : ISchemaChangedHook
 {
@@ -47,8 +48,8 @@ public sealed class TemplatePresetSchemaHook(IAgcoworkDbContext db) : ISchemaCha
             return null;
         }
 
-        if (change.TypeChanges.TryGetValue(key, out var typeChange)
-            && typeChange is { From: PropertyType.Select, To: PropertyType.MultiSelect }
+        if (((change.TypeChanges.TryGetValue(key, out var typeChange) && typeChange is { From: PropertyType.Select, To: PropertyType.MultiSelect })
+                || change.RelationBecomesMultiple(key))
             && value.ValueKind == JsonValueKind.String)
         {
             value = JsonSerializer.SerializeToElement(new[] { value });

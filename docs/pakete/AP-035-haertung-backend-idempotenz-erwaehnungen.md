@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 (Härtung) |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Idempotenz `src/backend/Agcowork.Application/Records/CreateRecord.cs` (`ReplayAsync`), `Comments/AddComment.cs`, `Domain/Records/IdempotencyKey.cs`; Parser `Domain/Comments/CommentMarkdown.cs`; Activity `Application/Activity/ListActivity.cs`, `ActivityLog.cs`; Hooks `Application/Records/RecordValuesSchemaHook.cs` (select→multi_select, relation.multiple) |
@@ -47,3 +47,11 @@ Agenten können sich auf Idempotenz verlassen, ohne versehentlich einen fremden 
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zu AP-034) |
+| 2026-11-08 | Bericht: 1349 Tests grün, Migration `AddRequestHashAndRelatedRecord`; `IdempotencyFingerprint` (SHA-256, gerahmt, Schlüsselreihenfolge egal, Skalare roh), `BlockScanner` mit Zitaten im Mention-Parser, `related_record_id` mit Backfill und Filter `recordId`, Template-Preset-Hook; ViewSchemaHook ohne Codeänderung (Relationen haben dieselben Operatoren) |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: **Blockiert** – B1 Stack Overflow im Mention-Parser bei ~3 KB verschachtelter `>` (Prozess stirbt, auch beim Bearbeiten von Bestandskommentaren); wichtig: Property-Strings mit unterschiedlichen Escapes hashen verschieden (falsches 409 zwischen REST und MCP); Hinweise: Endianness, Wettlauf-Test, Key-Länge, Migration sperrt `activity_events` für ihre Dauer |
+| 2026-11-08 | Nacharbeit an implementer-opus (B1, W1, H1–H3, H5) |
+| 2026-11-08 | Nacharbeit: Parser iterativ mit Container-Stapel und Offsets, Tiefe 32 (64 KiB `>` in 3 ms statt Absturz), zwei weitere quadratische Fälle behoben; Hash über Inhalt (GetString, kanonische Zahlen, Tags, UTF-16LE, gepinnter Test); Wettlauf-Tests; 1359/1359 |
+| 2026-11-08 | Nachprüfung: Freigabe mit Hinweisen (linear auch bei Tiefe 32, Hash kulturunabhängig); Orchestrator: Rundungssatz im XML-Kommentar, Zeitgrenzen der Parser-Tests auf 500/1000 ms |
+| 2026-11-08 | abgeschlossen |

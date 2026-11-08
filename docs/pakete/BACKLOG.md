@@ -37,9 +37,9 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-031](AP-031-kommentare-frontend.md) | Kommentare Frontend: Seitenleiste, Threads, `@`-Auswahl, live | 2 | implementer-opus | AP-029, AP-030 | abgeschlossen | 821449e |
 | [AP-032](AP-032-erwaehnungen-posteingang.md) | Erwähnungen Frontend: Posteingang, Badge, gelesen markieren | 2 | implementer-sonnet | AP-029 | abgeschlossen | 6661e5e |
 | [AP-033](AP-033-null-felder-im-vertrag.md) | API-Vertrag: `null`-Felder mitsenden statt weglassen (Fund im Rauchtest) | 2 | implementer-opus | AP-029–AP-032 | abgeschlossen | 321151d |
-| [AP-034](AP-034-haertung-frontend-body.md) | Härtung Frontend: Record-Body gegen präparierten Markdown, Kommentare im Feed, Fehlertexte | 2 | implementer-opus | AP-031, AP-033 | in Arbeit | |
-| [AP-035](AP-035-haertung-backend-idempotenz-erwaehnungen.md) | Härtung Backend: Idempotenz mit Inhaltsprüfung, Erwähnungen in Zitaten, Activity je Record, Schema-Hooks | 2 | implementer-opus | AP-033 | in Arbeit | |
-| [AP-036](AP-036-row-level-security.md) | PostgreSQL Row-Level-Security als zweites Netz (Rolle `agcowork_app`, Policies, Instanz-Bereich) | 2 | implementer-opus | AP-035 | angelegt | |
+| [AP-034](AP-034-haertung-frontend-body.md) | Härtung Frontend: Record-Body gegen präparierten Markdown, Kommentare im Feed, Fehlertexte | 2 | implementer-opus | AP-031, AP-033 | Nacharbeit | |
+| [AP-035](AP-035-haertung-backend-idempotenz-erwaehnungen.md) | Härtung Backend: Idempotenz mit Inhaltsprüfung, Erwähnungen in Zitaten, Activity je Record, Schema-Hooks | 2 | implementer-opus | AP-033 | abgeschlossen | |
+| [AP-036](AP-036-row-level-security.md) | PostgreSQL Row-Level-Security als zweites Netz (Rolle `agcowork_app`, Policies, Instanz-Bereich) | 2 | implementer-opus | AP-035 | in Arbeit | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -87,6 +87,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-031 Review | Server-Parser `CommentMarkdown` kennt keine Blockquotes: Erwähnung in `> ``` …` oder `>     …` erzeugt Posteingang-Eintrag, UI zeigt Code | → AP-035 (Frontend-Port folgt) |
 | AP-031 Review | Idempotency-Replay für `comment_add` (und `record_create`) vergleicht nur Key und Ziel, nicht den Inhalt; Frontend bindet Key an Text, Agenten könnten Key mit anderem Text wiederverwenden | → AP-035 |
 | AP-031 Review | Präparierter Markdown (lange `*`/`>`-Läufe) blockiert remark/micromark rekursiv; Kommentar-Renderer abgesichert, **Record-Body über Milkdown vermutlich gleich betroffen** | → AP-034 |
+| AP-035 Review | Migrationen auf großen Tabellen: `AddColumn` + Backfill + `CREATE INDEX` in einer Transaktion sperren die Tabelle (hier `activity_events`) für die ganze Dauer | Muster für künftige Migrationen: Spalte, Backfill in Batches, Index `CONCURRENTLY` (eigene Migration ohne Transaktion); in `03-WORKFLOW.md` aufnehmen |
+| AP-035 Review | Frontend-Port `comment-mentions.ts` kennt Zitate noch nicht (Server zählt `> ```…` nicht, UI zeigt Chip); Thematic Breaks/Setext beenden Zitat bei Lazy Continuation im Server-Parser nicht (ohne Auswirkung auf Mentions) | Frontend-Kleinpaket: Port mit Zitaten, `MaxQuoteDepth = 32`, Stapel statt Rekursion, einmalige Suche nach `-->` (heute quadratisch auch im Port) |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |

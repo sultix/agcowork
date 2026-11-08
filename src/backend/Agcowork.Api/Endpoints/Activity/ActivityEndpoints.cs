@@ -20,7 +20,8 @@ internal static class ActivityEndpoints
                 "Activity events: who changed which record, space, collection or member, with a diff ('old'/'new' per changed "
                 + "field; for record bodies 'bodyChanged' and 'bodyDelta' {added, removed} characters). 'targetTitle' is the current "
                 + "title of the record, or name of the space or collection, null if the target no longer exists (and for members and "
-                + "views). Filters: spaceId, collectionId, actorId, targetId (the history of one record, space or collection), since "
+                + "views). Filters: spaceId, collectionId, actorId, targetId (the events of one record, space or collection), recordId "
+                + "(the whole history of one record: its own events and those of its comments), since "
                 + "(ISO 8601, e.g. 2026-11-06T00:00:00Z), types (repeatable: " + string.Join(", ", ActivityTypes.All) + "). "
                 + "Two modes. Without afterSeq: newest first, paginated with 'limit' (1..200) and 'cursor' (nextCursor of the previous "
                 + "page); for a look back ('what happened since yesterday?'). With afterSeq: forward, in commit-safe order (transaction "
@@ -47,10 +48,11 @@ internal static class ActivityEndpoints
         [FromQuery] string? cursor,
         [FromQuery, Description("Read forward after this position: 0 for the whole log, otherwise 'lastSeq' of the previous response.")] long? afterSeq,
         [FromQuery, Description("Only events of this target: record, space, collection or view id; for members the actor id.")] Guid? targetId,
+        [FromQuery, Description("The history of one record: its own events and the events of its comments (comment.*). Combines with the other filters.")] Guid? recordId,
         CancellationToken cancellationToken)
     {
         var result = await useCase.HandleAsync(
-            new ListActivityRequest(spaceId, collectionId, actorId, since, types, limit, cursor, afterSeq, targetId),
+            new ListActivityRequest(spaceId, collectionId, actorId, since, types, limit, cursor, afterSeq, targetId, recordId),
             cancellationToken);
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }

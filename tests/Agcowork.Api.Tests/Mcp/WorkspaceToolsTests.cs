@@ -185,10 +185,14 @@ public sealed class WorkspaceToolsTests(AgcoworkApiFactory factory)
         var key = Guid.NewGuid().ToString();
 
         var first = await McpClientFixture.OkAsync<RecordDto>(client, "record_create", new { collectionId = tasks.Id, title = "Einmal", idempotencyKey = key });
-        var second = await McpClientFixture.OkAsync<RecordDto>(client, "record_create", new { collectionId = tasks.Id, title = "Zweimal", idempotencyKey = key });
+        var second = await McpClientFixture.OkAsync<RecordDto>(client, "record_create", new { collectionId = tasks.Id, title = "Einmal", idempotencyKey = key });
+        var reused = McpClientFixture.Error(
+            await McpClientFixture.CallAsync(client, "record_create", new { collectionId = tasks.Id, title = "Zweimal", idempotencyKey = key }), 409, "idempotency_key_reused");
 
         Assert.Equal(first.Id, second.Id);
         Assert.Equal("Einmal", second.Title);
+        Assert.Equal("idempotencyKey", reused.GetProperty("errors")[0].GetProperty("field").GetString());
+        Assert.Contains("Same key, different request", reused.GetProperty("detail").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]
