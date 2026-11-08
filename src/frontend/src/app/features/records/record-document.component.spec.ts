@@ -83,6 +83,8 @@ const RECORD_URL = `${API}/records/${RECORD_ID}`;
 const LOAD_URL = `${RECORD_URL}?includeBody=true`;
 const COMMENTS_URL = `${RECORD_URL}/comments`;
 const NO_COMMENTS = { threads: [], omittedThreads: 0 };
+const BACKLINKS_URL = `${RECORD_URL}/backlinks?limit=10`;
+const NO_BACKLINKS = { recordId: RECORD_ID, groups: [], nextGroupsCursor: null };
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('RecordDocumentComponent', () => {
@@ -101,6 +103,7 @@ describe('RecordDocumentComponent', () => {
       comments?: unknown;
       query?: string;
       providers?: Provider[];
+      backlinks?: unknown;
     } = {},
   ): Promise<void> {
     engines = [];
@@ -156,6 +159,9 @@ describe('RecordDocumentComponent', () => {
       [`${API}/collections`, [collection()]],
       [`${API}/members`, [member(), member({ actorId: 'agent-1', name: 'Coder', kind: 'agent' })]],
       [COMMENTS_URL, options.comments ?? NO_COMMENTS],
+      ...(options.record?.collectionId === null
+        ? []
+        : ([[BACKLINKS_URL, options.backlinks ?? NO_BACKLINKS]] as const)),
     ]);
     await navigation;
     await settle(harness.fixture);
@@ -645,6 +651,10 @@ describe('RecordDocumentComponent', () => {
         recordDto({ id: 'other-id', title: 'Anderer', body: 'Anderer Text' }),
       );
       await respond(http, 'GET', `${API}/records/other-id/comments`, NO_COMMENTS);
+      await respond(http, 'GET', `${API}/records/other-id/backlinks?limit=10`, {
+        ...NO_BACKLINKS,
+        recordId: 'other-id',
+      });
       await navigation;
       await settle(harness.fixture);
 

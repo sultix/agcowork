@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Live-Stores mit Generation und Bündelung: `core/workspace/members.store.ts`, `core/realtime/live-reload.ts`; Picker: `shared/properties/relation-editor.component.ts`; Zellen: `shared/table/cell-value.component.ts`; Dokument: `features/records/record-document.component.ts`; Suche/Query-Endpunkt: `features/search/`, `features/views/query-pager.ts` |
@@ -52,3 +52,10 @@ Relationen sind überall lesbar und navigierbar: Tabelle, Board, Dokument und Fi
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | Vertrag aus AP-037 ergänzt, an implementer-opus übergeben; nach Verbindungsabbruch per Nachricht fortgesetzt |
+| 2026-11-08 | Bericht: 1176 Tests grün; `RecordTitleStore` (Bündelung 20 ms, Pakete zu 200, Epoche + Ticket, live), `ag-relation-chips`, Zellen mit Chips (bis 3 + „+N“), Picker mit Serversuche über Query `title contains`, Rückverweise als Abschnitt unter dem Body mit Gruppen-/Seiten-Cursor und Live-Neuladen; Abweichung: Container-Archivierung lädt gecachte Titel neu |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – wichtig: `failed` im Titel-Cache erholt sich nie, AK1 nur für den sichtbaren Ausschnitt (Virtual Scroll lädt in Schüben); Hinweise: Rennen beim Umbenennen, `pending`-Leck, Backlinks im Skelett hängend, Schema-Änderung lädt Backlinks nicht, Doppelklick auf Chip-Links in Zellen |
+| 2026-11-08 | Nacharbeit an implementer-opus (W1, W2, H1–H3, H5, H6/H8) |
+| 2026-11-08 | Nacharbeit: `failed` mit Frist und Neuladen bei `live`, `prefetch` aller Relations-IDs geladener Zeilen (100 Zeilen/200 IDs = ein Lookup, auch nach Scrollen), Umbenennen während Lookup, `pending` je Epoche, Backlinks ohne hängendes Skelett und mit Neuladen bei Schemaänderung, Chips in Zellen navigieren nach 250 ms (Doppelklick öffnet Editor), im Edit-Pane ohne Links; 1188 Tests |
+| 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit geprüft) |

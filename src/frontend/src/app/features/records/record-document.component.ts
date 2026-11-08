@@ -49,6 +49,7 @@ import { CommentsStore } from '../comments/comments.store';
 import { WorkspacesStore } from '../workspaces/workspaces.store';
 import { WorkspaceTreeStore } from '../spaces/workspace-tree.store';
 import { ConflictDialogComponent } from './conflict-dialog.component';
+import { RecordBacklinksComponent } from './record-backlinks.component';
 import { RecordTabsComponent } from './record-tabs.component';
 import { RecordDto, RecordSaveService } from './record-save.service';
 
@@ -93,6 +94,7 @@ interface RemoteChange {
     MarkdownEditorComponent,
     PropertyEditorComponent,
     RawViewComponent,
+    RecordBacklinksComponent,
     RecordTabsComponent,
     RouterLink,
   ],
@@ -330,6 +332,14 @@ interface RemoteChange {
               </ag-markdown-editor>
             }
           </div>
+
+          @if (record.collectionId; as collectionId) {
+            <ag-record-backlinks
+              class="mt-8 block"
+              [recordId]="record.id"
+              [collectionId]="collectionId"
+            />
+          }
         } @else {
           <div class="flex flex-col gap-3" data-testid="record-loading">
             <hlm-skeleton class="h-6 w-48" />

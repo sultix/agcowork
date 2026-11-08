@@ -1,8 +1,10 @@
 import { CdkDropList } from '@angular/cdk/drag-drop';
+import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { Component, Provider, signal } from '@angular/core';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { Router } from '@angular/router';
 import {
   API,
   COLLECTION_ID,
@@ -10,17 +12,24 @@ import {
   STATUS_DEFINITION,
   pageProviders,
   propertyDefinition,
+  queryPage,
   recordDto,
   respond,
+  respondPost,
   settle,
   typeInto,
 } from '../../core/testing/test-utils';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import type { SortSpec } from '../filter/filter-dsl';
+import { CHIP_CLICK_DELAY_MS } from '../properties/relation-chips.component';
+import { RELATION_SEARCH_DEBOUNCE_MS } from '../properties/relation-editor.component';
 import { DataTableComponent, TableColumn } from './data-table.component';
 import { CellEditor, CellState, TableRecord } from './inline-edit';
 
 type RecordDto = TableRecord;
+
+const CLICK_DELAY = 30;
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Records the saves the table asks for; cell states are set by the test. */
 class FakeEditor implements CellEditor {
@@ -303,35 +312,31 @@ describe('DataTableComponent', () => {
         type: 'relation',
         targetCollectionId: COLLECTION_ID,
       });
-      const candidates = {
-        items: [
-          recordDto({ id: 'c1', title: 'Login bauen' }),
-          recordDto({ id: 'c2', title: 'Logout bauen' }),
-        ],
-        nextCursor: null,
-      };
+      const C2 = '0199a000-0000-7000-8000-0000000000c2';
 
       async function openRelation(): Promise<{ pane: HTMLElement; search: HTMLInputElement }> {
         // with a workspace slug the members store loads: answer it, or the app never settles
         const rendering = render(
           (h) => h.columns.set([{ key: RELATION.key, definition: RELATION }]),
-          [{ provide: WorkspaceContext, useValue: { slug: () => 'demo' } }],
+          [
+            { provide: WorkspaceContext, useValue: { slug: () => 'demo' } },
+            { provide: RELATION_SEARCH_DEBOUNCE_MS, useValue: 10 },
+          ],
         );
         const http = TestBed.inject(HttpTestingController);
         await respond(http, 'GET', `${API}/members`, []);
         await rendering;
-        // the editor loads the candidates: the request keeps the app unstable until it is answered
         cell(0, 'parent').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
-        await respond(
-          http,
-          'GET',
-          `${API}/records?collectionId=${COLLECTION_ID}&limit=200`,
-          candidates,
-        );
         await settle(fixture);
         const pane = editor()!;
         const search = pane.querySelector<HTMLInputElement>('[data-testid="relation-search"]')!;
         typeInto(search, 'logo');
+        // the picker searches the target collection on the server
+        await respondPost(
+          http,
+          `${API}/collections/${COLLECTION_ID}/query`,
+          queryPage([recordDto({ id: C2, title: 'Logout bauen' })]),
+        );
         await settle(fixture);
         pane.querySelector<HTMLElement>('[data-testid="relation-suggestion"]')!.click();
         await settle(fixture);
@@ -346,7 +351,7 @@ describe('DataTableComponent', () => {
         await settle(fixture);
 
         expect(editor()).toBeNull();
-        expect(saves()).toEqual([{ id: RECORD_ID, key: 'parent', value: 'c2', revision: 3 }]);
+        expect(saves()).toEqual([{ id: RECORD_ID, key: 'parent', value: C2, revision: 3 }]);
       });
 
       it('edit_RelationPickedFromSuggestions_EscapeDiscards', async () => {
@@ -488,5 +493,182 @@ describe('DataTableComponent', () => {
 
     expect(all('table-more')).toHaveLength(0);
     expect(host.loadMoreCount).toBe(0);
+  });
+
+  describe('relation cells', () => {
+    const RELATION = propertyDefinition({
+      key: 'links',
+      name: 'Verweise',
+      type: 'relation',
+      targetCollectionId: COLLECTION_ID,
+      multiple: true,
+    });
+    const target = (n: number) => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
+    const LOOKUP = `${API}/records/lookup`;
+
+    /** Targets with titles "Ziel <last four digits>". */
+    const titled = (ids: string[]) => ({
+      items: ids.map((id) => ({
+        id,
+        title: `Ziel ${id.slice(-4)}`,
+        collectionId: COLLECTION_ID,
+        spaceId: 'space',
+        archived: false,
+      })),
+    });
+    const idsOf = (request: { request: { body: unknown } }) =>
+      (request.request.body as { ids: string[] }).ids;
+
+    /** 100 loaded rows; row i points at targets 2i and 2i+1: 200 distinct ids. */
+    async function renderHundred(): Promise<HttpTestingController> {
+      const rows = Array.from({ length: 100 }, (_, i) =>
+        recordDto({
+          id: `0199a000-0000-7000-8000-${String(5000 + i).padStart(12, '0')}`,
+          title: `Zeile ${i}`,
+          properties: { links: [target(2 * i), target(2 * i + 1)] } as never,
+        }),
+      );
+      const rendering = render(
+        (h) => {
+          h.columns.set([{ key: RELATION.key, definition: RELATION }]);
+          h.rows.set(rows);
+        },
+        [
+          { provide: WorkspaceContext, useValue: { slug: () => 'demo' } },
+          { provide: CHIP_CLICK_DELAY_MS, useValue: CLICK_DELAY },
+        ],
+      );
+      const http = TestBed.inject(HttpTestingController);
+      await respond(http, 'GET', `${API}/members`, []);
+      await rendering;
+      return http;
+    }
+
+    /** Waits for the one lookup of the hundred rows and answers it. */
+    async function answerHundred(http: HttpTestingController): Promise<string[]> {
+      await wait(60);
+      const requests = http.match({ method: 'POST', url: LOOKUP });
+      expect(requests).toHaveLength(1);
+      requests[0].flush(titled(idsOf(requests[0])));
+      await settle(fixture);
+      return idsOf(requests[0]);
+    }
+
+    it('render_HundredRowsWith200Ids_ExactlyOneLookupAlsoAfterScrolling', async () => {
+      const http = await renderHundred();
+
+      const ids = await answerHundred(http);
+      expect(ids).toHaveLength(200);
+      expect(new Set(ids).size).toBe(200);
+      expect(all('table-row').length).toBeLessThan(100); // virtual scroll renders a part only
+
+      const chips = all('relation-chip', cell(0, 'links'));
+      expect(chips.map((c) => c.textContent!.trim())).toEqual(['Ziel 0000', 'Ziel 0001']);
+      expect(chips[0].querySelector('a')!.getAttribute('href')).toBe(
+        `/w/demo/records/${target(0)}`,
+      );
+      expect(text(cell(0, 'links'))).not.toContain('Verknüpfung');
+
+      const viewport = fixture.debugElement
+        .query(By.directive(CdkVirtualScrollViewport))
+        .injector.get(CdkVirtualScrollViewport);
+      // what scrolling to the end does (jsdom has no layout to scroll in)
+      viewport.setRenderedRange({ start: 80, end: 100 });
+      for (let i = 0; i < 20 && !text(all('table-row').at(-1)).includes('Zeile 99'); i++) {
+        await wait(20);
+        await settle(fixture);
+      }
+
+      const last = all('table-row').at(-1)!;
+      expect(text(last.querySelector('[data-testid="row-link"]'))).toBe('Zeile 99');
+      const lastCell = last.querySelector<HTMLElement>(
+        '[data-testid="table-cell"][data-key="links"]',
+      )!;
+      expect(all('relation-chip', lastCell).map((c) => text(c))).toEqual([
+        'Ziel 0198',
+        'Ziel 0199',
+      ]);
+      await wait(60);
+      http.expectNone({ method: 'POST', url: LOOKUP });
+    });
+
+    it('render_MoreThanThreeTargets_ShowsThreeChipsAndPlusN', async () => {
+      const rendering = render(
+        (h) => {
+          h.columns.set([{ key: RELATION.key, definition: RELATION }]);
+          h.rows.set([recordDto({ properties: { links: [1, 2, 3, 4, 5].map(target) } as never })]);
+        },
+        [{ provide: WorkspaceContext, useValue: { slug: () => 'demo' } }],
+      );
+      const http = TestBed.inject(HttpTestingController);
+      await respond(http, 'GET', `${API}/members`, []);
+      await rendering;
+      // the table asks for all relation ids of its loaded rows, also those behind "+N"
+      const request = await respondPost(http, LOOKUP, { items: [] });
+      await settle(fixture);
+
+      expect(idsOf(request)).toHaveLength(5);
+      expect(all('relation-chip', cell(0, 'links'))).toHaveLength(3);
+      expect(text(cell(0, 'links'))).toContain('+2 weitere');
+    });
+
+    it('chipLink_SingleClick_NavigatesAfterTheDoubleClickWindow', async () => {
+      const http = await renderHundred();
+      await answerHundred(http);
+      const router = TestBed.inject(Router);
+      const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      const link = cell(0, 'links').querySelector<HTMLElement>('a')!;
+      expect(link.getAttribute('tabindex')).toBe('-1');
+      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+      expect(navigate).not.toHaveBeenCalled();
+      await wait(CLICK_DELAY * 2);
+
+      expect(navigate).toHaveBeenCalledWith(['/w', 'demo', 'records', target(0)]);
+      expect(editor()).toBeNull();
+    });
+
+    it('chipLink_DoubleClick_OpensTheCellEditorWithoutNavigating', async () => {
+      const http = await renderHundred();
+      await answerHundred(http);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+      const link = cell(0, 'links').querySelector<HTMLElement>('a')!;
+      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 }));
+      link.dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true, cancelable: true, detail: 2 }),
+      );
+      await settle(fixture);
+      await wait(CLICK_DELAY * 2);
+
+      expect(navigate).not.toHaveBeenCalled();
+      const pane = editor()!;
+      expect(pane.querySelector('[data-testid="relation-search"]')).not.toBeNull();
+      // inside the edit pane the chips are plain text: no link that would leave the edit
+      const chips = Array.from(pane.querySelectorAll<HTMLElement>('[data-testid="relation-chip"]'));
+      expect(chips.map((c) => c.textContent!.trim())).toEqual(['Ziel 0000', 'Ziel 0001']);
+      expect(pane.querySelector('a')).toBeNull();
+    });
+
+    it('chipLink_ModifiedClick_IsLeftToTheBrowser', async () => {
+      const http = await renderHundred();
+      await answerHundred(http);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+      const link = cell(0, 'links').querySelector<HTMLElement>('a')!;
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true });
+      let preventedByChip: boolean | null = null;
+      link.addEventListener('click', (e) => {
+        preventedByChip = e.defaultPrevented;
+        e.preventDefault(); // keep the test page where it is
+      });
+      link.dispatchEvent(click);
+      await wait(CLICK_DELAY * 2);
+
+      expect(preventedByChip).toBe(false);
+      expect(navigate).not.toHaveBeenCalled();
+      expect(link.getAttribute('href')).toBe(`/w/demo/records/${target(0)}`);
+    });
   });
 });

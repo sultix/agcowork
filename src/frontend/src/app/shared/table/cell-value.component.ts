@@ -8,6 +8,7 @@ import {
   input,
 } from '@angular/core';
 import { MembersStore } from '../../core/workspace/members.store';
+import { ChipNavigation, RelationChipsComponent } from '../properties/relation-chips.component';
 import {
   PropertyDefinition,
   PropertyValue,
@@ -69,10 +70,8 @@ export function cellDisplay(
     case 'created_by':
     case 'updated_by':
       return { text: names(asText(value).replace(/^actor:/, '')), chips: [] };
-    case 'relation': {
-      const count = asStringList(value).length;
-      return { text: count === 1 ? '1 Verknüpfung' : `${count} Verknüpfungen`, chips: [] };
-    }
+    case 'relation':
+      return EMPTY; // rendered as title chips by the component (see RelationChipsComponent)
     case 'markdown':
       return { text: asText(value).split('\n', 1)[0].slice(0, 200), chips: [] };
     case 'json':
@@ -82,17 +81,34 @@ export function cellDisplay(
   }
 }
 
-/** Display of one table cell or card field. */
+/** Relation chips shown in one cell or card field; the rest is summed up as "+N". */
+export const CELL_RELATION_CHIPS = 3;
+
+/**
+ * Display of one table cell or card field. Relation values are title chips (links to the
+ * records, see {@link RelationChipsComponent}); their titles come from the shared title cache,
+ * so a table full of relations costs one lookup per 200 ids, not one request per cell.
+ */
 @Component({
   selector: 'ag-cell-value',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RelationChipsComponent],
   host: { class: 'block min-w-0 truncate' },
-  template: `@for (chip of display().chips; track $index) {
-      <span class="mr-1 inline-block rounded-full border border-border px-2 text-xs">{{
-        chip
-      }}</span>
-    }
-    {{ display().text }}`,
+  template: `@if (relationIds(); as ids) {
+      <ag-relation-chips
+        class="overflow-hidden"
+        [ids]="ids"
+        [max]="maxChips"
+        [navigation]="chipNavigation()"
+      />
+    } @else {
+      @for (chip of display().chips; track $index) {
+        <span class="mr-1 inline-block rounded-full border border-border px-2 text-xs">{{
+          chip
+        }}</span>
+      }
+      {{ display().text }}
+    }`,
 })
 export class CellValueComponent {
   private readonly members = inject(MembersStore);
@@ -100,6 +116,19 @@ export class CellValueComponent {
 
   readonly definition = input.required<PropertyDefinition>();
   readonly value = input<PropertyValue>(null);
+  /** Relation chips: `cell` in the table (a double click edits the cell), `link` on cards. */
+  readonly chipNavigation = input<ChipNavigation>('cell');
+
+  protected readonly maxChips = CELL_RELATION_CHIPS;
+
+  /** Ids of a relation value (`null` for other types, and for an empty relation). */
+  protected readonly relationIds = computed(() => {
+    if (this.definition().type !== 'relation') {
+      return null;
+    }
+    const ids = asStringList(this.value());
+    return ids.length > 0 ? ids : null;
+  });
 
   protected readonly display = computed(() =>
     cellDisplay(this.definition(), this.value(), (id) => this.members.nameOf(id), this.locale),

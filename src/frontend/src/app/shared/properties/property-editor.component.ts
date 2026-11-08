@@ -183,6 +183,7 @@ function sameJson(a: unknown, b: unknown): boolean {
           [definition]="definition()"
           [value]="value()"
           [readonly]="locked()"
+          [chipLinks]="chipLinks()"
           (valueChange)="valueChange.emit($event)"
         />
       }
@@ -264,6 +265,8 @@ export class PropertyEditorComponent {
   readonly definition = input.required<PropertyDefinition>();
   readonly value = input<PropertyValue>(null);
   readonly readonly = input(false);
+  /** Relation chips link to their records; off where navigating would leave an edit (table pane). */
+  readonly chipLinks = input(true);
   /**
    * Route of the record's raw view: offered when a Markdown value is too large or too complex
    * for the editor and shown as plain text.

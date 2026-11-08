@@ -30,6 +30,7 @@ import { lucideArrowDown, lucideArrowUp } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
+import { RecordTitleStore, relationIdsOf } from '../../core/records/record-title.store';
 import { SortSpec, isSortable } from '../filter/filter-dsl';
 import { PropertyEditorComponent } from '../properties/property-editor.component';
 import type { PropertyDefinition, PropertyType } from '../properties/property-types';
@@ -386,6 +387,7 @@ function sameJson(a: unknown, b: unknown): boolean {
           @if (cell.definition; as definition) {
             <ag-property-editor
               [definition]="definition"
+              [chipLinks]="false"
               [value]="draft()"
               (valueChange)="onDraft($event)"
             />
@@ -409,6 +411,7 @@ function sameJson(a: unknown, b: unknown): boolean {
 })
 export class DataTableComponent {
   private readonly injector = inject(Injector);
+  private readonly titles = inject(RecordTitleStore);
   protected readonly host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;
 
   readonly rows = input.required<readonly TableRecord[]>();
@@ -479,6 +482,14 @@ export class DataTableComponent {
   );
 
   constructor() {
+    // all relation titles of the loaded rows in one go, not in the batches virtual scroll renders
+    effect(() => {
+      const ids = relationIdsOf(
+        this.rows(),
+        this.columns().map((c) => c.definition),
+      );
+      this.titles.prefetch(ids);
+    });
     effect((onCleanup) => {
       const viewport = this.viewport();
       if (viewport) {

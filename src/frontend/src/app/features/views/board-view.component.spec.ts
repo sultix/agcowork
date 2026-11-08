@@ -43,6 +43,13 @@ const SCHEMA = [
   propertyDefinition({ key: 'due', name: 'Fällig', type: 'date' }),
   propertyDefinition({ key: 'notes', name: 'Notiz', type: 'text' }),
   propertyDefinition({ key: 'extra', name: 'Extra', type: 'text' }),
+  propertyDefinition({
+    key: 'links',
+    name: 'Verweise',
+    type: 'relation',
+    targetCollectionId: COLLECTION_ID,
+    multiple: true,
+  }),
 ];
 const BOARD = viewDto({ id: BOARD_VIEW_ID, name: 'Nach Status', type: 'board', groupBy: 'status' });
 
@@ -161,6 +168,29 @@ describe('BoardViewComponent', () => {
     expect(text(card)).not.toContain('Extra');
     expect(text(card)).not.toContain('Offen');
     expect(all('board-truncated')).toHaveLength(0);
+  });
+
+  it('render_RelationField_CardShowsTitleChipsAsLinks', async () => {
+    const target = '0199a000-0000-7000-8000-00000000bb01';
+    await render([record(RECORD_ID, 'open', { links: [target] })]);
+    const lookup = await expectRequest(http, 'POST', `${API}/records/lookup`);
+    expect(lookup.request.body).toEqual({ ids: [target] });
+    lookup.flush({
+      items: [
+        {
+          id: target,
+          title: 'Spezifikation',
+          collectionId: COLLECTION_ID,
+          spaceId: 's',
+          archived: false,
+        },
+      ],
+    });
+    await settle(fixture);
+
+    const chip = all('relation-chip', column('open'))[0];
+    expect(text(chip)).toBe('Spezifikation');
+    expect(chip.querySelector('a')!.getAttribute('href')).toBe(`/w/demo/records/${target}`);
   });
 
   it('render_MoreThanLimit_ShowsHint', async () => {

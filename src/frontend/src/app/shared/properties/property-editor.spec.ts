@@ -2,21 +2,33 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { SessionStore } from '../../core/auth/session.store';
+import { provideFakeRealtime } from '../../core/testing/fake-hub';
 import { MembersStore } from '../../core/workspace/members.store';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import {
+  ADMIN_ME,
   AGENT_ID,
   API,
   COLLECTION_ID,
   RECORD_ID,
+  expectRequest,
+  fakeSession,
   member,
   propertyDefinition,
+  queryPage,
   recordDto,
-  respond,
+  respondPost,
 } from '../../core/testing/test-utils';
 import { FakeCodeEditor, provideFakeCodeEditor } from '../raw-view/fake-code-editor';
 import { PropertyEditorComponent } from './property-editor.component';
 import { PropertyDefinition, PropertyType } from './property-types';
+import {
+  RELATION_SEARCH_DEBOUNCE_MS,
+  RELATION_SEARCH_LIMIT,
+  relationSearchQuery,
+} from './relation-editor.component';
 
 @Component({
   imports: [PropertyEditorComponent],
@@ -55,6 +67,10 @@ describe('PropertyEditorComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
+        provideFakeRealtime(),
+        { provide: SessionStore, useValue: fakeSession(ADMIN_ME) },
+        { provide: RELATION_SEARCH_DEBOUNCE_MS, useValue: 10 },
         provideFakeCodeEditor(editors),
         { provide: WorkspaceContext, useValue: { slug: signal('demo') } },
         {
@@ -209,25 +225,46 @@ describe('PropertyEditorComponent', () => {
 
   describe('relation', () => {
     const target = { targetCollectionId: COLLECTION_ID };
-    const candidates = {
-      items: [
-        recordDto({ id: RECORD_ID, title: 'Login bauen' }),
-        recordDto({ id: 'r2', title: 'Logout bauen' }),
-        recordDto({ id: 'r3', title: 'Doku' }),
-      ],
-      nextCursor: null,
-    };
-    const url = `${API}/records?collectionId=${COLLECTION_ID}&limit=200`;
+    const R2 = '0199a000-0000-7000-8000-0000000000d2';
+    const R3 = '0199a000-0000-7000-8000-0000000000d3';
+    const QUERY_URL = `${API}/collections/${COLLECTION_ID}/query`;
+    const LOOKUP_URL = `${API}/records/lookup`;
+    const lookupItem = (id: string, title: string, archived = false) => ({
+      id,
+      title,
+      collectionId: COLLECTION_ID,
+      spaceId: 'space',
+      archived,
+    });
 
-    it('search_Title_OffersMatchingRecordsAndSelectsOne', async () => {
-      await render('relation', null, target);
-      await respond(http, 'GET', url, candidates);
+    async function settleAll(): Promise<void> {
       await fixture.whenStable();
       fixture.detectChanges();
+    }
+
+    it('search_Title_AsksTheServerAndSelectsOne', async () => {
+      await render('relation', null, target);
+      await settleAll();
 
       const search = q<HTMLInputElement>('[data-testid="relation-search"]')!;
-      type(search, 'log');
-      fixture.detectChanges();
+      type(search, ' log ');
+      const request = await respondPost(
+        http,
+        QUERY_URL,
+        queryPage([
+          recordDto({ id: RECORD_ID, title: 'Login bauen' }),
+          recordDto({ id: R2, title: 'Logout bauen' }),
+        ]),
+      );
+      await settleAll();
+
+      expect(request.request.body).toEqual(relationSearchQuery('log'));
+      expect(request.request.body).toMatchObject({
+        filter: { prop: 'title', op: 'contains', value: 'log' },
+        sorts: [{ prop: 'created_at', dir: 'desc' }],
+        limit: RELATION_SEARCH_LIMIT,
+        includeArchived: false,
+      });
       const suggestions = Array.from(el().querySelectorAll('[data-testid="relation-suggestion"]'));
       expect(suggestions.map((s) => s.textContent!.trim())).toEqual([
         'Login bauen',
@@ -235,30 +272,96 @@ describe('PropertyEditorComponent', () => {
       ]);
       (suggestions[1] as HTMLElement).click();
 
-      expect(host.changes).toEqual(['r2']);
+      expect(host.changes).toEqual([R2]);
     });
 
-    it('select_MultipleRelation_AppendsAndChipRemovalDropsOne', async () => {
-      await render('relation', ['r3'], { ...target, multiple: true });
-      await respond(http, 'GET', url, candidates);
-      await fixture.whenStable();
-      fixture.detectChanges();
+    it('search_RecordBeyondTheFirst200_IsFoundByTitle', async () => {
+      // the fake server holds 250 records and answers the title filter like the real one
+      const all = Array.from({ length: 250 }, (_, i) =>
+        recordDto({
+          id: `0199a000-0000-7000-8000-${String(i).padStart(12, '0')}`,
+          title: `Aufgabe Nr. ${i + 1}`,
+        }),
+      );
+      await render('relation', null, target);
+      await settleAll();
 
-      expect(q('[data-testid="relation-chip"]')!.textContent).toContain('Doku');
-      type(q<HTMLInputElement>('[data-testid="relation-search"]')!, 'login');
+      type(q<HTMLInputElement>('[data-testid="relation-search"]')!, 'Nr. 250');
+      const request = await expectRequest(http, 'POST', QUERY_URL);
+      const needle = (request.request.body as { filter: { value: string } }).filter.value;
+      request.flush(
+        queryPage(
+          all.filter((r) => r.title.toLowerCase().includes(needle.toLowerCase())).reverse(),
+        ),
+      );
+      await settleAll();
+
+      const suggestions = Array.from(el().querySelectorAll('[data-testid="relation-suggestion"]'));
+      expect(suggestions.map((s) => s.textContent!.trim())).toEqual(['Aufgabe Nr. 250']);
+      (suggestions[0] as HTMLElement).click();
+      expect(host.changes).toEqual([all[249].id]);
+    });
+
+    it('search_TypingQuickly_SendsOneRequestForTheLastTerm', async () => {
+      await render('relation', null, target);
+      await settleAll();
+      const search = q<HTMLInputElement>('[data-testid="relation-search"]')!;
+
+      type(search, 'L');
+      type(search, 'Lo');
+      type(search, 'Log');
       fixture.detectChanges();
+      expect(q('[data-testid="relation-searching"]')).not.toBeNull();
+      const request = await respondPost(http, QUERY_URL, queryPage([]));
+      await settleAll();
+
+      expect((request.request.body as { filter: { value: string } }).filter.value).toBe('Log');
+      expect(q('[data-testid="relation-suggestions"]')!.textContent).toContain('Keine Treffer.');
+    });
+
+    it('select_MultipleRelation_ChipsShowTitlesAppendAndRemove', async () => {
+      await render('relation', [R3], { ...target, multiple: true });
+      const lookup = await respondPost(http, LOOKUP_URL, { items: [lookupItem(R3, 'Doku')] });
+      await settleAll();
+
+      expect(lookup.request.body).toEqual({ ids: [R3] });
+      expect(q('[data-testid="relation-chip"]')!.textContent).toContain('Doku');
+      expect(q('[data-testid="relation-chip-link"]')!.getAttribute('href')).toBe(
+        `/w/demo/records/${R3}`,
+      );
+      type(q<HTMLInputElement>('[data-testid="relation-search"]')!, 'login');
+      await respondPost(http, QUERY_URL, queryPage([recordDto({ title: 'Login bauen' })]));
+      await settleAll();
       q('[data-testid="relation-suggestion"]')!.click();
+      expect(q('[data-testid="relation-remove"]')!.getAttribute('aria-label')).toBe(
+        'Entfernen: Doku',
+      );
       q('[data-testid="relation-remove"]')!.click();
 
-      expect(host.changes).toEqual([['r3', RECORD_ID], null]);
+      expect(host.changes).toEqual([[R3, RECORD_ID], null]);
+    });
+
+    it('select_PickedRecord_IsTitledWithoutALookup', async () => {
+      await render('relation', null, target);
+      await settleAll();
+
+      type(q<HTMLInputElement>('[data-testid="relation-search"]')!, 'login');
+      await respondPost(http, QUERY_URL, queryPage([recordDto({ title: 'Login bauen' })]));
+      await settleAll();
+      q('[data-testid="relation-suggestion"]')!.click();
+      host.value.set(host.changes[0]);
+      await settleAll();
+      await new Promise((resolve) => setTimeout(resolve, 30));
+
+      expect(q('[data-testid="relation-chip"]')!.textContent).toContain('Login bauen');
+      http.expectNone(LOOKUP_URL);
     });
 
     it('render_Readonly_ShowsChipsWithoutSearch', async () => {
       host.readonly.set(true);
-      await render('relation', 'r3', target);
-      await respond(http, 'GET', url, candidates);
-      await fixture.whenStable();
-      fixture.detectChanges();
+      await render('relation', R3, target);
+      await respondPost(http, LOOKUP_URL, { items: [lookupItem(R3, 'Doku')] });
+      await settleAll();
 
       expect(q('[data-testid="relation-chip"]')!.textContent).toContain('Doku');
       expect(q('[data-testid="relation-search"]')).toBeNull();

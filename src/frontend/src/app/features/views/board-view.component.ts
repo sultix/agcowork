@@ -18,6 +18,7 @@ import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
+import { RecordTitleStore, relationIdsOf } from '../../core/records/record-title.store';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { sameFilter } from '../../shared/filter/filter-dsl';
 import { PropertyDefinition, asText } from '../../shared/properties/property-types';
@@ -207,7 +208,11 @@ export function groupRecords(
                   @for (field of fieldsOf(record); track field.key) {
                     <div class="mt-1 flex gap-2 text-xs">
                       <span class="shrink-0 text-muted-foreground">{{ field.name }}</span>
-                      <ag-cell-value [definition]="field" [value]="valueOf(record, field.key)" />
+                      <ag-cell-value
+                        chipNavigation="link"
+                        [definition]="field"
+                        [value]="valueOf(record, field.key)"
+                      />
                     </div>
                   }
                 </article>
@@ -231,6 +236,7 @@ export function groupRecords(
 export class BoardViewComponent {
   protected readonly context = inject(WorkspaceContext);
   protected readonly edits = inject(InlineEditService);
+  private readonly titles = inject(RecordTitleStore);
 
   readonly view = input.required<ViewDto>();
   readonly state = input.required<ViewWorkingState>();
@@ -291,6 +297,8 @@ export class BoardViewComponent {
 
   constructor() {
     this.edits.bind(() => this.context.slug(), this.pager);
+    // relation titles of all loaded cards in one go
+    effect(() => this.titles.prefetch(relationIdsOf(this.pager.items(), this.cardFields())));
     effect(() => {
       this.source();
       untracked(() => {
