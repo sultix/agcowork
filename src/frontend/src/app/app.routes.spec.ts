@@ -74,6 +74,7 @@ describe('app routes', () => {
         'workspaces/new',
         'w/:workspaceSlug/settings',
         'w/:workspaceSlug/settings/members',
+        'w/:workspaceSlug/settings/collections/:collectionId/schema',
         'admin/workspaces',
         'admin/actors',
         'admin/actors/:id/keys',

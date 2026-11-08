@@ -83,6 +83,13 @@ export const workspaceShellRoutes: Routes = [
         loadComponent: () =>
           import('../workspace-settings/members.component').then((m) => m.MembersComponent),
       },
+      {
+        path: 'settings/collections/:collectionId/schema',
+        loadComponent: () =>
+          import('../collections/schema-editor/schema-editor-page.component').then(
+            (m) => m.SchemaEditorPageComponent,
+          ),
+      },
     ],
   },
 ];

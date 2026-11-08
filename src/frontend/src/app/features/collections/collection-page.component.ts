@@ -8,9 +8,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCircleAlert, lucidePlus } from '@ng-icons/lucide';
+import { lucideCircleAlert, lucidePlus, lucideSlidersHorizontal } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
@@ -22,6 +22,7 @@ import type { RecordDto } from '../records/record-save.service';
 import { WorkspaceTreeStore } from '../spaces/workspace-tree.store';
 import { CollectionStore } from '../views/collection.store';
 import { ViewSwitcherComponent } from '../views/view-switcher.component';
+import { WorkspacesStore } from '../workspaces/workspaces.store';
 
 /**
  * `/w/:slug/collections/:collectionId`: collection header with a schema summary, the view tabs
@@ -38,10 +39,14 @@ import { ViewSwitcherComponent } from '../views/view-switcher.component';
     BadgeComponent,
     BreadcrumbsComponent,
     RecordCreateDialogComponent,
+    RouterLink,
     RouterOutlet,
     ViewSwitcherComponent,
   ],
-  providers: [CollectionStore, provideIcons({ lucideCircleAlert, lucidePlus })],
+  providers: [
+    CollectionStore,
+    provideIcons({ lucideCircleAlert, lucidePlus, lucideSlidersHorizontal }),
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="flex flex-col gap-4 p-6">
@@ -66,12 +71,25 @@ import { ViewSwitcherComponent } from '../views/view-switcher.component';
               </p>
             }
           </div>
-          @if (store.canWrite()) {
-            <button hlmBtn type="button" data-testid="record-new" (click)="creating.set(true)">
-              <ng-icon name="lucidePlus" />
-              Neuer Record
-            </button>
-          }
+          <div class="flex flex-wrap gap-2">
+            @if (canEditSchema()) {
+              <a
+                hlmBtn
+                variant="outline"
+                data-testid="schema-edit-link"
+                [routerLink]="schemaLink()"
+              >
+                <ng-icon name="lucideSlidersHorizontal" />
+                Schema bearbeiten
+              </a>
+            }
+            @if (store.canWrite()) {
+              <button hlmBtn type="button" data-testid="record-new" (click)="creating.set(true)">
+                <ng-icon name="lucidePlus" />
+                Neuer Record
+              </button>
+            }
+          </div>
         </div>
 
         <details class="text-sm">
@@ -109,6 +127,7 @@ import { ViewSwitcherComponent } from '../views/view-switcher.component';
 export class CollectionPageComponent {
   protected readonly store = inject(CollectionStore);
   private readonly context = inject(WorkspaceContext);
+  private readonly workspaces = inject(WorkspacesStore);
   private readonly router = inject(Router);
   private readonly tree = inject(WorkspaceTreeStore);
 
@@ -116,6 +135,23 @@ export class CollectionPageComponent {
   readonly collectionId = input.required<string>();
 
   protected readonly creating = signal(false);
+
+  /** `schema` on an active workspace and collection: the schema editor is offered. */
+  protected readonly canEditSchema = computed(() => {
+    const ws = this.workspaces.find(this.context.slug() ?? '');
+    return (
+      !!ws && !ws.archivedAt && ws.scopes.includes('schema') && !this.store.collection()?.archivedAt
+    );
+  });
+
+  protected readonly schemaLink = computed(() => [
+    '/w',
+    this.context.slug(),
+    'settings',
+    'collections',
+    this.collectionId(),
+    'schema',
+  ]);
 
   protected readonly crumbs = computed<Crumb[]>(() => {
     const collection = this.store.collection();

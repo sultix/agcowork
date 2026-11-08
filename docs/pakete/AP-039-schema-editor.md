@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Formulare mit Signal Forms und Feldfehlern: `features/auth/change-password.component.ts`, `core/auth/password-policy.ts`; Dialoge: `features/admin/reset-password-dialog.component.ts`, `shared/ui/confirm-dialog.component.ts`; Collection-Seite `features/collections/collection-page.component.ts`; Live-Schema `features/views/collection.store.ts` (`holdWhile`, `liveReload`); UI-Bausteine `02-ARCHITEKTUR.md` §6 |
@@ -51,3 +51,10 @@ Menschen mit `schema`-Recht pflegen das Schema einer Collection in der UI: neue 
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zu AP-037) |
+| 2026-11-08 | Bericht: 1122 Tests grün; Seite `/w/:slug/settings/collections/:id/schema` mit eigenem Store, Property-Dialog (alle Typen, Relation auf diese/andere Collection), nur geänderte Felder im PATCH, Bestätigung mit Zahl betroffener Records vor `confirmRemoval`, 409 mit Rebase des Entwurfs, Fehler am Feld bis auf Optionsebene, Leseansicht ohne `schema`; Abweichung: Liste aktualisiert sich hinter offenem Dialog sofort |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – wichtig: Rebase nach 409 übernimmt Optionen als Ganzes (fremde Umbenennungen/Entfernungen gehen still verloren); Hinweise: Typauswahl nach `base`, Kollision Live-Neuladen, Text bei berechneten Properties, Escape-Test, Fehler auf gesperrten Feldern |
+| 2026-11-08 | Nacharbeit an implementer-opus (W1, H1–H5) |
+| 2026-11-08 | Nacharbeit: Optionen nach 409 einzeln per Wert und feldweise zusammengeführt (fremd neue bleiben, fremd entfernte bleiben entfernt außer bei eigener Bearbeitung – dann Hinweis an der Option), Typauswahl nach `base`, überholtes Neuladen ohne Fehlermeldung, Text bei berechneten Properties, Escape-Test, Fehler gesperrter Felder oben; 1129 Tests |
+| 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit geprüft) |

@@ -182,6 +182,20 @@ describe('CollectionPageComponent', () => {
     expect(text(q('table-empty'))).toBe('Noch keine Records.');
   });
 
+  it('render_SchemaScope_LinksToSchemaEditor', async () => {
+    await render({ scopes: ['read', 'write', 'schema'] });
+
+    const link = q('schema-edit-link')!;
+    expect(text(link)).toBe('Schema bearbeiten');
+    expect(link.getAttribute('href')).toBe(`/w/demo/settings/collections/${COLLECTION_ID}/schema`);
+  });
+
+  it('render_WithoutSchemaScope_HidesSchemaEditorLink', async () => {
+    await render({ scopes: ['read', 'write'] });
+
+    expect(q('schema-edit-link')).toBeNull();
+  });
+
   it('render_Viewer_HidesNewRecordButtonAndViewActions', async () => {
     await render({ scopes: ['read'] });
 
