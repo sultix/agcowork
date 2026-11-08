@@ -34,8 +34,9 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-028](AP-028-dispatcher-fehlerpfad-surrogate.md) | Backend-Kleinpaket: Dispatcher „lückenlos oder getrennt“, ungepaarte Surrogate → 400 | 2 | implementer-opus | AP-024, AP-025 | abgeschlossen | eefd290 |
 | [AP-029](AP-029-kommentare-backend.md) | Kommentare und Erwähnungen Backend: Domäne, Use-Cases, REST, MCP, Activity | 2 | implementer-opus | AP-028 | abgeschlossen | df7f195 |
 | [AP-030](AP-030-realtime-frontend-nachzug.md) | Frontend-Kleinpaket Realtime: Reconnect-Backoff, Record-Zähler, Live für Mitglieder/Views/Schema | 2 | implementer-opus | AP-025, AP-028 | abgeschlossen | ff77388 |
-| [AP-031](AP-031-kommentare-frontend.md) | Kommentare Frontend: Seitenleiste, Threads, `@`-Auswahl, live | 2 | implementer-opus | AP-029, AP-030 | abgeschlossen | |
+| [AP-031](AP-031-kommentare-frontend.md) | Kommentare Frontend: Seitenleiste, Threads, `@`-Auswahl, live | 2 | implementer-opus | AP-029, AP-030 | abgeschlossen | 821449e |
 | [AP-032](AP-032-erwaehnungen-posteingang.md) | Erwähnungen Frontend: Posteingang, Badge, gelesen markieren | 2 | implementer-sonnet | AP-029 | abgeschlossen | 6661e5e |
+| [AP-033](AP-033-null-felder-im-vertrag.md) | API-Vertrag: `null`-Felder mitsenden statt weglassen (Fund im Rauchtest) | 2 | implementer-opus | AP-029–AP-032 | in Arbeit | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -68,7 +69,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-024 Bericht | Dev-Proxy (`proxy.conf.js`) leitet `/w/{slug}/mcp` nicht weiter; `dotnet-ef` 10.0.11 vs. Runtime 10.0.14 | Kleinigkeit, beim nächsten Tooling-Paket |
 | AP-025 Bericht | Live nicht abgedeckt: `member.*` → MembersStore (Namen im Feed), `view.*`/`collection.schema_changed` → Views-Liste und Schema im CollectionStore, Space-Seite selbst | → AP-030 |
 | AP-025 Review | `ActivityDispatcher` (Z. ~144): wirft `PublishAsync` (DB-Fehler in Zugriffsprüfung/Titeln), ist der Batch verloren, Verbindungen bleiben offen; Client rückt mit nächstem Live-Ereignis vor und holt nie nach | → AP-028 |
-| AP-026 Bericht | OpenAPI führt nullable Felder als required, der Serializer lässt `null` weg (z. B. `nextCursor`); `float` erscheint im TS-Typ als `number \| string` (projektweit) | Kleinpaket API-Vertrag: Schema-Transformer oder `WhenWritingNull` abschalten, dann `schema.d.ts` neu |
+| AP-026 Bericht | OpenAPI führt nullable Felder als required, der Serializer lässt `null` weg (z. B. `nextCursor`); `float` erscheint im TS-Typ als `number \| string` (projektweit) | → AP-033 (Rauchtest: Posteingang und Kommentare brachen an fehlendem `null`) |
 | AP-026 Bericht | Suche: E-Mail/Host nur als ganzes Token, Bindestrich-Präfix (`foo-ba`) findet nichts, Positionen > 16383 bei Phrasen, Neuindexierung großer Collections in der UpdateSchema-Transaktion | Beobachten; bei Bedarf Tokenizer-Erweiterung bzw. Hintergrund-Reindex |
 | AP-026 Review | Neuindexierung nach Schemaänderung läuft synchron in der UpdateSchema-Transaktion (Timeout bei großen Collections) | Folgepaket: Reindex im Hintergrund (Batch, Fortschritt), wenn Collections > ~2.000 große Records realistisch werden |
 | AP-026 Nacharbeit | Body mit ungepaartem Surrogat → `DbUpdateException`/`EncoderFallbackException` bei `UpdateRecord` (vermutlich 500 statt 400); Body-Validierung prüft nicht wie `QueryText.IsStorable` | → AP-028 |
