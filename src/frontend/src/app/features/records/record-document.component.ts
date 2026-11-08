@@ -17,7 +17,12 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCircleAlert, lucideInfo, lucideTriangleAlert } from '@ng-icons/lucide';
+import {
+  lucideCircleAlert,
+  lucideInfo,
+  lucideMessageSquare,
+  lucideTriangleAlert,
+} from '@ng-icons/lucide';
 import type { BrnDialogState } from '@spartan-ng/brain/dialog';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -38,6 +43,8 @@ import { describeError } from '../../shared/ui/api-error-text';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { BreadcrumbsComponent, Crumb } from '../../shared/ui/breadcrumbs.component';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { CommentsPanelComponent } from '../comments/comments-panel.component';
+import { CommentsStore } from '../comments/comments.store';
 import { WorkspacesStore } from '../workspaces/workspaces.store';
 import { WorkspaceTreeStore } from '../spaces/workspace-tree.store';
 import { ConflictDialogComponent } from './conflict-dialog.component';
@@ -45,6 +52,9 @@ import { RecordTabsComponent } from './record-tabs.component';
 import { RecordDto, RecordSaveService } from './record-save.service';
 
 type Collection = components['schemas']['CollectionDto'];
+
+/** Leave question when comment drafts would be lost. */
+const UNSENT_COMMENTS = 'Nicht gesendete Kommentare gehen verloren.';
 
 /** How long "Aktualisiert von …" stays after a silent reload. */
 export const REMOTE_HINT_MS = 6000;
@@ -76,6 +86,7 @@ interface RemoteChange {
     HlmSkeleton,
     NgIcon,
     BreadcrumbsComponent,
+    CommentsPanelComponent,
     ConfirmDialogComponent,
     ConflictDialogComponent,
     MarkdownEditorComponent,
@@ -85,7 +96,8 @@ interface RemoteChange {
   ],
   providers: [
     RecordSaveService,
-    provideIcons({ lucideCircleAlert, lucideInfo, lucideTriangleAlert }),
+    CommentsStore,
+    provideIcons({ lucideCircleAlert, lucideInfo, lucideMessageSquare, lucideTriangleAlert }),
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -93,202 +105,236 @@ interface RemoteChange {
     '(window:beforeunload)': 'onBeforeUnload($event)',
   },
   template: `
-    <section class="mx-auto max-w-4xl p-6">
-      @if (saver.loadError(); as message) {
-        <div hlmAlert variant="destructive" data-testid="load-error">
-          <ng-icon name="lucideCircleAlert" />
-          <p hlmAlertDescription>{{ message }}</p>
-        </div>
-      } @else if (saver.record(); as record) {
-        <ag-breadcrumbs [crumbs]="crumbs()" />
-        <ag-record-tabs [recordId]="recordId()" />
+    <div class="flex min-w-0 flex-col lg:flex-row lg:items-start">
+      <section class="mx-auto w-full max-w-4xl min-w-0 flex-1 p-6">
+        @if (saver.loadError(); as message) {
+          <div hlmAlert variant="destructive" data-testid="load-error">
+            <ng-icon name="lucideCircleAlert" />
+            <p hlmAlertDescription>{{ message }}</p>
+          </div>
+        } @else if (saver.record(); as record) {
+          <ag-breadcrumbs [crumbs]="crumbs()" />
+          <ag-record-tabs [recordId]="recordId()" />
 
-        <input
-          type="text"
-          hlmInput
-          class="mt-2 h-auto border-transparent bg-transparent px-1 py-1 text-2xl font-semibold shadow-none md:text-2xl dark:bg-transparent"
-          aria-label="Titel"
-          data-testid="record-title"
-          [value]="saver.title()"
-          [readOnly]="readonly()"
-          (input)="saver.setTitle($any($event.target).value)"
-        />
-        @for (message of saver.fieldErrors()['title'] ?? []; track $index) {
-          <p class="mt-1 text-sm text-destructive" data-testid="title-error">{{ message }}</p>
-        }
-
-        <div
-          class="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground"
-          data-testid="record-meta"
-        >
-          <span data-testid="record-revision">Revision {{ record.revision }}</span>
-          <span>
-            aktualisiert {{ record.updatedAt | date: 'dd.MM.yyyy HH:mm' }} von
-            {{ members.nameOf(record.updatedBy) }}
-          </span>
-          @if (record.archivedAt) {
-            <ag-badge tone="danger"><span data-testid="archived-badge">archiviert</span></ag-badge>
+          <input
+            type="text"
+            hlmInput
+            class="mt-2 h-auto border-transparent bg-transparent px-1 py-1 text-2xl font-semibold shadow-none md:text-2xl dark:bg-transparent"
+            aria-label="Titel"
+            data-testid="record-title"
+            [value]="saver.title()"
+            [readOnly]="readonly()"
+            (input)="saver.setTitle($any($event.target).value)"
+          />
+          @for (message of saver.fieldErrors()['title'] ?? []; track $index) {
+            <p class="mt-1 text-sm text-destructive" data-testid="title-error">{{ message }}</p>
           }
-          <span data-testid="save-status" role="status">{{ saveStatus() }}</span>
-        </div>
 
-        <div class="mt-3 flex flex-wrap gap-2">
-          @if (!readonly()) {
-            <button
-              type="button"
-              hlmBtn
-              data-testid="save"
-              [disabled]="saver.saving() || !saver.isDirty()"
-              (click)="saveNow()"
-            >
-              Speichern
-            </button>
-          }
-          <button
-            type="button"
-            hlmBtn
-            variant="outline"
-            data-testid="show-markdown"
-            (click)="showMarkdown()"
+          <div
+            class="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground"
+            data-testid="record-meta"
           >
-            Als Markdown anzeigen
-          </button>
-          @if (canWrite()) {
+            <span data-testid="record-revision">Revision {{ record.revision }}</span>
+            <span>
+              aktualisiert {{ record.updatedAt | date: 'dd.MM.yyyy HH:mm' }} von
+              {{ members.nameOf(record.updatedBy) }}
+            </span>
+            @if (record.archivedAt) {
+              <ag-badge tone="danger"
+                ><span data-testid="archived-badge">archiviert</span></ag-badge
+              >
+            }
+            <span data-testid="save-status" role="status">{{ saveStatus() }}</span>
+          </div>
+
+          <div class="mt-3 flex flex-wrap gap-2">
+            @if (!readonly()) {
+              <button
+                type="button"
+                hlmBtn
+                data-testid="save"
+                [disabled]="saver.saving() || !saver.isDirty()"
+                (click)="saveNow()"
+              >
+                Speichern
+              </button>
+            }
             <button
               type="button"
               hlmBtn
               variant="outline"
-              data-testid="archive-toggle"
-              (click)="confirming.set(true)"
+              data-testid="show-markdown"
+              (click)="showMarkdown()"
             >
-              {{ record.archivedAt ? 'Wiederherstellen' : 'Archivieren' }}
+              Als Markdown anzeigen
             </button>
-          }
-        </div>
-
-        @if (saver.saveError() ?? actionError(); as message) {
-          <div hlmAlert variant="destructive" class="mt-3" data-testid="save-error">
-            <ng-icon name="lucideCircleAlert" />
-            <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
-            @if (saver.bodyStale() !== null) {
+            @if (canWrite()) {
               <button
                 type="button"
-                hlmAlertAction
                 hlmBtn
                 variant="outline"
-                size="xs"
-                data-testid="reload-stale"
-                (click)="saver.reload()"
+                data-testid="archive-toggle"
+                (click)="confirming.set(true)"
               >
-                Neu laden
+                {{ record.archivedAt ? 'Wiederherstellen' : 'Archivieren' }}
               </button>
             }
+            <button
+              type="button"
+              hlmBtn
+              variant="outline"
+              class="ml-auto"
+              data-testid="comments-toggle"
+              aria-controls="record-comments"
+              [attr.aria-expanded]="comments.open()"
+              (click)="comments.setOpen(!comments.open())"
+            >
+              <ng-icon name="lucideMessageSquare" />
+              Kommentare
+              @if (comments.openCount() > 0) {
+                <span
+                  class="rounded-full bg-primary px-1.5 text-xs leading-5 text-primary-foreground"
+                  data-testid="comments-count"
+                  >{{ comments.openCount() }}</span
+                >
+                <span class="sr-only">offene Threads</span>
+              }
+            </button>
           </div>
-        }
-        @if (remoteBanner(); as change) {
-          <div hlmAlert class="mt-3" role="status" data-testid="remote-change">
-            <ng-icon name="lucideTriangleAlert" />
-            <p hlmAlertTitle data-testid="remote-change-text">
-              {{ members.nameOf(change.actorId) }} hat diesen Eintrag
-              {{ change.kind === 'archived' ? 'archiviert' : 'geändert' }}.
-            </p>
-            <div hlmAlertDescription>
-              <p>
-                @if (change.kind === 'archived') {
-                  Du kannst weiter bearbeiten, gespeichert werden kann erst nach dem
-                  Wiederherstellen.
-                } @else if (localEdits()) {
-                  Deine ungespeicherten Änderungen sind noch da. Beim Speichern kannst du
-                  entscheiden, welche Fassung gilt.
-                } @else {
-                  Neu laden, um die aktuelle Fassung zu sehen.
-                }
-              </p>
-              <div class="mt-2 flex flex-wrap gap-2">
+
+          @if (saver.saveError() ?? actionError(); as message) {
+            <div hlmAlert variant="destructive" class="mt-3" data-testid="save-error">
+              <ng-icon name="lucideCircleAlert" />
+              <p hlmAlertDescription class="whitespace-pre-line">{{ message }}</p>
+              @if (saver.bodyStale() !== null) {
                 <button
                   type="button"
+                  hlmAlertAction
                   hlmBtn
                   variant="outline"
-                  size="sm"
-                  data-testid="remote-reload"
-                  (click)="reloadRemote()"
+                  size="xs"
+                  data-testid="reload-stale"
+                  (click)="saver.reload()"
                 >
-                  {{ localEdits() ? 'Neu laden (eigene Änderungen verwerfen)' : 'Neu laden' }}
+                  Neu laden
                 </button>
-                <button
-                  type="button"
-                  hlmBtn
-                  variant="ghost"
-                  size="sm"
-                  data-testid="remote-dismiss"
-                  (click)="dismissRemote()"
-                >
-                  Weiter bearbeiten
-                </button>
+              }
+            </div>
+          }
+          @if (remoteBanner(); as change) {
+            <div hlmAlert class="mt-3" role="status" data-testid="remote-change">
+              <ng-icon name="lucideTriangleAlert" />
+              <p hlmAlertTitle data-testid="remote-change-text">
+                {{ members.nameOf(change.actorId) }} hat diesen Eintrag
+                {{ change.kind === 'archived' ? 'archiviert' : 'geändert' }}.
+              </p>
+              <div hlmAlertDescription>
+                <p>
+                  @if (change.kind === 'archived') {
+                    Du kannst weiter bearbeiten, gespeichert werden kann erst nach dem
+                    Wiederherstellen.
+                  } @else if (localEdits()) {
+                    Deine ungespeicherten Änderungen sind noch da. Beim Speichern kannst du
+                    entscheiden, welche Fassung gilt.
+                  } @else {
+                    Neu laden, um die aktuelle Fassung zu sehen.
+                  }
+                </p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    hlmBtn
+                    variant="outline"
+                    size="sm"
+                    data-testid="remote-reload"
+                    (click)="reloadRemote()"
+                  >
+                    {{ localEdits() ? 'Neu laden (eigene Änderungen verwerfen)' : 'Neu laden' }}
+                  </button>
+                  <button
+                    type="button"
+                    hlmBtn
+                    variant="ghost"
+                    size="sm"
+                    data-testid="remote-dismiss"
+                    (click)="dismissRemote()"
+                  >
+                    Weiter bearbeiten
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        } @else if (remoteHint(); as actorId) {
-          <div hlmAlert class="mt-3" role="status" data-testid="remote-hint">
-            <ng-icon name="lucideInfo" />
-            <p hlmAlertDescription>Aktualisiert von {{ members.nameOf(actorId) }}</p>
-          </div>
-        }
-        @if (readonly() && record.archivedAt) {
-          <p class="mt-3 text-sm text-muted-foreground" data-testid="readonly-notice">
-            Archiviert und schreibgeschützt.
-          </p>
-        } @else if (readonly()) {
-          <p class="mt-3 text-sm text-muted-foreground" data-testid="readonly-notice">
-            Du hast hier nur Leserechte.
-          </p>
-        }
-
-        @for (version of [saver.loadCount()]; track version) {
-          @if (visibleDefinitions().length > 0) {
-            <dl
-              class="mt-6 grid grid-cols-[10rem_1fr] gap-x-4 gap-y-3"
-              data-testid="properties-panel"
-            >
-              @for (def of visibleDefinitions(); track def.key) {
-                <dt class="pt-1 text-sm text-muted-foreground" [attr.title]="def.description">
-                  {{ def.name }}
-                  @if (def.required) {
-                    <span aria-hidden="true"> *</span>
-                  }
-                </dt>
-                <dd class="min-w-0" data-testid="property-row" [attr.data-key]="def.key">
-                  <ag-property-editor
-                    [definition]="def"
-                    [value]="saver.properties()[def.key]"
-                    [readonly]="readonly()"
-                    [errors]="saver.fieldErrors()[def.key] ?? []"
-                    (valueChange)="saver.setProperty(def.key, $event)"
-                  />
-                </dd>
-              }
-            </dl>
+          } @else if (remoteHint(); as actorId) {
+            <div hlmAlert class="mt-3" role="status" data-testid="remote-hint">
+              <ng-icon name="lucideInfo" />
+              <p hlmAlertDescription>Aktualisiert von {{ members.nameOf(actorId) }}</p>
+            </div>
           }
-        }
+          @if (readonly() && record.archivedAt) {
+            <p class="mt-3 text-sm text-muted-foreground" data-testid="readonly-notice">
+              Archiviert und schreibgeschützt.
+            </p>
+          } @else if (readonly()) {
+            <p class="mt-3 text-sm text-muted-foreground" data-testid="readonly-notice">
+              Du hast hier nur Leserechte.
+            </p>
+          }
 
-        <div class="mt-6" data-testid="record-body" (focusin)="captureBaseline()">
           @for (version of [saver.loadCount()]; track version) {
-            <ag-markdown-editor
-              class="block min-h-64 rounded-md border border-border"
-              [value]="saver.editorValue()"
-              [readonly]="readonly()"
-              (valueChange)="onBody($event)"
-            />
+            @if (visibleDefinitions().length > 0) {
+              <dl
+                class="mt-6 grid grid-cols-[10rem_1fr] gap-x-4 gap-y-3"
+                data-testid="properties-panel"
+              >
+                @for (def of visibleDefinitions(); track def.key) {
+                  <dt class="pt-1 text-sm text-muted-foreground" [attr.title]="def.description">
+                    {{ def.name }}
+                    @if (def.required) {
+                      <span aria-hidden="true"> *</span>
+                    }
+                  </dt>
+                  <dd class="min-w-0" data-testid="property-row" [attr.data-key]="def.key">
+                    <ag-property-editor
+                      [definition]="def"
+                      [value]="saver.properties()[def.key]"
+                      [readonly]="readonly()"
+                      [errors]="saver.fieldErrors()[def.key] ?? []"
+                      (valueChange)="saver.setProperty(def.key, $event)"
+                    />
+                  </dd>
+                }
+              </dl>
+            }
           }
-        </div>
-      } @else {
-        <div class="flex flex-col gap-3" data-testid="record-loading">
-          <hlm-skeleton class="h-6 w-48" />
-          <hlm-skeleton class="h-10 w-full" />
-          <hlm-skeleton class="h-64 w-full" />
-        </div>
+
+          <div class="mt-6" data-testid="record-body" (focusin)="captureBaseline()">
+            @for (version of [saver.loadCount()]; track version) {
+              <ag-markdown-editor
+                class="block min-h-64 rounded-md border border-border"
+                [value]="saver.editorValue()"
+                [readonly]="readonly()"
+                (valueChange)="onBody($event)"
+              />
+            }
+          </div>
+        } @else {
+          <div class="flex flex-col gap-3" data-testid="record-loading">
+            <hlm-skeleton class="h-6 w-48" />
+            <hlm-skeleton class="h-10 w-full" />
+            <hlm-skeleton class="h-64 w-full" />
+          </div>
+        }
+      </section>
+      @if (saver.record()) {
+        <ag-comments-panel
+          id="record-comments"
+          class="border-t lg:sticky lg:top-14 lg:h-[calc(100svh-3.5rem)] lg:w-96 lg:shrink-0 lg:border-t-0 lg:border-l"
+          [hidden]="!comments.open()"
+          [focusCommentId]="comment()"
+          (closed)="closeComments()"
+        />
       }
-    </section>
+    </div>
 
     @if (saver.conflict(); as conflict) {
       <ag-conflict-dialog
@@ -366,6 +412,10 @@ export class RecordDocumentComponent {
 
   /** Route parameter `:recordId`. */
   readonly recordId = input.required<string>();
+  /** Query parameter `comment`: a comment to show in the sidebar (link from the inbox). */
+  readonly comment = input<string | undefined>();
+
+  protected readonly comments = inject(CommentsStore);
 
   private readonly editor = viewChild(MarkdownEditorComponent);
   private readonly propertyEditors = viewChildren(PropertyEditorComponent);
@@ -479,6 +529,12 @@ export class RecordDocumentComponent {
   });
 
   constructor() {
+    this.comments.bind({ recordId: () => this.recordId(), writable: () => !this.readonly() });
+    effect(() => {
+      if (this.comment()) {
+        untracked(() => this.comments.setOpen(true));
+      }
+    });
     this.saver.beforeSave = () => this.pullPending();
     this.saver.hasLocalInput = () => this.hasLocalInput();
 
@@ -618,7 +674,7 @@ export class RecordDocumentComponent {
    */
   async canLeave(): Promise<boolean> {
     if (this.readonly()) {
-      return true;
+      return this.askAboutCommentDrafts();
     }
     let saved = await this.saver.save();
     // Text typed while saving (or still debounced) needs its own save; bounded, then ask.
@@ -633,7 +689,7 @@ export class RecordDocumentComponent {
     saved = saved && !this.saver.isDirty();
     const invalid = this.propertyEditors().some((e) => e.invalid());
     if (saved && !invalid) {
-      return true;
+      return this.askAboutCommentDrafts();
     }
     if (this.saver.conflict()) {
       return false;
@@ -641,6 +697,19 @@ export class RecordDocumentComponent {
     const message = saved
       ? 'Ungültige Eingaben (z. B. ungültiges JSON) werden nicht gespeichert.'
       : 'Die Änderungen konnten nicht gespeichert werden.';
+    return this.askToLeave(
+      this.comments.hasUnsentDrafts() ? `${message} ${UNSENT_COMMENTS}` : message,
+    );
+  }
+
+  /** Comment drafts are never sent on leaving; the user decides whether to drop them. */
+  private askAboutCommentDrafts(): Promise<boolean> {
+    return this.comments.hasUnsentDrafts()
+      ? this.askToLeave(UNSENT_COMMENTS)
+      : Promise.resolve(true);
+  }
+
+  private askToLeave(message: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => this.leaveRequest.set({ message, resolve }));
   }
 
@@ -649,12 +718,13 @@ export class RecordDocumentComponent {
     this.leaveRequest.set(null);
   }
 
-  /** Warns before closing or reloading the tab while there are unsaved edits. */
+  /** Warns before closing or reloading the tab while there are unsaved edits or comment drafts. */
   protected onBeforeUnload(event: BeforeUnloadEvent): void {
     this.pullPending();
     if (
-      !this.readonly() &&
-      (this.saver.isDirty() || this.propertyEditors().some((e) => e.invalid()))
+      (!this.readonly() &&
+        (this.saver.isDirty() || this.propertyEditors().some((e) => e.invalid()))) ||
+      this.comments.hasUnsentDrafts()
     ) {
       event.preventDefault();
     }
@@ -679,6 +749,12 @@ export class RecordDocumentComponent {
       event.preventDefault();
       void this.saveNow();
     }
+  }
+
+  /** Hides the sidebar and gives the focus back to its toggle. */
+  protected closeComments(): void {
+    this.comments.setOpen(false);
+    this.host.querySelector<HTMLElement>('[data-testid="comments-toggle"]')?.focus();
   }
 
   /** Brain closed the Markdown dialog itself (Escape). */

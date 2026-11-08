@@ -557,6 +557,7 @@ SignalR-Gruppe gewechselt.
 - **Document**: Markdown-WYSIWYG (Milkdown bevorzugt: ProseMirror-basiert, Markdown-nativ), Properties-Panel oben, Kommentar-Seitenleiste.
 - **Raw**: Monaco, umschaltbar JSON ↔ Markdown+Frontmatter, optional editierbar mit Validierung.
 - **Property-Editoren**: eine Komponente pro Typ, von Table, Document und Filter-Builder gemeinsam genutzt.
+- **Kommentare** (AP-031): Seitenleiste im Dokument; Kommentar-Markdown über micromark/mdast in einen geschlossenen Knotenbaum und per `createElement`/`textContent` ins DOM (kein `innerHTML`, Links nur http/https/mailto/relativ, Bilder als Platzhalter). Erwähnungs-Chips nur, wenn mdast-Link und der portierte Server-Scanner (`comment-mentions.ts` ↔ `CommentMarkdown.cs`) übereinstimmen. Schutz gegen präparierten Markdown: über 4 000 Zeichen, 300 Zeilen oder pathologische Muster → Klartext; je Seite 150 ms Render-Budget (`CommentRenderer`, Cache nach Text). Entwürfe je Ziel im Store, Guard und `beforeunload` kennen sie.
 - **Live**: SignalR-Client aktualisiert Signals; Konflikte (fremde Revision) werden angezeigt statt überschrieben.
 - **Theming**: siehe „Theming“ unten.
 

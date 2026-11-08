@@ -34,8 +34,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-028](AP-028-dispatcher-fehlerpfad-surrogate.md) | Backend-Kleinpaket: Dispatcher „lückenlos oder getrennt“, ungepaarte Surrogate → 400 | 2 | implementer-opus | AP-024, AP-025 | abgeschlossen | eefd290 |
 | [AP-029](AP-029-kommentare-backend.md) | Kommentare und Erwähnungen Backend: Domäne, Use-Cases, REST, MCP, Activity | 2 | implementer-opus | AP-028 | abgeschlossen | df7f195 |
 | [AP-030](AP-030-realtime-frontend-nachzug.md) | Frontend-Kleinpaket Realtime: Reconnect-Backoff, Record-Zähler, Live für Mitglieder/Views/Schema | 2 | implementer-opus | AP-025, AP-028 | abgeschlossen | ff77388 |
-| [AP-031](AP-031-kommentare-frontend.md) | Kommentare Frontend: Seitenleiste, Threads, `@`-Auswahl, live | 2 | implementer-opus | AP-029, AP-030 | in Arbeit | |
-| [AP-032](AP-032-erwaehnungen-posteingang.md) | Erwähnungen Frontend: Posteingang, Badge, gelesen markieren | 2 | implementer-sonnet | AP-029 | abgeschlossen | |
+| [AP-031](AP-031-kommentare-frontend.md) | Kommentare Frontend: Seitenleiste, Threads, `@`-Auswahl, live | 2 | implementer-opus | AP-029, AP-030 | abgeschlossen | |
+| [AP-032](AP-032-erwaehnungen-posteingang.md) | Erwähnungen Frontend: Posteingang, Badge, gelesen markieren | 2 | implementer-sonnet | AP-029 | abgeschlossen | 6661e5e |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -79,6 +79,10 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | Rauchtest 2026-11-08 | Zähler „N Records“ im View-Kopf kommt aus `collection describe` (`statistics.recordCount`) und lädt bei Live-Ereignissen nicht neu (bleibt „0 Records“, Zeile erscheint) | → AP-030 |
 | AP-029 Bericht | `GET /activity?targetId=<recordId>` und `activity_recent` finden Kommentar-Ereignisse eines Records nicht (`targetId` = Kommentar-ID, Record nur im Diff) | Backend-Kleinpaket, wenn eine Record-Timeline gebraucht wird: Spalte `related_record_id` oder Filter über Diff |
 | AP-029 Review | Erwähnungs-Spam über Edits (Entfernen und Wiedereinfügen erzeugt neue ungelesene Mention); `workspace_overview` liefert Member-IDs nur im Text, nicht im Structured Content | beobachten; bei Bedarf Mention-Dedupe je (Kommentar, Actor) über Löschungen hinweg, Members in Structured Content |
+| AP-031 Bericht | Aktivitätsfeed (`activity-entry.component.ts`, `EVENTS`) kennt `comment.*` nicht; `shared/ui/api-error-text.ts` kennt `collection_archived`/`space_archived` nicht | Frontend-Kleinpaket |
+| AP-031 Review | Server-Parser `CommentMarkdown` kennt keine Blockquotes: Erwähnung in `> ``` …` oder `>     …` erzeugt Posteingang-Eintrag, UI zeigt Code | Backend-Kleinpaket Erwähnungen |
+| AP-031 Review | Idempotency-Replay für `comment_add` (und `record_create`) vergleicht nur Key und Ziel, nicht den Inhalt; Frontend bindet Key an Text, Agenten könnten Key mit anderem Text wiederverwenden | Backend: bei abweichendem Inhalt 409 `idempotency_key_reused` (Hash des Requests speichern) |
+| AP-031 Review | Präparierter Markdown (lange `*`/`>`-Läufe) blockiert remark/micromark rekursiv; Kommentar-Renderer abgesichert, **Record-Body über Milkdown vermutlich gleich betroffen** | Prüfen und absichern (Editor-Paket): Body-Vorprüfung vor dem Rendern, Klartext-Fallback |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |

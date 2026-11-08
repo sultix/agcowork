@@ -81,6 +81,8 @@ class FakeMarkdownEngine implements MarkdownEditorHandle {
 
 const RECORD_URL = `${API}/records/${RECORD_ID}`;
 const LOAD_URL = `${RECORD_URL}?includeBody=true`;
+const COMMENTS_URL = `${RECORD_URL}/comments`;
+const NO_COMMENTS = { threads: [], omittedThreads: 0 };
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('RecordDocumentComponent', () => {
@@ -96,6 +98,8 @@ describe('RecordDocumentComponent', () => {
       scopes?: string[];
       record?: Partial<ReturnType<typeof recordDto>>;
       schema?: ReturnType<typeof propertyDefinition>[];
+      comments?: unknown;
+      query?: string;
     } = {},
   ): Promise<void> {
     engines = [];
@@ -135,7 +139,7 @@ describe('RecordDocumentComponent', () => {
     });
     http = TestBed.inject(HttpTestingController);
     harness = await RouterTestingHarness.create();
-    const navigation = harness.navigateByUrl(`/w/demo/records/${RECORD_ID}`);
+    const navigation = harness.navigateByUrl(`/w/demo/records/${RECORD_ID}${options.query ?? ''}`);
     await serve(http, [
       [LOAD_URL, recordDto({ body: 'Hallo', ...options.record })],
       ...(options.record?.collectionId === null
@@ -149,6 +153,7 @@ describe('RecordDocumentComponent', () => {
       [`${API}/spaces`, [space()]],
       [`${API}/collections`, [collection()]],
       [`${API}/members`, [member(), member({ actorId: 'agent-1', name: 'Coder', kind: 'agent' })]],
+      [COMMENTS_URL, options.comments ?? NO_COMMENTS],
     ]);
     await navigation;
     await settle(harness.fixture);
@@ -157,6 +162,7 @@ describe('RecordDocumentComponent', () => {
   afterEach(() => {
     vi.useRealTimers();
     http.verify();
+    sessionStorage.clear();
   });
 
   const root = () => harness.routeNativeElement as HTMLElement;
@@ -248,6 +254,10 @@ describe('RecordDocumentComponent', () => {
         [`${API}/collections`, []],
         [`${API}/members`, []],
       ]);
+      (await expectRequest(http, 'GET', COMMENTS_URL)).flush(
+        { code: 'not_found', status: 404 },
+        { status: 404, statusText: 'Not Found' },
+      );
       await navigation;
       await settle(harness.fixture);
 
@@ -632,6 +642,7 @@ describe('RecordDocumentComponent', () => {
         `${API}/records/other-id?includeBody=true`,
         recordDto({ id: 'other-id', title: 'Anderer', body: 'Anderer Text' }),
       );
+      await respond(http, 'GET', `${API}/records/other-id/comments`, NO_COMMENTS);
       await navigation;
       await settle(harness.fixture);
 
@@ -1036,6 +1047,140 @@ describe('RecordDocumentComponent', () => {
       await settle(harness.fixture);
 
       expect(text(q('remote-hint'))).toBe('Aktualisiert von Coder');
+    });
+  });
+  describe('comments', () => {
+    const thread = (id: string, resolvedAt: string | null = null) => ({
+      id,
+      recordId: RECORD_ID,
+      parentCommentId: null,
+      authorId: 'agent-1',
+      authorName: 'Coder',
+      authorKind: 'agent',
+      markdown: 'Frage',
+      createdAt: '2026-11-07T11:00:00Z',
+      editedAt: null,
+      resolvedAt,
+      resolvedBy: resolvedAt ? ADMIN_ME.id : null,
+      deletedAt: null,
+      replies: [],
+      omittedReplies: 0,
+    });
+    const panel = () => root().querySelector<HTMLElement>('ag-comments-panel')!;
+
+    it('toggle_ShowsOpenThreadCount_OpensAndRemembersPerTab', async () => {
+      await render({
+        comments: {
+          threads: [thread('t1'), thread('t2'), thread('t3', '2026-11-07T12:00:00Z')],
+          omittedThreads: 0,
+        },
+      });
+      const toggle = q('comments-toggle')!;
+
+      expect(text(q('comments-count'))).toBe('2');
+      expect(text(toggle)).toContain('offene Threads');
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      expect(toggle.getAttribute('aria-controls')).toBe(panel().id);
+      expect(panel().hidden).toBe(true);
+
+      toggle.click();
+      await change();
+
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(panel().hidden).toBe(false);
+      expect(sessionStorage.getItem('ag-comments-open')).toBe('1');
+
+      q('comments-close')!.click();
+      await change();
+
+      expect(panel().hidden).toBe(true);
+      expect(document.activeElement).toBe(toggle);
+      expect(sessionStorage.getItem('ag-comments-open')).toBeNull();
+    });
+
+    it('toggle_OpenedInThisTabBefore_StartsOpen', async () => {
+      sessionStorage.setItem('ag-comments-open', '1');
+      await render();
+
+      expect(q('comments-toggle')!.getAttribute('aria-expanded')).toBe('true');
+      expect(panel().hidden).toBe(false);
+    });
+
+    it('link_CommentQueryParameter_OpensSidebarAndHighlightsTheComment', async () => {
+      await render({
+        query: '?comment=t2',
+        comments: { threads: [thread('t1'), thread('t2')], omittedThreads: 0 },
+      });
+
+      expect(panel().hidden).toBe(false);
+      const target = panel().querySelector<HTMLElement>('[data-comment-id="t2"]')!;
+      expect(target.getAttribute('aria-current')).toBe('true');
+      await vi.waitFor(() => expect(document.activeElement).toBe(target));
+    });
+
+    /** Types into the new-thread field of the sidebar (open or not). */
+    async function typeComment(value: string): Promise<void> {
+      const field = panel().querySelector<HTMLTextAreaElement>('[data-testid="composer-input"]')!;
+      field.value = value;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      await change();
+    }
+
+    it('canDeactivate_UnsentCommentDraft_AsksAndStaysWhenCancelled', async () => {
+      await render();
+      await typeComment('Noch nicht gesendet');
+      const away = `/w/demo/spaces/${SPACE_ID}`;
+
+      let navigation = harness.navigateByUrl(away);
+      await vi.waitFor(() => expect(q('confirm-dialog')).not.toBeNull());
+      expect(text(q('confirm-dialog'))).toContain('Nicht gesendete Kommentare gehen verloren.');
+      q('confirm-cancel')!.click();
+      await navigation;
+      expect(TestBed.inject(Router).url).toBe(`/w/demo/records/${RECORD_ID}`);
+      http.expectNone({ method: 'POST' });
+      await vi.waitFor(() =>
+        expect(document.body.querySelector('[data-testid="confirm-dialog"]')).toBeNull(),
+      );
+
+      navigation = harness.navigateByUrl(away);
+      await vi.waitFor(() => expect(q('confirm-ok')).not.toBeNull());
+      q('confirm-ok')!.click();
+      await navigation;
+      expect(TestBed.inject(Router).url).toBe(away);
+    });
+
+    it('canDeactivate_ViewerWithoutDrafts_LeavesWithoutQuestion', async () => {
+      await render({ scopes: ['read'] });
+      const away = `/w/demo/spaces/${SPACE_ID}`;
+
+      await harness.navigateByUrl(away);
+
+      expect(TestBed.inject(Router).url).toBe(away);
+    });
+
+    it('beforeunload_UnsentCommentDraft_AsksBrowserToConfirm', async () => {
+      await render();
+      await typeComment('Entwurf');
+
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+
+      await typeComment('   ');
+      const again = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(again);
+      expect(again.defaultPrevented).toBe(false);
+    });
+
+    it('render_ArchivedRecord_CommentsAreReadOnly', async () => {
+      await render({
+        record: { archivedAt: '2026-11-07T12:00:00Z' },
+        comments: { threads: [thread('t1')], omittedThreads: 0 },
+      });
+
+      expect(panel().querySelector('[data-testid="comment-composer"]')).toBeNull();
+      expect(panel().querySelector('[data-testid="comments-readonly"]')).not.toBeNull();
+      expect(panel().querySelector('[data-testid="thread-reply"]')).toBeNull();
     });
   });
 });

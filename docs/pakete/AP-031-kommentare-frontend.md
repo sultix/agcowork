@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Dokument und Speichern `features/records/record-document.component.ts`, `record-save.service.ts`; Live `core/realtime/realtime.service.ts` und `features/views/live-refresh.ts`; Markdown-Anzeige `shared/editor/` (Raw/Preview), Members `core/workspace/members.store.ts`; UI-Bausteine `02-ARCHITEKTUR.md` §6 |
@@ -57,3 +57,13 @@ Menschen lesen und führen Diskussionen direkt am Record, sehen Kommentare von A
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | AP-029-Vertrag ergänzt, an implementer-opus übergeben (parallel zu AP-032) |
+| 2026-11-08 | Bericht: 968 Tests grün; eigener Renderer micromark/mdast → DOM ohne `innerHTML` (Links nur http/https/mailto/relativ, Bilder als Platzhalter), `comment-mentions.ts` als Portierung des Server-Parsers, Entwürfe je Ziel im Store statt globaler Sperre (Agenten-Kommentare erscheinen auch beim Schreiben), Zurückhalten bei gelöschtem Ziel, `?comment=` öffnet und hebt hervor; offen: Record-Wechsel verwirft Kommentar-Entwürfe |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: **Blockiert** – B1 eigene Wurzel löschen bei offenem Antwortfeld friert Live dauerhaft ein; wichtig: Entwürfe ohne Navigations-Schutz, Thread verschwindet beim Erledigen durch andere, DoS durch präparierten Markdown (Stack Overflow, Sekunden Blockade), Retry mit geändertem Text sendet alten Kommentar; XSS sauber, Milkdown sanitisiert `javascript:` im Body bereits (7.23) |
+| 2026-11-08 | Nacharbeit an implementer-opus (B1, W1–W4, Hinweise 1, 2, 4–7, 9) |
+| 2026-11-08 | Nacharbeit: B1 behoben, `hasUnsentDrafts` in Guard und beforeunload, Threads mit Entwurf bleiben sichtbar, readonly-Composer, `isPathological` mit Klartext-Fallback, Key an Text gebunden, Milkdown-Regressionstest; 987 Tests |
+| 2026-11-08 | Nachprüfung: Freigabe mit Hinweisen für B1, W1, W2, W4; W3 unter den Schwellen umgehbar (Lazy Continuation ~410 ms/Kommentar, summiert über Threads) |
+| 2026-11-08 | zweite Nacharbeit an implementer-opus (Zeilengrenze, Längengrenze ~4000, Seitenbudget, Tests) |
+| 2026-11-08 | Nacharbeit: 4 000 Zeichen, 300 Zeilen, 1 000 Formatzeichen; Worst Case unter allen Schwellen ≤ 36 ms; `CommentRenderer` mit 150-ms-Budget je Seite und Cache (200 grenzwertige Kommentare < 400 ms statt 2,9 s); 993 Tests |
+| 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit geprüft) |

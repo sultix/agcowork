@@ -136,6 +136,20 @@ describe('createMilkdownEditor', () => {
     ).toBe(markdown);
   });
 
+  it.each([
+    ['javascript', '[x](javascript:alert(1))'],
+    ['entity-encoded javascript', '[x](&#106;avascript:alert(1))'],
+    ['vbscript', '[x](vbscript:msgbox(1))'],
+  ])('render_ReadonlyBodyWith%sLink_HasNoUsableHref', async (_name, markdown) => {
+    // The document view of a read-only record (viewer, archived) shows agent content as is; the
+    // engine must defuse script links there too (Milkdown 7.23 does; this guards a downgrade).
+    const { root } = await mount(markdown, true);
+
+    const anchor = root.querySelector('.ProseMirror a');
+    expect(anchor).not.toBeNull();
+    expect(anchor?.getAttribute('href') ?? '').toBe('');
+  });
+
   it('render_HttpsLink_KeepsHref', async () => {
     const { root } = await mount('[x](https://example.com/a?b=1)');
 
