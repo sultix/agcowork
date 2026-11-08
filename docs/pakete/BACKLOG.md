@@ -37,6 +37,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-031](AP-031-kommentare-frontend.md) | Kommentare Frontend: Seitenleiste, Threads, `@`-Auswahl, live | 2 | implementer-opus | AP-029, AP-030 | abgeschlossen | 821449e |
 | [AP-032](AP-032-erwaehnungen-posteingang.md) | Erwähnungen Frontend: Posteingang, Badge, gelesen markieren | 2 | implementer-sonnet | AP-029 | abgeschlossen | 6661e5e |
 | [AP-033](AP-033-null-felder-im-vertrag.md) | API-Vertrag: `null`-Felder mitsenden statt weglassen (Fund im Rauchtest) | 2 | implementer-opus | AP-029–AP-032 | abgeschlossen | 321151d |
+| [AP-034](AP-034-haertung-frontend-body.md) | Härtung Frontend: Record-Body gegen präparierten Markdown, Kommentare im Feed, Fehlertexte | 2 | implementer-opus | AP-031, AP-033 | in Arbeit | |
+| [AP-035](AP-035-haertung-backend-idempotenz-erwaehnungen.md) | Härtung Backend: Idempotenz mit Inhaltsprüfung, Erwähnungen in Zitaten, Activity je Record, Schema-Hooks | 2 | implementer-opus | AP-033 | in Arbeit | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -62,7 +64,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-006 Bericht | Architektur §2 nennt `DefaultTemplateId`, umgesetzt ist `Template.IsDefault`; §4.3 ohne `describe`-Route | Orchestrator zieht Doku nach dem Review nach |
 | AP-011 Review | `collection_describe` ruft zwei Use-Cases ohne gemeinsamen Snapshot; `ListActivity` nicht nach Record filterbar | Activity-Filter `targetId` → AP-024; Use-Case zusammenführen offen |
 | AP-009 Bericht | Nach `relation.multiple` false→true bleiben Skalar-Altwerte stehen; `RecordValuesSchemaHook` greift nicht; nächster PATCH scheitert am Validator | → AP-022 |
-| AP-022 Bericht | `ViewSchemaHook` und `TemplatePresetSchemaHook` behandeln select→multi_select, aber nicht `relation.multiple` false→true (skalare Presets, `eq`-Filter auf Relation) | Kleinpaket Backend, mit der nächsten Schema-Arbeit |
+| AP-022 Bericht | `ViewSchemaHook` und `TemplatePresetSchemaHook` behandeln select→multi_select, aber nicht `relation.multiple` false→true (skalare Presets, `eq`-Filter auf Relation) | → AP-035 |
 | AP-022 Review | `PATCH /me/password` und `POST /auth/login` ohne Sperre/Rate-Limit (Brute-Force auf `currentPassword` mit gestohlenem Cookie, Dauer-Logins) | Rate-Limiting-Paket: beide Endpunkte ausdrücklich nennen |
 | AP-022 Nacharbeit | In `McpText` werden Titel außer in `Activity` nicht escaped (`RecordLine` `**{Title}**`) | Kleinpaket MCP-Text, mit dem nächsten MCP-Paket |
 | AP-024 Bericht | Hängende/„idle in transaction“-Transaktion im Cluster hält Vorwärtslesen und Realtime instanzweit an | Betrieb: `idle_in_transaction_session_timeout` in Compose/Hosting setzen |
@@ -73,17 +75,17 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-026 Bericht | Suche: E-Mail/Host nur als ganzes Token, Bindestrich-Präfix (`foo-ba`) findet nichts, Positionen > 16383 bei Phrasen, Neuindexierung großer Collections in der UpdateSchema-Transaktion | Beobachten; bei Bedarf Tokenizer-Erweiterung bzw. Hintergrund-Reindex |
 | AP-026 Review | Neuindexierung nach Schemaänderung läuft synchron in der UpdateSchema-Transaktion (Timeout bei großen Collections) | Folgepaket: Reindex im Hintergrund (Batch, Fortschritt), wenn Collections > ~2.000 große Records realistisch werden |
 | AP-026 Nacharbeit | Body mit ungepaartem Surrogat → `DbUpdateException`/`EncoderFallbackException` bei `UpdateRecord` (vermutlich 500 statt 400); Body-Validierung prüft nicht wie `QueryText.IsStorable` | → AP-028 |
-| AP-026 Review | Präfix-Defaults im Migrations-SQL (25.000 Properties) nicht per Test gegen `RecordSearch.PropertiesPrefixLength` geprüft | Konsistenztest beim nächsten Such-Paket |
+| AP-026 Review | Präfix-Defaults im Migrations-SQL (25.000 Properties) nicht per Test gegen `RecordSearch.PropertiesPrefixLength` geprüft | → AP-035 |
 | AP-028 Bericht | NUL/Surrogate noch ungeprüft (vermutlich 500): Templates (Name, Body), Workspaces (Name), Actors, Member-Namen, API-Key-Namen, Login | → AP-028-Nacharbeit |
 | AP-028 Review | Reconnect-Sturm bei dauerhaftem Zustellfehler: Frontend setzt `attempt = 0` direkt nach `start()` (`realtime.service.ts`), nächster Retry 0 ms plus Resync-Reloads | → AP-030 |
 | AP-028 Review | MCP `resources/read`/`prompts/*` und Nicht-Objekt-`arguments` mit Surrogaten → nacktes JSON-RPC -32603; stdio-Proxy ohne Filter | beobachten, mit nächstem MCP-Paket |
 | Rauchtest 2026-11-08 | Zähler „N Records“ im View-Kopf kommt aus `collection describe` (`statistics.recordCount`) und lädt bei Live-Ereignissen nicht neu (bleibt „0 Records“, Zeile erscheint) | → AP-030 |
-| AP-029 Bericht | `GET /activity?targetId=<recordId>` und `activity_recent` finden Kommentar-Ereignisse eines Records nicht (`targetId` = Kommentar-ID, Record nur im Diff) | Backend-Kleinpaket, wenn eine Record-Timeline gebraucht wird: Spalte `related_record_id` oder Filter über Diff |
+| AP-029 Bericht | `GET /activity?targetId=<recordId>` und `activity_recent` finden Kommentar-Ereignisse eines Records nicht (`targetId` = Kommentar-ID, Record nur im Diff) | → AP-035 |
 | AP-029 Review | Erwähnungs-Spam über Edits (Entfernen und Wiedereinfügen erzeugt neue ungelesene Mention); `workspace_overview` liefert Member-IDs nur im Text, nicht im Structured Content | beobachten; bei Bedarf Mention-Dedupe je (Kommentar, Actor) über Löschungen hinweg, Members in Structured Content |
-| AP-031 Bericht | Aktivitätsfeed (`activity-entry.component.ts`, `EVENTS`) kennt `comment.*` nicht; `shared/ui/api-error-text.ts` kennt `collection_archived`/`space_archived` nicht | Frontend-Kleinpaket |
-| AP-031 Review | Server-Parser `CommentMarkdown` kennt keine Blockquotes: Erwähnung in `> ``` …` oder `>     …` erzeugt Posteingang-Eintrag, UI zeigt Code | Backend-Kleinpaket Erwähnungen |
-| AP-031 Review | Idempotency-Replay für `comment_add` (und `record_create`) vergleicht nur Key und Ziel, nicht den Inhalt; Frontend bindet Key an Text, Agenten könnten Key mit anderem Text wiederverwenden | Backend: bei abweichendem Inhalt 409 `idempotency_key_reused` (Hash des Requests speichern) |
-| AP-031 Review | Präparierter Markdown (lange `*`/`>`-Läufe) blockiert remark/micromark rekursiv; Kommentar-Renderer abgesichert, **Record-Body über Milkdown vermutlich gleich betroffen** | Prüfen und absichern (Editor-Paket): Body-Vorprüfung vor dem Rendern, Klartext-Fallback |
+| AP-031 Bericht | Aktivitätsfeed (`activity-entry.component.ts`, `EVENTS`) kennt `comment.*` nicht; `shared/ui/api-error-text.ts` kennt `collection_archived`/`space_archived` nicht | → AP-034 |
+| AP-031 Review | Server-Parser `CommentMarkdown` kennt keine Blockquotes: Erwähnung in `> ``` …` oder `>     …` erzeugt Posteingang-Eintrag, UI zeigt Code | → AP-035 (Frontend-Port folgt) |
+| AP-031 Review | Idempotency-Replay für `comment_add` (und `record_create`) vergleicht nur Key und Ziel, nicht den Inhalt; Frontend bindet Key an Text, Agenten könnten Key mit anderem Text wiederverwenden | → AP-035 |
+| AP-031 Review | Präparierter Markdown (lange `*`/`>`-Läufe) blockiert remark/micromark rekursiv; Kommentar-Renderer abgesichert, **Record-Body über Milkdown vermutlich gleich betroffen** | → AP-034 |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |
