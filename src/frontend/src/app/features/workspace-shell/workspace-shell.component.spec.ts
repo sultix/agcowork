@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { HlmSidebarService } from '@spartan-ng/helm/sidebar';
@@ -7,8 +7,11 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
+  ADMIN_ME,
+  AGENT_ID,
   API,
   COLLECTION_ID,
+  activityEvent,
   SPACE_ID,
   collection,
   expectRequest,
@@ -19,9 +22,14 @@ import {
   space,
   workspace,
 } from '../../core/testing/test-utils';
+import { LIVE_RELOAD_DELAY_MS, LIVE_RELOAD_MAX_WAIT_MS } from '../../core/realtime/live-reload';
 import { FakeRealtime, provideFakeRealtime } from '../../core/testing/fake-hub';
 import { WorkspacesStore } from '../workspaces/workspaces.store';
+import { WorkspaceShellComponent } from './workspace-shell.component';
 import { workspaceShellRoutes } from './workspace-shell.routes';
+
+@Component({ template: '' })
+class BlankComponent {}
 
 describe('WorkspaceShellComponent', () => {
   let harness: RouterTestingHarness;
@@ -73,6 +81,7 @@ describe('WorkspaceShellComponent', () => {
       '/w/demo',
       '/w/demo/search',
       '/w/demo/activity',
+      '/w/demo/mentions',
       '/w/demo/settings/members',
     ]);
   });
@@ -395,6 +404,7 @@ describe('WorkspaceShellComponent sidebar tree', () => {
         },
       ],
       [`${API}/collections/${COLLECTION_ID}/views`, []],
+      [`${API}/mentions?unreadOnly=true&limit=1`, { items: [], nextCursor: null, unreadCount: 0 }],
     ]);
     await navigation;
     await settle(harness.fixture);
@@ -492,5 +502,107 @@ describe('WorkspaceShellComponent realtime status', () => {
     indicator()!.click();
 
     expect(realtime.retries).toBe(1);
+  });
+});
+
+describe('WorkspaceShellComponent mentions badge', () => {
+  let harness: RouterTestingHarness;
+  let http: HttpTestingController;
+  let realtime: FakeRealtime;
+  const COUNT_URL = `${API}/mentions?unreadOnly=true&limit=1`;
+
+  async function open(unreadCount: number): Promise<void> {
+    realtime = new FakeRealtime();
+    TestBed.configureTestingModule({
+      providers: [
+        ...pageProviders({
+          routes: [
+            {
+              path: 'w/:workspaceSlug',
+              component: WorkspaceShellComponent,
+              children: [{ path: 'mentions', component: BlankComponent }],
+            },
+          ],
+        }),
+        provideFakeRealtime(realtime),
+        { provide: LIVE_RELOAD_DELAY_MS, useValue: 0 },
+        { provide: LIVE_RELOAD_MAX_WAIT_MS, useValue: 0 },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    harness = await RouterTestingHarness.create();
+    const navigation = harness.navigateByUrl('/w/demo/mentions');
+    await serve(http, [
+      ['/health', 'Healthy'],
+      [`${API}/spaces`, []],
+      [`${API}/collections`, []],
+      [COUNT_URL, { items: [], nextCursor: null, unreadCount }],
+    ]);
+    await navigation;
+    await settle(harness.fixture);
+  }
+
+  afterEach(() => http.verify());
+
+  const badge = () =>
+    (harness.routeNativeElement as HTMLElement).querySelector('[data-testid="mentions-badge"]');
+  const srText = () =>
+    (harness.routeNativeElement as HTMLElement)
+      .querySelector('[data-testid="mentions-unread-text"]')
+      ?.textContent?.trim();
+  const mentionEvent = (seq: number, ids: string[]) =>
+    activityEvent({
+      seq,
+      type: 'comment.created',
+      targetType: 'comment',
+      diff: { mentionedActorIds: ids },
+    });
+
+  it('render_NoUnread_ShowsNoBadge', async () => {
+    await open(0);
+
+    expect(badge()).toBeNull();
+  });
+
+  it('render_Unread_ShowsCountWithScreenReaderText', async () => {
+    await open(3);
+
+    expect(badge()!.textContent!.trim()).toBe('3');
+    expect(badge()!.getAttribute('aria-hidden')).toBe('true');
+    expect(srText()).toBe('3 ungelesene Erwähnungen');
+  });
+
+  it('render_OneUnread_UsesSingular', async () => {
+    await open(1);
+
+    expect(srText()).toBe('1 ungelesene Erwähnung');
+  });
+
+  it('render_MoreThan99_ShowsCap', async () => {
+    await open(250);
+
+    expect(badge()!.textContent!.trim()).toBe('99+');
+    expect(srText()).toBe('Mehr als 99 ungelesene Erwähnungen');
+  });
+
+  it('live_MentionOfOwnActor_RaisesBadge', async () => {
+    await open(1);
+
+    realtime.emit(mentionEvent(1, [ADMIN_ME.id]));
+    await respond(http, 'GET', COUNT_URL, { items: [], nextCursor: null, unreadCount: 2 });
+    await settle(harness.fixture);
+
+    expect(badge()!.textContent!.trim()).toBe('2');
+  });
+
+  it('live_MentionOfSomeoneElse_KeepsBadge', async () => {
+    await open(1);
+
+    realtime.emit(mentionEvent(1, [AGENT_ID]));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle(harness.fixture);
+
+    expect(badge()!.textContent!.trim()).toBe('1');
+    http.expectNone(COUNT_URL);
   });
 });

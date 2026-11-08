@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | Liste mit Cursor und URL-Filter: `features/search/search-page.component.ts` (AP-027); Live-Liste: `features/activity/activity-feed.component.ts`; Shell-Elemente und Live-Region: `features/workspace-shell/workspace-shell.component.ts` (Status, Suchfeld) |
@@ -51,3 +51,10 @@ Menschen sehen auf einen Blick, wo sie erwähnt wurden, springen zum Kommentar u
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | AP-029-Vertrag ergänzt, an implementer-sonnet übergeben (parallel zu AP-031) |
+| 2026-11-08 | Bericht: 894 Tests grün; root-Store `MentionsStore` (Zähler aus `unreadCount`, `liveReload`, Filter auf eigene Actor-ID in `mentionedActorIds`), Seite mit URL-Filter und Cursor, Klick → `?comment=<id>` plus `POST /mentions/read`, Badge `aria-hidden` mit sr-only-Text |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – wichtig: Badge/Liste bleiben zu hoch, wenn eine Erwähnung durch Löschen/Bearbeiten wegfällt (Ereignisse tragen keine entfernten IDs); Hinweise: Live-Reload leert die Liste, Race „Alle gelesen“ ↔ Workspace-Wechsel, parallele Markierungen, Knopf bei fehlgeschlagenem Zähler, Testlücken, sr-Text >99 |
+| 2026-11-08 | Nacharbeit an implementer-sonnet (1–7) |
+| 2026-11-08 | Nacharbeit: Reload bei `comment.deleted`/`updated` unabhängig von IDs, `store.accept(count)` aus der Listenantwort, Live-Refresh ohne Leeren, Slug-Schutz bei „Alle gelesen“, Generation vor dem Senden, Knopf bei ungelesenem Eintrag aktiv, zehn neue Tests, sr-Text „Mehr als 99“; 928 Tests |
+| 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit ohne AP-031 geprüft) |

@@ -67,6 +67,11 @@ export const workspaceShellRoutes: Routes = [
           import('../activity/activity-feed.component').then((m) => m.ActivityFeedComponent),
       },
       {
+        path: 'mentions',
+        loadComponent: () =>
+          import('../mentions/mentions-page.component').then((m) => m.MentionsPageComponent),
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('../workspace-settings/workspace-settings.component').then(

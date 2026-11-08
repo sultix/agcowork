@@ -11,6 +11,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideActivity,
+  lucideAtSign,
   lucideHouse,
   lucideRefreshCw,
   lucideSearch,
@@ -31,6 +32,7 @@ import { BackendStatus, HealthService } from '../../core/api/health.service';
 import { RealtimeService, RealtimeStatus } from '../../core/realtime/realtime.service';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { ADMIN_ROLES, WorkspacesStore } from '../workspaces/workspaces.store';
+import { BADGE_LIMIT, MentionsStore, badgeLabel } from '../mentions/mentions.store';
 import { WorkspaceTreeComponent } from '../spaces/workspace-tree.component';
 import { WorkspaceSwitcherComponent } from '../workspaces/workspace-switcher.component';
 import { SessionMenuComponent } from '../../shared/ui/session-menu.component';
@@ -97,6 +99,7 @@ interface NavItem {
   providers: [
     provideIcons({
       lucideActivity,
+      lucideAtSign,
       lucideHouse,
       lucideRefreshCw,
       lucideSearch,
@@ -142,7 +145,17 @@ interface NavItem {
                     >
                       <ng-icon [name]="item.icon" />
                       <span>{{ item.label }}</span>
+                      @if (item.path === 'mentions' && mentions.unreadCount() > 0) {
+                        <span class="sr-only" data-testid="mentions-unread-text">{{
+                          mentionsText()
+                        }}</span>
+                      }
                     </a>
+                    @if (item.path === 'mentions' && mentions.unreadCount() > 0) {
+                      <span hlmSidebarMenuBadge aria-hidden="true" data-testid="mentions-badge">{{
+                        mentionsBadge()
+                      }}</span>
+                    }
                   </li>
                 }
               </ul>
@@ -254,6 +267,7 @@ export class WorkspaceShellComponent {
   private readonly searchField = viewChild.required<ElementRef<HTMLInputElement>>('searchField');
   protected readonly health = inject(HealthService);
   protected readonly realtime = inject(RealtimeService);
+  protected readonly mentions = inject(MentionsStore);
 
   protected readonly slug = this.workspace.slug;
 
@@ -270,6 +284,7 @@ export class WorkspaceShellComponent {
       { path: '.', label: 'Start', icon: 'lucideHouse', exact: true },
       { path: 'search', label: 'Suche', icon: 'lucideSearch', exact: false },
       { path: 'activity', label: 'Aktivität', icon: 'lucideActivity', exact: false },
+      { path: 'mentions', label: 'Erwähnungen', icon: 'lucideAtSign', exact: false },
       { path: 'settings/members', label: 'Mitglieder', icon: 'lucideUsers', exact: false },
       ...(role && ADMIN_ROLES.includes(role)
         ? [{ path: 'settings', label: 'Einstellungen', icon: 'lucideSettings', exact: true }]
@@ -281,6 +296,14 @@ export class WorkspaceShellComponent {
     const status = this.health.status();
     const hint = status === 'ok' || status === 'checking' ? '' : ' (Klick zum erneuten Prüfen)';
     return `Backend: ${STATUS_LABELS[status]}${hint}`;
+  });
+  protected readonly mentionsBadge = computed(() => badgeLabel(this.mentions.unreadCount()));
+  protected readonly mentionsText = computed(() => {
+    const count = this.mentions.unreadCount();
+    if (count > BADGE_LIMIT) {
+      return `Mehr als ${BADGE_LIMIT} ungelesene Erwähnungen`;
+    }
+    return count === 1 ? '1 ungelesene Erwähnung' : `${count} ungelesene Erwähnungen`;
   });
   protected readonly statusDot = computed(() => STATUS_DOTS[this.health.status()]);
   protected readonly realtimeText = computed(() => REALTIME_LABELS[this.realtime.status()]);
