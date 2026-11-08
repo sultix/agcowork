@@ -17,8 +17,11 @@ import { WorkspaceContext } from '../workspace/workspace-context.service';
 import {
   REALTIME_HUB_FACTORY,
   REALTIME_RETRY_DELAYS_MS,
+  REALTIME_RETRY_JITTER,
+  REALTIME_STABLE_AFTER_MS,
   RealtimeHubConnection,
   hubUrl,
+  jitteredDelay,
 } from './realtime-hub';
 
 export type ActivityEvent = components['schemas']['ActivityEventDto'];
@@ -62,14 +65,19 @@ interface Link {
    */
   lost: boolean;
   readonly seen: Set<number>;
+  /** Failed or short-lived connections in a row; picks the next wait from the delays. */
   attempt: number;
+  /** When the hub connection last came up (`Date.now()`); `null` while not connected. */
+  connectedAt: number | null;
   timer: ReturnType<typeof setTimeout> | null;
 }
 
 /**
  * Live activity of the open workspace over the SignalR hub `/w/{slug}/hub` (AP-024): one
  * connection per tab, opened when a workspace is open and the session is signed in, closed on a
- * workspace switch or when leaving. Lost connections are re-established with backoff; after each
+ * workspace switch or when leaving. Lost connections are re-established with backoff and jitter;
+ * the backoff only starts over after a connection held for {@link REALTIME_STABLE_AFTER_MS}, so
+ * a server that keeps dropping fresh connections sees ever longer waits. After each
  * (re)connect the events missed meanwhile are read forward (`GET /activity?afterSeq=`) and
  * delivered like live ones, so consumers only react to {@link activity}. When that is not
  * possible, {@link resync} tells them to reload. A workspace that answers 401/403/404 (rights
@@ -82,6 +90,8 @@ export class RealtimeService {
   private readonly session = inject(SessionStore);
   private readonly createHub = inject(REALTIME_HUB_FACTORY);
   private readonly delays = inject(REALTIME_RETRY_DELAYS_MS);
+  private readonly jitter = inject(REALTIME_RETRY_JITTER);
+  private readonly stableAfter = inject(REALTIME_STABLE_AFTER_MS);
   private readonly injector = inject(Injector);
 
   private readonly statusSignal = signal<RealtimeStatus>('idle');
@@ -168,6 +178,7 @@ export class RealtimeService {
       lost: false,
       seen: new Set(),
       attempt: 0,
+      connectedAt: null,
       timer: null,
     };
     this.link = link;
@@ -259,7 +270,8 @@ export class RealtimeService {
       return false;
     }
 
-    link.attempt = 0;
+    // The backoff is not reset here: only a connection that holds counts (see lostConnection).
+    link.connectedAt = Date.now();
     this.statusSignal.set('live');
     if (link.lost) {
       link.catchingUp = false;
@@ -282,6 +294,10 @@ export class RealtimeService {
     if (link.closed || this.link !== link) {
       return;
     }
+    if (link.connectedAt !== null && Date.now() - link.connectedAt >= this.stableAfter) {
+      link.attempt = 0;
+    }
+    link.connectedAt = null;
     this.scheduleRetry(link);
   }
 
@@ -291,7 +307,7 @@ export class RealtimeService {
       return; // already waiting for the next attempt
     }
     const delays = this.delays.length > 0 ? this.delays : [0];
-    const delay = delays[Math.min(link.attempt, delays.length - 1)];
+    const delay = jitteredDelay(delays[Math.min(link.attempt, delays.length - 1)], this.jitter);
     link.attempt++;
     link.timer = setTimeout(() => {
       link.timer = null;

@@ -33,7 +33,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | abgeschlossen | 00615d6 |
 | [AP-028](AP-028-dispatcher-fehlerpfad-surrogate.md) | Backend-Kleinpaket: Dispatcher „lückenlos oder getrennt“, ungepaarte Surrogate → 400 | 2 | implementer-opus | AP-024, AP-025 | abgeschlossen | eefd290 |
 | [AP-029](AP-029-kommentare-backend.md) | Kommentare und Erwähnungen Backend: Domäne, Use-Cases, REST, MCP, Activity | 2 | implementer-opus | AP-028 | in Arbeit | |
-| [AP-030](AP-030-realtime-frontend-nachzug.md) | Frontend-Kleinpaket Realtime: Reconnect-Backoff, Record-Zähler, Live für Mitglieder/Views/Schema | 2 | implementer-opus | AP-025, AP-028 | in Arbeit | |
+| [AP-030](AP-030-realtime-frontend-nachzug.md) | Frontend-Kleinpaket Realtime: Reconnect-Backoff, Record-Zähler, Live für Mitglieder/Views/Schema | 2 | implementer-opus | AP-025, AP-028 | abgeschlossen | |
 | [AP-031](AP-031-kommentare-frontend.md) | Kommentare Frontend: Seitenleiste, Threads, `@`-Auswahl, live | 2 | implementer-opus | AP-029, AP-030 | angelegt | |
 | [AP-032](AP-032-erwaehnungen-posteingang.md) | Erwähnungen Frontend: Posteingang, Badge, gelesen markieren | 2 | implementer-sonnet | AP-029 | angelegt | |
 

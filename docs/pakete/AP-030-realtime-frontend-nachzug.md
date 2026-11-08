@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | `src/frontend/src/app/core/realtime/realtime.service.ts` (Backoff, `attempt`), `features/views/live-refresh.ts` (Bündelung, Sperre, Generation), `features/spaces/workspace-tree.store.ts` (Live-Neuladen der Navigation) |
@@ -57,3 +57,10 @@ Hält ein Zustellfehler im Backend an, verbinden sich die Clients nicht mehr im 
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zu AP-029) |
+| 2026-11-08 | Bericht: 855 Tests grün, Gegenproben; Backoff mit Mindestlebensdauer 30 s und Jitter ±20 % (0-Stufe 0–1 s), gemeinsamer Helfer `liveReload`, Describe wird auch während eines Edits geladen, Schema aber erst danach angewendet (`holdWhile`), gelöschte View → Standard-View mit Hinweis; Abweichung: `live-refresh.ts` meldet seine Sperre am `CollectionStore` an |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – Backoff und „laden, Schema erst nach dem Edit anwenden“ in Ordnung; wichtig: ältere Live-Antworten überschreiben neuere lokale Änderungen (View-Liste, Describe, Members), Tabellenzeilen laden bei `collection.schema_changed` nicht neu |
+| 2026-11-08 | Nacharbeit an implementer-opus (W1, W2, H1–H4) |
+| 2026-11-08 | Nacharbeit: Generation je Ressource (View-Liste mit `changeViews()`, Describe, Members), `liveRefresh` auch bei `collection.schema_changed`, Option `holdSchema` in Tabelle/Board, Test für gelöschte Standard-View, Resync prüft Slug; bewusst: View anderswo gelöscht bei offenem Editor → Entwurf verworfen (View existiert nicht mehr, Hinweis erklärt den Wechsel); 865 Tests |
+| 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit geprüft) |

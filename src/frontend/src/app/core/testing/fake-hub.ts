@@ -4,7 +4,9 @@ import { ActivityEvent, RealtimeService, RealtimeStatus } from '../realtime/real
 import {
   REALTIME_HUB_FACTORY,
   REALTIME_RETRY_DELAYS_MS,
+  REALTIME_RETRY_JITTER,
   RealtimeHubConnection,
+  RealtimeRetryJitter,
 } from '../realtime/realtime-hub';
 
 type Handler = (...args: never[]) => void;
@@ -86,8 +88,18 @@ export class FakeHub {
   }
 }
 
-/** Providers that replace SignalR with {@link FakeHub}; retries happen without waiting. */
-export function provideFakeHub(hub = new FakeHub(), delays: readonly number[] = [0]): Provider[] {
+/** No random spread: waits are exactly the configured delays. */
+export const NO_JITTER: RealtimeRetryJitter = { ratio: 0, zeroSpreadMs: 0, random: () => 0.5 };
+
+/**
+ * Providers that replace SignalR with {@link FakeHub}; retries happen without waiting (unless
+ * `delays` or `jitter` say otherwise).
+ */
+export function provideFakeHub(
+  hub = new FakeHub(),
+  delays: readonly number[] = [0],
+  jitter: RealtimeRetryJitter = NO_JITTER,
+): Provider[] {
   return [
     { provide: FakeHub, useValue: hub },
     {
@@ -99,6 +111,7 @@ export function provideFakeHub(hub = new FakeHub(), delays: readonly number[] = 
       },
     },
     { provide: REALTIME_RETRY_DELAYS_MS, useValue: delays },
+    { provide: REALTIME_RETRY_JITTER, useValue: jitter },
   ];
 }
 

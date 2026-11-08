@@ -2,6 +2,7 @@ import { DestroyRef, InjectionToken, effect, inject, signal, untracked } from '@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
+import { CollectionStore } from './collection.store';
 
 /** Quiet time after the last change before the view reloads (changes in between are bundled). */
 export const LIVE_REFRESH_DELAY_MS = new InjectionToken<number>('LIVE_REFRESH_DELAY_MS', {
@@ -30,16 +31,24 @@ export interface LiveRefreshOptions {
   readonly generation: () => number;
   /** Reloads the rows; must not replace them when `canApply()` is false, and say so. */
   readonly refresh: (canApply: () => boolean) => Promise<boolean>;
+  /**
+   * Also hold back schema and metadata changes of the surrounding {@link CollectionStore} while
+   * {@link blocked} holds (for views whose editors and cards are built from the schema).
+   */
+  readonly holdSchema?: boolean;
 }
 
 /**
  * Keeps a view (table, board) current while others change its records: record events of the
- * collection, and resyncs after a lost connection, are bundled into one silent reload
+ * collection, schema changes of it (they can rewrite stored values without record events), and
+ * resyncs after a lost connection, are bundled into one silent reload
  * ({@link LIVE_REFRESH_DELAY_MS} after the last change, at most {@link LIVE_REFRESH_MAX_WAIT_MS}
  * after the first). While {@link LiveRefreshOptions.blocked} holds, the reload waits and runs
  * once afterwards; rows fetched before an edit began are thrown away and fetched again. So an
- * open editor or a running save never gets server data under it. Call in an injection context
- * (component constructor).
+ * open editor or a running save never gets server data under it. With
+ * {@link LiveRefreshOptions.holdSchema} the same lock holds back schema changes of the
+ * {@link CollectionStore} of the collection page. Call in an injection context (component
+ * constructor).
  */
 export function liveRefresh(options: LiveRefreshOptions): void {
   const realtime = inject(RealtimeService);
@@ -47,6 +56,10 @@ export function liveRefresh(options: LiveRefreshOptions): void {
   const destroyRef = inject(DestroyRef);
   const delay = inject(LIVE_REFRESH_DELAY_MS);
   const maxWait = inject(LIVE_REFRESH_MAX_WAIT_MS);
+  const store = options.holdSchema ? inject(CollectionStore, { optional: true }) : null;
+  if (store) {
+    destroyRef.onDestroy(store.holdWhile(options.blocked));
+  }
 
   const pending = signal(false);
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -73,7 +86,7 @@ export function liveRefresh(options: LiveRefreshOptions): void {
     const collectionId = options.collectionId();
     if (
       realtime.slug === context.slug() &&
-      event.targetType === 'record' &&
+      (event.targetType === 'record' || event.type === 'collection.schema_changed') &&
       !!collectionId &&
       event.collectionId === collectionId
     ) {

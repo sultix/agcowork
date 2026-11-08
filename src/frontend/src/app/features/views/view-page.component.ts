@@ -10,9 +10,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCircleAlert } from '@ng-icons/lucide';
+import { lucideCircleAlert, lucideInfo } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -24,7 +24,7 @@ import { FilterNode, SortSpec, countConditions } from '../../shared/filter/filte
 import { SortChipsComponent } from '../../shared/filter/sort-chips.component';
 import { describeError } from '../../shared/ui/api-error-text';
 import { BoardViewComponent } from './board-view.component';
-import { CollectionStore, VIEW_TYPE_LABELS } from './collection.store';
+import { CollectionStore, VIEW_TYPE_LABELS, ViewDto } from './collection.store';
 import { TableViewComponent } from './table-view.component';
 import {
   ViewWorkingState,
@@ -42,6 +42,8 @@ import {
  * `/w/:slug/collections/:collectionId/views/:viewId`: one view of the collection with its filter
  * bar (filter builder, sort chips, columns) and the table or board. Changes to filter, sorting and
  * columns stay in the session until "View speichern" (`write` only) stores them in the view.
+ * Is the shown view deleted elsewhere (live or after a resync), the page switches to the default
+ * view and says so.
  */
 @Component({
   selector: 'ag-view-page',
@@ -58,9 +60,19 @@ import {
     SortChipsComponent,
     TableViewComponent,
   ],
-  providers: [provideIcons({ lucideCircleAlert })],
+  providers: [provideIcons({ lucideCircleAlert, lucideInfo })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    @if (deletedNotice(); as notice) {
+      @if (notice.shownInstead === viewId()) {
+        <div hlmAlert class="mt-3" role="status" data-testid="view-deleted-notice">
+          <ng-icon name="lucideInfo" />
+          <p hlmAlertDescription>
+            Die View „{{ notice.name }}“ wurde gelöscht. Angezeigt wird die Standard-View.
+          </p>
+        </div>
+      }
+    }
     @if (view(); as view) {
       @if (state(); as state) {
         <div class="mt-3 flex flex-wrap items-center gap-2 text-sm" data-testid="view-toolbar">
@@ -204,6 +216,7 @@ import {
 export class ViewPageComponent {
   protected readonly store = inject(CollectionStore);
   protected readonly context = inject(WorkspaceContext);
+  private readonly router = inject(Router);
 
   /** Route parameter `:viewId`. */
   readonly viewId = input.required<string>();
@@ -224,6 +237,11 @@ export class ViewPageComponent {
   protected readonly columnsOpen = signal(false);
   protected readonly saving = signal(false);
   protected readonly saveError = signal<string | null>(null);
+
+  /** A view deleted elsewhere while it was shown, and the view shown instead. */
+  protected readonly deletedNotice = signal<{ name: string; shownInstead: string } | null>(null);
+  /** The view last shown under the current `viewId` (to tell "deleted" from "never there"). */
+  private shown: ViewDto | null = null;
 
   protected readonly modified = computed(() => {
     const view = this.view();
@@ -264,8 +282,48 @@ export class ViewPageComponent {
         this.store.activeViewId.set(viewId);
         this.saveError.set(null);
         this.columnsOpen.set(false);
+        if (this.deletedNotice()?.shownInstead !== viewId) {
+          this.deletedNotice.set(null);
+        }
       });
     });
+    effect(() => {
+      const viewId = this.viewId();
+      const view = this.view();
+      const loaded = this.store.viewsLoaded();
+      const fallback = this.store.defaultView();
+      untracked(() => this.followDeletion(viewId, view, loaded, fallback));
+    });
+  }
+
+  /**
+   * The shown view disappeared from the loaded list without being deleted here: switch to the
+   * default view with a notice. A view that was never there keeps the "gibt es nicht" text.
+   */
+  private followDeletion(
+    viewId: string,
+    view: ViewDto | undefined,
+    loaded: boolean,
+    fallback: ViewDto | null,
+  ): void {
+    if (view) {
+      this.shown = view;
+      return;
+    }
+    const gone = this.shown;
+    if (!loaded || gone?.id !== viewId || this.store.wasRemovedHere(viewId)) {
+      return;
+    }
+    this.shown = null;
+    const slug = this.context.slug();
+    if (!fallback || !slug) {
+      return;
+    }
+    this.deletedNotice.set({ name: gone.name, shownInstead: fallback.id });
+    void this.router.navigate(
+      ['/w', slug, 'collections', fallback.collectionId, 'views', fallback.id],
+      { replaceUrl: true },
+    );
   }
 
   protected setFilter(filter: FilterNode | null): void {

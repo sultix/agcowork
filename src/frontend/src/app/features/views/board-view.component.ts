@@ -303,6 +303,7 @@ export class BoardViewComponent {
       blocked: () => this.dragging() || this.edits.busy(),
       generation: () => this.drags() + this.edits.generation(),
       refresh: (canApply) => this.pager.refresh(canApply),
+      holdSchema: true,
     });
     inject(DestroyRef).onDestroy(() => this.clearDragEndTimer());
   }

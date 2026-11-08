@@ -181,6 +181,7 @@ export class TableViewComponent {
         }
         return applied;
       },
+      holdSchema: true,
     });
   }
 
