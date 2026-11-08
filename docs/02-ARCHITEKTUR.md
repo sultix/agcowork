@@ -172,8 +172,12 @@ Alle Indizes beginnen mit `WorkspaceId`.
    `WorkspaceId` bei `Added` und verweigert fremde `WorkspaceId`; einzige Ausnahme sind
    Tenant-Entitäten, deren Workspace im selben `SaveChanges` neu entsteht (Workspace-Anlage,
    Vorlagen). `ExecuteUpdate`/`ExecuteDelete` umgehen den Interceptor, nicht den Filter.
-5. Pro Transaktion `SET LOCAL app.workspace_id = …`; PostgreSQL **Row-Level-Security**
-   verwirft alles andere (Phase 2, zweites Netz unabhängig von EF).
+5. PostgreSQL **Row-Level-Security** als zweites Netz unabhängig von EF (Entscheidung 2026-11-08, AP-036):
+   - Compose und Aspire legen den DB-Benutzer als Superuser an; Superuser umgehen RLS immer. Die App wechselt deshalb beim Öffnen jeder Verbindung per `SET ROLE agcowork_app` in eine Rolle ohne `SUPERUSER`/`BYPASSRLS` (von der Migration angelegt, mit DML-Rechten auf alle Tabellen). Ein Login-Wechsel ist nicht nötig; Pool-Reset (`DISCARD ALL`) setzt Rolle und Einstellungen zurück.
+   - Jede Tabelle mit `workspace_id` hat RLS aktiviert und eine Policy `workspace_id = current_setting('agcowork.workspace_id', true)::uuid` (USING und WITH CHECK). Ohne gesetzten Workspace sieht die Rolle nichts (fail closed).
+   - Die Einstellung folgt dem Tenant-Kontext des Scopes (Verbindungs-Interceptor); wechselt der Kontext bei offener Verbindung (Workspace-Anlage), wird sie sofort nachgezogen.
+   - **Instanz-Bereich:** Die wenigen begründeten Pfade außerhalb eines Workspace (`ResolveTenant`, `ListMyWorkspaces`, `InstanceActivityReader`, Bootstrap, Workspace-Anlage vor dem Tenant, Instanz-Admin) laufen in einem expliziten, eng gefassten Instanz-Bereich (`agcowork.scope = 'instance'`, von der Policy zugelassen). Jede Nutzung ist im Code begründet und durch einen Architekturtest auf eine feste Liste beschränkt. Migrationen laufen ohne Rollenwechsel.
+   - Schutzziel: Programmierfehler (vergessener Filter, Raw-SQL, `ExecuteUpdate`, Trigger). Nicht Schutzziel: kompromittierte DB-Zugangsdaten oder SQL-Injection, die `RESET ROLE` ausführt; dafür wäre ein eigener Login ohne Superuser nötig (Ausbaustufe, vor öffentlichem Hosting prüfen).
 6. SignalR-Hub `/w/{slug}/hub` (Cookie oder Bearer, AP-024). Negotiate und Transport laufen durch `TenantResolutionMiddleware` und `RealtimeConnectMiddleware` (`read` Pflicht, sonst 403); unbekannt oder fremd → 404. Die Verbindung tritt der Gruppe `ws:{WorkspaceId}` bei, Events gehen nur dorthin. Vor jeder Zustellung prüft der Dispatcher jede Verbindung des Workspaces erneut (Mitgliedschaft mit `read`, Actor aktiv, Key gültig und nicht auf einen anderen Workspace eingeschränkt, Passwort-Stamp der Session); entzogene Verbindungen werden getrennt.
 
 **Weitere Regeln**
