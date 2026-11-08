@@ -58,3 +58,4 @@ Menschen mit `schema`-Recht pflegen das Schema einer Collection in der UI: neue 
 | 2026-11-08 | Nacharbeit an implementer-opus (W1, H1–H5) |
 | 2026-11-08 | Nacharbeit: Optionen nach 409 einzeln per Wert und feldweise zusammengeführt (fremd neue bleiben, fremd entfernte bleiben entfernt außer bei eigener Bearbeitung – dann Hinweis an der Option), Typauswahl nach `base`, überholtes Neuladen ohne Fehlermeldung, Text bei berechneten Properties, Escape-Test, Fehler gesperrter Felder oben; 1129 Tests |
 | 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit geprüft) |
+| 2026-11-08 | Rauchtest: Relation über den Dialog angelegt, Key-Vorschlag `blockiert_durch`, Ziel „Diese Collection“, mehrere Verweise |
