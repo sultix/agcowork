@@ -19,11 +19,12 @@ namespace Agcowork.Application.Common.Persistence;
 /// <remarks>
 /// Tenant entities (<see cref="Domain.Common.ITenantEntity"/>, e.g. <see cref="Memberships"/>) are
 /// filtered to the current tenant (<see cref="Tenancy.ITenantContext"/>); outside a tenant context
-/// they are invisible. Bypass only with <c>IgnoreQueryFilters([TenantQueryFilter.Name])</c> and a
-/// comment explaining why the query cannot leak other tenants' data.
+/// they are invisible. Bypass only with <c>IgnoreQueryFilters([TenantQueryFilter.Name])</c> inside an
+/// <see cref="Tenancy.InstanceAccess"/> block (row-level security hides foreign rows otherwise) and a
+/// comment explaining why the query cannot leak other tenants' data; the list of such places is fixed.
 /// <para>
 /// Bulk operations (<c>ExecuteUpdate</c>, <c>ExecuteDelete</c>) skip change tracking and therefore the tenant
-/// interceptor; only the query filter protects them. Rules: never combine them with <c>IgnoreQueryFilters</c>
+/// interceptor; the query filter and row-level security protect them. Rules: never combine them with <c>IgnoreQueryFilters</c>
 /// on a tenant entity, and never <c>SetProperty(e =&gt; e.WorkspaceId, …)</c>.
 /// </para>
 /// </remarks>

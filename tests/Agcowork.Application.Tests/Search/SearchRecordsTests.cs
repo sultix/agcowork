@@ -340,13 +340,15 @@ public sealed class SearchRecordsTests(PostgresFixture postgres) : RecordTestBas
     {
         var (a, notes) = await ArrangeSearchAsync();
         var record = await CreateInAsync(a, notes.Id, "Bestandswort");
-        var migrator = Db.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>();
+        // Migrations run as the owner, like at startup.
+        await using var owner = PostgresFixture.OpenOwner(Db);
+        var migrator = owner.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>();
         await migrator.MigrateAsync("20261107231617_AddActivityXactId", Ct);
 
         // Existing data before the search migration: worst-case body and markdown property.
         var body = "Altbestand " + Compounds(DomainRecord.BodyMaxBytes - 20, fromEnd: false, utf8: true);
         var properties = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["sources"] = Compounds(PropertyTypeRegistry.MarkdownMaxLength - 20, fromEnd: true, utf8: false) });
-        await Db.Database.ExecuteSqlAsync($"UPDATE records SET body = {body}, properties = {properties}::jsonb WHERE id = {record.Id}", Ct);
+        await owner.Database.ExecuteSqlAsync($"UPDATE records SET body = {body}, properties = {properties}::jsonb WHERE id = {record.Id}", Ct);
 
         await migrator.MigrateAsync(cancellationToken: Ct);
 

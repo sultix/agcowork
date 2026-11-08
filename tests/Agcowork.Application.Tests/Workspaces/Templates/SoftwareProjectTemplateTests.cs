@@ -153,6 +153,7 @@ public sealed class SoftwareProjectTemplateTests(PostgresFixture postgres) : Dat
         Tenant.Current = null;
         Assert.Null(Db.Database.CurrentTransaction);
         Assert.Empty(await Db.Workspaces.ToListAsync(Ct));
+        using var instance = Instance.Enter("test: nothing of any workspace was stored");
         Assert.Empty(await Db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).ToListAsync(Ct));
         Assert.Empty(await Db.Spaces.IgnoreQueryFilters([TenantQueryFilter.Name]).ToListAsync(Ct));
         Assert.Empty(await Db.Collections.IgnoreQueryFilters([TenantQueryFilter.Name]).ToListAsync(Ct));
@@ -263,6 +264,7 @@ public sealed class SoftwareProjectTemplateTests(PostgresFixture postgres) : Dat
         Tenant.Current = null;
         Assert.Null(Db.Database.CurrentTransaction);
         Assert.Empty(await Db.Workspaces.ToListAsync(Ct));
+        using var instance = Instance.Enter("test: nothing of any workspace was stored");
         Assert.Empty(await Db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).ToListAsync(Ct));
         Assert.Empty(await Db.Spaces.IgnoreQueryFilters([TenantQueryFilter.Name]).ToListAsync(Ct));
         Assert.Empty(await Db.Collections.IgnoreQueryFilters([TenantQueryFilter.Name]).ToListAsync(Ct));
@@ -285,9 +287,12 @@ public sealed class SoftwareProjectTemplateTests(PostgresFixture postgres) : Dat
         return (workspace, caller);
     }
 
-    private async Task<Dictionary<string, Collection>> CollectionsAsync(Guid workspaceId) =>
-        (await Db.Collections.AsNoTracking().IgnoreQueryFilters([TenantQueryFilter.Name]).Where(c => c.WorkspaceId == workspaceId).ToListAsync(Ct))
-        .ToDictionary(c => c.Name);
+    private async Task<Dictionary<string, Collection>> CollectionsAsync(Guid workspaceId)
+    {
+        using var instance = Instance.Enter("test: collections of any workspace");
+        return (await Db.Collections.AsNoTracking().IgnoreQueryFilters([TenantQueryFilter.Name]).Where(c => c.WorkspaceId == workspaceId).ToListAsync(Ct))
+            .ToDictionary(c => c.Name);
+    }
 
     private static List<(string Key, PropertyType Type)> KeysAndTypes(Collection collection) => [.. collection.Schema.Select(p => (p.Key, p.Type))];
 

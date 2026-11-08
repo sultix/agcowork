@@ -40,7 +40,12 @@ public sealed class TenantInterceptorTests(AgcoworkApiFactory factory)
         var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
 
         Assert.Empty(await db.Memberships.ToListAsync(Ct));
-        Assert.True(await db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).AnyAsync(m => m.WorkspaceId == t.Beta.Id, Ct));
+        // Lifting the EF filter alone is not enough: row-level security still hides every tenant row (AP-036).
+        Assert.False(await db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).AnyAsync(m => m.WorkspaceId == t.Beta.Id, Ct));
+        using (scope.ServiceProvider.GetRequiredService<InstanceAccess>().Enter("test: both nets lifted explicitly"))
+        {
+            Assert.True(await db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).AnyAsync(m => m.WorkspaceId == t.Beta.Id, Ct));
+        }
     }
 
     [Fact]
@@ -63,7 +68,12 @@ public sealed class TenantInterceptorTests(AgcoworkApiFactory factory)
         var t = await TenancyFixture.GetAsync(factory);
         await using var scope = await EnterAsync(t.Alpha.Id, t.AlphaOwner.ActorId);
         var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
-        var foreign = await db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).SingleAsync(m => m.WorkspaceId == t.Beta.Id && m.ActorId == t.BetaOwner.ActorId, Ct);
+        // Only the instance area can load a foreign row at all; the interceptor must still refuse to write it in the tenant.
+        Membership foreign;
+        using (scope.ServiceProvider.GetRequiredService<InstanceAccess>().Enter("test: load a foreign membership"))
+        {
+            foreign = await db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).SingleAsync(m => m.WorkspaceId == t.Beta.Id && m.ActorId == t.BetaOwner.ActorId, Ct);
+        }
 
         foreign.ChangeRole(WorkspaceRole.Viewer, null);
         await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync(Ct));
@@ -215,8 +225,13 @@ public sealed class TenantInterceptorTests(AgcoworkApiFactory factory)
         var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
         var workspace = await db.Workspaces.AsNoTracking().SingleAsync(w => w.Id == workspaceId, Ct);
-        var membership = await db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).AsNoTracking()
-            .SingleAsync(m => m.WorkspaceId == workspaceId && m.ActorId == actorId, Ct);
+        Membership membership;
+        using (scope.ServiceProvider.GetRequiredService<InstanceAccess>().Enter("test: membership before the tenant exists, like ResolveTenant"))
+        {
+            membership = await db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).AsNoTracking()
+                .SingleAsync(m => m.WorkspaceId == workspaceId && m.ActorId == actorId, Ct);
+        }
+
         scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>().SetTenant(
             new TenantContext(workspace.Id, workspace.Slug, workspace.IsArchived, membership, EffectiveScopes.Compute(membership.Scopes, new HashSet<string>())));
         return scope;
@@ -226,6 +241,7 @@ public sealed class TenantInterceptorTests(AgcoworkApiFactory factory)
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
+        using var instance = scope.ServiceProvider.GetRequiredService<InstanceAccess>().Enter("test: look into another workspace");
         return await db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).AnyAsync(m => m.WorkspaceId == t.Beta.Id && m.ActorId == actorId, Ct);
     }
 }

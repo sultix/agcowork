@@ -116,7 +116,7 @@ public sealed class PublishActivityTests(PostgresFixture postgres) : RecordTestB
         Enter(a.Seed.Alpha, a.Seed.AlphaOwner);
         await CreateRecordAsync(a, "Alpha");
         Tenant.Current = null;
-        var reader = new InstanceActivityReader(Db);
+        var reader = new InstanceActivityReader(Db, Instance);
 
         var all = await reader.ReadAsync(ActivityPosition.Start, 100, Ct);
         var afterFirst = await reader.ReadAsync(ActivityLog.PositionOf(all[0]), 2, Ct);

@@ -25,7 +25,7 @@ public sealed class ActivityDispatcherTests(PostgresFixture postgres) : RecordTe
         Enter(a.Seed.Alpha, a.Seed.AlphaOwner);
         await CreateRecordAsync(a, "Alpha");
         Tenant.Current = null;
-        var events = await new InstanceActivityReader(Db).ReadAsync(ActivityPosition.Start, 100, Ct);
+        var events = await new InstanceActivityReader(Db, Instance).ReadAsync(ActivityPosition.Start, 100, Ct);
         Assert.Contains(events, e => e.WorkspaceId == a.Seed.Alpha.Id);
         Assert.Contains(events, e => e.WorkspaceId == a.Seed.Beta.Id);
         return (a, events);
@@ -36,6 +36,7 @@ public sealed class ActivityDispatcherTests(PostgresFixture postgres) : RecordTe
         var services = new ServiceCollection();
         services.AddSingleton<IAgcoworkDbContext>(Db);
         services.AddScoped<InstanceActivityReader>();
+        services.AddSingleton(Instance);
         services.AddScoped<ITenantContextAccessor, TestTenantAccessor>();
         services.AddSingleton<IActivityPublisher>(publisher);
         var provider = services.BuildServiceProvider();

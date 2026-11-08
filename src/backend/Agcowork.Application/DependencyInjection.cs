@@ -31,6 +31,9 @@ public static class DependencyInjection
         services.TryAddScoped<ITenantContext, CurrentTenantContext>();
         services.TryAddSingleton<TenantScopes>();
 
+        // Instance area of the scope (architecture §2a, step 5): read by the DbContext before every command.
+        services.TryAddScoped<InstanceAccess>();
+
         // Property values (AP-006); relation targets are records of the target collection (AP-007).
         services.TryAddScoped<PropertyValueValidator>();
         services.TryAddScoped<IRelationTargetChecker, RecordRelationTargetChecker>();

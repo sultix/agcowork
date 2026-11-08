@@ -168,16 +168,17 @@ Alle Indizes beginnen mit `WorkspaceId`.
 4. Der `DbContext` wendet einen **benannten Global Query Filter** (`tenant`)
    `e.WorkspaceId == tenant.WorkspaceId` per Konvention auf alle `ITenantEntity` an; ohne
    Tenant-Kontext greift `Guid.Empty`, es kommt also nichts zurück. `IgnoreQueryFilters` nur in
-   begründeten, kommentierten Stellen (`ResolveTenant`, `ListMyWorkspaces`, Instanz-Admin).
+   begründeten, kommentierten Stellen innerhalb eines Instanz-Bereichs (`ResolveTenant`, `ListMyWorkspaces`, `InstanceActivityReader`).
    Der `TenantSaveChangesInterceptor` (fest in `AgcoworkDbContextOptions.Configure`) setzt
    `WorkspaceId` bei `Added` und verweigert fremde `WorkspaceId`; einzige Ausnahme sind
    Tenant-Entitäten, deren Workspace im selben `SaveChanges` neu entsteht (Workspace-Anlage,
    Vorlagen). `ExecuteUpdate`/`ExecuteDelete` umgehen den Interceptor, nicht den Filter.
-5. PostgreSQL **Row-Level-Security** als zweites Netz unabhängig von EF (Entscheidung 2026-11-08, AP-036):
-   - Compose und Aspire legen den DB-Benutzer als Superuser an; Superuser umgehen RLS immer. Die App wechselt deshalb beim Öffnen jeder Verbindung per `SET ROLE agcowork_app` in eine Rolle ohne `SUPERUSER`/`BYPASSRLS` (von der Migration angelegt, mit DML-Rechten auf alle Tabellen). Ein Login-Wechsel ist nicht nötig; Pool-Reset (`DISCARD ALL`) setzt Rolle und Einstellungen zurück.
-   - Jede Tabelle mit `workspace_id` hat RLS aktiviert und eine Policy `workspace_id = current_setting('agcowork.workspace_id', true)::uuid` (USING und WITH CHECK). Ohne gesetzten Workspace sieht die Rolle nichts (fail closed).
-   - Die Einstellung folgt dem Tenant-Kontext des Scopes (Verbindungs-Interceptor); wechselt der Kontext bei offener Verbindung (Workspace-Anlage), wird sie sofort nachgezogen.
-   - **Instanz-Bereich:** Die wenigen begründeten Pfade außerhalb eines Workspace (`ResolveTenant`, `ListMyWorkspaces`, `InstanceActivityReader`, Bootstrap, Workspace-Anlage vor dem Tenant, Instanz-Admin) laufen in einem expliziten, eng gefassten Instanz-Bereich (`agcowork.scope = 'instance'`, von der Policy zugelassen). Jede Nutzung ist im Code begründet und durch einen Architekturtest auf eine feste Liste beschränkt. Migrationen laufen ohne Rollenwechsel.
+5. PostgreSQL **Row-Level-Security** als zweites Netz unabhängig von EF (Entscheidung 2026-11-08, umgesetzt AP-036):
+   - Compose und Aspire legen den DB-Benutzer als Superuser an; Superuser umgehen RLS immer. Die App wechselt deshalb in jeder Verbindung in die Rolle `agcowork_app` (NOLOGIN, NOSUPERUSER, NOBYPASSRLS; DML auf alle Tabellen außer der Migrationshistorie). `DatabaseSessionInterceptor` setzt beim Öffnen per `set_config` Rolle, `agcowork.workspace_id` und `agcowork.scope` und vor jedem Befehl erneut, wenn Tenant oder Instanz-Bereich abweichen (auch in offener Transaktion; nach Rollback, Savepoint-Rollback oder verworfener Transaktion wird neu gesetzt). Verbindungen nie an EF vorbei öffnen. Migrationen, Design-Time und Test-Setup laufen als Owner (`ConfigureOwner`).
+   - Zwei Policies je Tabelle mit `workspace_id` (`migrationBuilder.EnableTenantPolicy`): `tenant_isolation` für alle Kommandos, nur `workspace_id = nullif(current_setting('agcowork.workspace_id', true), '')::uuid` (USING und WITH CHECK); `instance_read` nur SELECT bei `agcowork.scope = 'instance'`. Der Instanz-Bereich kann nie schreiben. Ohne gesetzten Workspace sieht die Rolle nichts (fail closed). Ohne RLS: workspaces, actors, api_keys (`workspace_id` ist dort nur die Key-Einschränkung), local_logins.
+   - **Instanz-Bereich:** `InstanceAccess.Enter(reason)`, nur in `ResolveTenant`, `ListMyWorkspaces` und `InstanceActivityReader`, jeweils zusammen mit `IgnoreQueryFilters` (Architekturtest; `SET ROLE`, `RESET ROLE`, `agcowork.scope` und `set_config('role'` sind außerhalb von `RowLevelSecurity.cs`/`DatabaseSessionInterceptor.cs` verboten). `CreateWorkspace` setzt den Tenant vor dem Speichern; der Bootstrap berührt nur Instanz-Tabellen.
+   - **Indizes:** Unter RLS werden nur LEAKPROOF-Operatoren zu Indexbedingungen. Migration und jeder Start markieren `jsonb_contains` und `ts_match_vq` als LEAKPROOF (nur als Superuser; sonst Warnung, Abfragen korrekt aber langsamer – betrifft verwaltete Postgres-Dienste).
+   - **Betrieb:** Rolle und Tenant liegen in der Server-Sitzung. Npgsql-Multiplexing wird beim Start abgelehnt; kein PgBouncer im Transaction- oder Statement-Modus (nur Session-Modus). Jeder Start zieht Rolle, Mitgliedschaft, Rechte, Default Privileges und LEAKPROOF idempotent nach (heilt Restores und `pg_upgrade`).
    - Schutzziel: Programmierfehler (vergessener Filter, Raw-SQL, `ExecuteUpdate`, Trigger). Nicht Schutzziel: kompromittierte DB-Zugangsdaten oder SQL-Injection, die `RESET ROLE` ausführt; dafür wäre ein eigener Login ohne Superuser nötig (Ausbaustufe, vor öffentlichem Hosting prüfen).
 6. SignalR-Hub `/w/{slug}/hub` (Cookie oder Bearer, AP-024). Negotiate und Transport laufen durch `TenantResolutionMiddleware` und `RealtimeConnectMiddleware` (`read` Pflicht, sonst 403); unbekannt oder fremd → 404. Die Verbindung tritt der Gruppe `ws:{WorkspaceId}` bei, Events gehen nur dorthin. Vor jeder Zustellung prüft der Dispatcher jede Verbindung des Workspaces erneut (Mitgliedschaft mit `read`, Actor aktiv, Key gültig und nicht auf einen anderen Workspace eingeschränkt, Passwort-Stamp der Session); entzogene Verbindungen werden getrennt.
 
@@ -696,7 +697,7 @@ variant="destructive"` bzw. Dropdown-Eintrag `variant="destructive"`.
 
 - API-Keys: `agck_<prefix>_<secret>`; nur SHA-256-Hash gespeichert, Prefix zur Identifikation, Rotation und Widerruf in der UI.
 - Scopes: `read`, `write`, `schema`, `admin`, pro Membership vergeben, optional eingeschränkt auf Spaces.
-- Mandantentrennung: Tenant-Kontext aus URL, Global Query Filter, Row-Level-Security, Isolationstests in der CI (siehe §2a). Fremde Workspaces antworten mit 404.
+- Mandantentrennung: Tenant-Kontext aus URL, Global Query Filter, Row-Level-Security (Rolle `agcowork_app`, Policies `tenant_isolation`/`instance_read`, AP-036), Isolationstests und RLS-Katalogtests in der CI (siehe §2a). Fremde Workspaces antworten mit 404.
 - Alle Schreibzugriffe im ActivityEvent mit Actor; keine anonymen Änderungen.
 - Rate-Limiting pro Key, Request-Größenlimits (Body-Markdown z. B. 2 MB).
 - HTTPS verpflichtend außer `localhost`; CORS nur für die eigene UI.

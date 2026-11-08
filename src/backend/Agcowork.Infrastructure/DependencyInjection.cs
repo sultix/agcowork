@@ -9,6 +9,8 @@ using Agcowork.Infrastructure.Search;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Agcowork.Infrastructure;
 
@@ -42,14 +44,26 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Applies pending EF Core migrations. Startup-time migration assumes a single instance (architecture §8).</summary>
+    /// <summary>
+    /// Applies pending EF Core migrations. Startup-time migration assumes a single instance (architecture §8). Runs as the
+    /// login of the connection string, without the switch to the application role (<see cref="AgcoworkDbContextOptions.ConfigureOwner"/>):
+    /// migrations create the role and the policies, and their backfills must see every workspace. Afterwards it re-applies the
+    /// role, its privileges and the LEAKPROOF marks of row-level security (<see cref="RowLevelSecurity.RepairAsync"/>).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The connection string enables Npgsql multiplexing, which row-level security cannot work with.</exception>
     public static async Task ApplyMigrationsAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        await using var scope = services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AgcoworkDbContext>();
+        var connectionString = GetConnectionString(services.GetRequiredService<IConfiguration>());
+        RowLevelSecurity.EnsureSupported(connectionString);
+        var options = new DbContextOptionsBuilder<AgcoworkDbContext>();
+        AgcoworkDbContextOptions.ConfigureOwner(options, connectionString);
+        await using var db = new AgcoworkDbContext(options.Options);
         await db.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+
+        var logger = services.GetService<ILoggerFactory>()?.CreateLogger(typeof(RowLevelSecurity).FullName!) ?? NullLogger.Instance;
+        await RowLevelSecurity.RepairAsync(db, logger, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

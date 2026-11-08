@@ -126,8 +126,8 @@ public sealed class CommentConcurrencyTests(PostgresFixture postgres) : CommentT
     /// <summary>Waits until a session of this database waits for a lock (the concurrent request reached its lock).</summary>
     private async Task WaitUntilBlockedAsync()
     {
-        var options = (DbContextOptions<AgcoworkDbContext>)Db.GetService<IDbContextOptions>();
-        await using var probe = new AgcoworkDbContext(options);
+        // As the owner: the application role does not see the wait state of other sessions in pg_stat_activity.
+        await using var probe = PostgresFixture.OpenOwner(Db);
         var deadline = DateTime.UtcNow + BlockTimeout;
         while (DateTime.UtcNow < deadline)
         {

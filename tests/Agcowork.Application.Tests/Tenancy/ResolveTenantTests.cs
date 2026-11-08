@@ -12,7 +12,7 @@ public sealed class ResolveTenantTests(PostgresFixture postgres) : DatabaseTest(
     {
         var seed = await TenancySeed.CreateAsync(Db);
 
-        var result = await new ResolveTenant(Db, TestActor.Agent(seed.AlphaOwner.Id)).HandleAsync(new ResolveTenantRequest("alpha"), Ct);
+        var result = await new ResolveTenant(Db, TestActor.Agent(seed.AlphaOwner.Id), Instance).HandleAsync(new ResolveTenantRequest("alpha"), Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(seed.Alpha.Id, result.Value.WorkspaceId);
@@ -28,7 +28,7 @@ public sealed class ResolveTenantTests(PostgresFixture postgres) : DatabaseTest(
         var seed = await TenancySeed.CreateAsync(Db);
         var caller = TestActor.Agent(seed.AlphaOwner.Id).WithKey(keyScopes: [KeyScope.Read]);
 
-        var result = await new ResolveTenant(Db, caller).HandleAsync(new ResolveTenantRequest("alpha"), Ct);
+        var result = await new ResolveTenant(Db, caller, Instance).HandleAsync(new ResolveTenantRequest("alpha"), Ct);
 
         Assert.Equal(new HashSet<string> { WorkspaceScope.Read }, result.Value.EffectiveScopes);
     }
@@ -38,7 +38,7 @@ public sealed class ResolveTenantTests(PostgresFixture postgres) : DatabaseTest(
     {
         var seed = await TenancySeed.CreateAsync(Db);
 
-        var result = await new ResolveTenant(Db, TestActor.Agent(seed.AlphaOwner.Id)).HandleAsync(new ResolveTenantRequest("beta"), Ct);
+        var result = await new ResolveTenant(Db, TestActor.Agent(seed.AlphaOwner.Id), Instance).HandleAsync(new ResolveTenantRequest("beta"), Ct);
 
         Assert.IsType<NotFoundError>(result.Error);
     }
@@ -52,7 +52,7 @@ public sealed class ResolveTenantTests(PostgresFixture postgres) : DatabaseTest(
     {
         var seed = await TenancySeed.CreateAsync(Db);
 
-        var result = await new ResolveTenant(Db, TestActor.Agent(seed.AlphaOwner.Id)).HandleAsync(new ResolveTenantRequest(slug), Ct);
+        var result = await new ResolveTenant(Db, TestActor.Agent(seed.AlphaOwner.Id), Instance).HandleAsync(new ResolveTenantRequest(slug), Ct);
 
         Assert.IsType<NotFoundError>(result.Error);
     }
@@ -63,8 +63,8 @@ public sealed class ResolveTenantTests(PostgresFixture postgres) : DatabaseTest(
         var seed = await TenancySeed.CreateAsync(Db);
         var restricted = TestActor.Agent(seed.MemberOfBoth.Id).WithKey(seed.Alpha.Id);
 
-        var inAlpha = await new ResolveTenant(Db, restricted).HandleAsync(new ResolveTenantRequest("alpha"), Ct);
-        var inBeta = await new ResolveTenant(Db, restricted).HandleAsync(new ResolveTenantRequest("beta"), Ct);
+        var inAlpha = await new ResolveTenant(Db, restricted, Instance).HandleAsync(new ResolveTenantRequest("alpha"), Ct);
+        var inBeta = await new ResolveTenant(Db, restricted, Instance).HandleAsync(new ResolveTenantRequest("beta"), Ct);
 
         Assert.True(inAlpha.IsSuccess);
         Assert.IsType<NotFoundError>(inBeta.Error);
@@ -73,7 +73,7 @@ public sealed class ResolveTenantTests(PostgresFixture postgres) : DatabaseTest(
     [Fact]
     public async Task HandleAsync_Anonymous_Unauthorized()
     {
-        var result = await new ResolveTenant(Db, TestActor.Anonymous).HandleAsync(new ResolveTenantRequest("alpha"), Ct);
+        var result = await new ResolveTenant(Db, TestActor.Anonymous, Instance).HandleAsync(new ResolveTenantRequest("alpha"), Ct);
 
         Assert.IsType<UnauthorizedError>(result.Error);
     }

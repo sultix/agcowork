@@ -155,6 +155,13 @@ sequenceDiagram
 - **Reviews mit Messung** (Parser-Laufzeiten, Stack Overflow, Sperren über `pg_stat_activity`) fanden Denial-of-Service- und Nebenläufigkeitsprobleme, die Funktionstests nicht abdecken. Schwellen gegen pathologische Eingaben brauchen eine zweite Grenze über die Summe (Seitenbudget), sonst werden sie unterlaufen.
 - **Parallel auf disjunkten Ordnern** (AP-031/AP-032, AP-029/AP-030) hat gut funktioniert; committet wurde jedes Paket einzeln mit Prüfung im temporären Worktree.
 
+## 7d. Regeln seit Härtung und RLS (AP-034 bis AP-036)
+
+- **Neue Tenant-Tabelle:** Entität implementiert `ITenantEntity`, die Migration ruft `migrationBuilder.EnableTenantPolicy("tabelle")` (beide Policies). `RowLevelSecurityCatalogTests` schlägt fehl bei fehlender Policy, fehlenden Rechten oder `workspace_id` ohne Tenant-Entität.
+- **Instanz-Bereich** nur mit Änderung von `InstanceAccessArchitectureTests`; das ist immer ein Review-Thema.
+- **Migrationen auf großen Tabellen:** Spalte anlegen, Backfill in Batches, Index `CONCURRENTLY` in eigener Migration ohne Transaktion – nicht alles in einer Transaktion (AP-035-Review).
+- **Parser-Eingänge** (Markdown, Filter, Suche) bekommen bei Einführung eine Messung mit bösartigen Eingaben: linear oder mit Budget, nie rekursiv ohne Tiefengrenze. Zwei Pakete dieser Runde hatten Stack-Overflow-Pfade.
+
 ## 8. Wenn etwas schiefgeht
 
 - **Implementierer meldet Unklarheit:** Orchestrator klärt im Paket nach, nicht im Chat mit dem Agenten; das Paket bleibt die Quelle.

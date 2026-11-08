@@ -29,7 +29,8 @@ public sealed class PostgresFixture : IAsyncLifetime
     {
         await _postgres.StartAsync(TestContext.Current.CancellationToken);
 
-        await using (var db = Open(_postgres.GetConnectionString()))
+        // Migrations run as the owner, like at startup (no switch to the application role).
+        await using (var db = OpenOwner(_postgres.GetConnectionString()))
         {
             await db.Database.MigrateAsync(TestContext.Current.CancellationToken);
         }
@@ -41,9 +42,10 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// <summary>
     /// Creates a fresh, migrated, empty database and returns a context on it. Pass a tenant accessor to
     /// get the tenant query filter and interceptor behaviour of a request; without one the context acts
-    /// like one outside any tenant (tenant entities invisible, writes to them rejected).
+    /// like one outside any tenant (tenant entities invisible, writes to them rejected). The context works like the
+    /// application's: as <c>agcowork_app</c> under row-level security, instance area through <paramref name="instanceAccess"/>.
     /// </summary>
-    public async Task<AgcoworkDbContext> CreateDatabaseAsync(ITenantContextAccessor? tenantAccessor = null)
+    public async Task<AgcoworkDbContext> CreateDatabaseAsync(ITenantContextAccessor? tenantAccessor = null, InstanceAccess? instanceAccess = null)
     {
         var name = $"t_{Guid.NewGuid():N}";
         await using (var connection = new NpgsqlConnection(WithDatabase("postgres")))
@@ -53,7 +55,17 @@ public sealed class PostgresFixture : IAsyncLifetime
             await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
-        return Open(WithDatabase(name), tenantAccessor);
+        return Open(WithDatabase(name), tenantAccessor, instanceAccess);
+    }
+
+    /// <summary>
+    /// A context on the database of <paramref name="db"/> that works as the owner, without row-level security (like a
+    /// migration). For test arrangement that has to write or read across workspaces (seeds); never for the code under test.
+    /// </summary>
+    public static AgcoworkDbContext OpenOwner(AgcoworkDbContext db)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        return OpenOwner(db.Database.GetConnectionString()!);
     }
 
     public async ValueTask DisposeAsync() => await _postgres.DisposeAsync();
@@ -61,11 +73,18 @@ public sealed class PostgresFixture : IAsyncLifetime
     private string WithDatabase(string database) =>
         new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString()) { Database = database, Pooling = false }.ConnectionString;
 
-    private static AgcoworkDbContext Open(string connectionString, ITenantContextAccessor? tenantAccessor = null)
+    private static AgcoworkDbContext Open(string connectionString, ITenantContextAccessor? tenantAccessor = null, InstanceAccess? instanceAccess = null)
     {
         var options = new DbContextOptionsBuilder<AgcoworkDbContext>();
         AgcoworkDbContextOptions.Configure(options, connectionString);
-        return new AgcoworkDbContext(options.Options, tenantAccessor);
+        return new AgcoworkDbContext(options.Options, tenantAccessor, instanceAccess);
+    }
+
+    private static AgcoworkDbContext OpenOwner(string connectionString)
+    {
+        var options = new DbContextOptionsBuilder<AgcoworkDbContext>();
+        AgcoworkDbContextOptions.ConfigureOwner(options, connectionString);
+        return new AgcoworkDbContext(options.Options);
     }
 }
 
@@ -89,6 +108,9 @@ public abstract class DatabaseTest(PostgresFixture postgres) : IAsyncLifetime
     /// <summary>Tenant of <see cref="Db"/>; switchable within a test, unlike the production accessor.</summary>
     protected TestTenantAccessor Tenant { get; } = new();
 
+    /// <summary>Instance area of <see cref="Db"/>: pass it to use cases that take one (ResolveTenant, ListMyWorkspaces, …).</summary>
+    protected InstanceAccess Instance { get; } = new();
+
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>Activity recorder for use cases under test: actor and workspace of <see cref="Tenant"/> at the time of the call.</summary>
@@ -97,7 +119,7 @@ public abstract class DatabaseTest(PostgresFixture postgres) : IAsyncLifetime
     /// <summary>Clock of <see cref="Activity"/>; tests with a fake clock return it here.</summary>
     protected virtual TimeProvider ActivityClock => TimeProvider.System;
 
-    public async ValueTask InitializeAsync() => _db = await postgres.CreateDatabaseAsync(Tenant);
+    public async ValueTask InitializeAsync() => _db = await postgres.CreateDatabaseAsync(Tenant, Instance);
 
     public async ValueTask DisposeAsync()
     {

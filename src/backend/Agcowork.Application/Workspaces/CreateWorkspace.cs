@@ -24,8 +24,8 @@ public sealed record CreateWorkspaceRequest(string? Slug, string? Name, string? 
 /// </summary>
 /// <remarks>
 /// The template runs through the regular use cases in this very scope. For that the tenant of the scope is set to
-/// the new workspace (owner membership, all scopes) after the workspace row exists; the scope keeps it afterwards,
-/// so an adapter must not use the scope for anything but answering this request.
+/// the new workspace (owner membership, all scopes) before the workspace is stored; the scope keeps it afterwards,
+/// also when the slug turns out to be taken, so an adapter must not use the scope for anything but answering this request.
 /// </remarks>
 public sealed class CreateWorkspace(
     IAgcoworkDbContext db,
@@ -69,8 +69,15 @@ public sealed class CreateWorkspace(
         var workspace = Workspace.Create(request.Slug!, request.Name!, request.Description, currentActor.Id, timeProvider);
         var owner = Membership.Create(workspace.Id, currentActor.Id, WorkspaceRole.Owner, scopes: null, currentActor.Id, timeProvider);
         db.Workspaces.Add(workspace);
-        // Outside a tenant context the tenant interceptor accepts this insert only because the workspace is new in the same save.
         db.Memberships.Add(owner);
+
+        // The new workspace is the tenant of this scope from here on, before anything is stored: the owner membership is a
+        // tenant row, and row-level security accepts it only for the tenant (no instance area needed). The template's use
+        // cases need the tenant as well. The creator is the owner, so the full membership scopes apply (the key restrictions
+        // of the request only limit what the caller may do in existing workspaces). Should the save fail, the scope answers
+        // with the error and is not used for anything else.
+        tenantAccessor.SetTenant(new TenantContext(
+            workspace.Id, workspace.Slug, isArchived: false, owner, EffectiveScopes.Compute(owner.Scopes, new HashSet<string>())));
 
         await using var transaction = await db.BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
         if (await db.SaveChangesOrConflictAsync(cancellationToken, WorkspaceConflicts.Slug).ConfigureAwait(false) is { } conflict)
@@ -78,10 +85,6 @@ public sealed class CreateWorkspace(
             return conflict;
         }
 
-        // The template's use cases need a tenant. The creator is the owner, so the full membership scopes apply
-        // (the key restrictions of the request only limit what the caller may do in existing workspaces).
-        tenantAccessor.SetTenant(new TenantContext(
-            workspace.Id, workspace.Slug, isArchived: false, owner, EffectiveScopes.Compute(owner.Scopes, new HashSet<string>())));
         var applied = await template.ApplyAsync(services, workspace.Id, currentActor.Id, cancellationToken).ConfigureAwait(false);
         if (applied.IsFailure)
         {

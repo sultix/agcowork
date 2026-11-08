@@ -16,7 +16,8 @@ public sealed record ResolveTenantRequest(string Slug);
 /// workspace all yield the same <see cref="NotFoundError"/>, so the existence of foreign workspaces is
 /// never revealed. Does not set the tenant; the adapter (middleware) does.
 /// </summary>
-public sealed class ResolveTenant(IAgcoworkDbContext db, ICurrentActor currentActor) : IUseCase<ResolveTenantRequest, TenantContext>
+public sealed class ResolveTenant(IAgcoworkDbContext db, ICurrentActor currentActor, InstanceAccess instanceAccess)
+    : IUseCase<ResolveTenantRequest, TenantContext>
 {
     public async Task<Result<TenantContext>> HandleAsync(ResolveTenantRequest request, CancellationToken cancellationToken)
     {
@@ -33,16 +34,15 @@ public sealed class ResolveTenant(IAgcoworkDbContext db, ICurrentActor currentAc
             return new NotFoundError("workspace");
         }
 
-        // Runs before a tenant exists, so the tenant filter has to be bypassed. Bounded by the caller's
-        // own actor id: the query can only ever return the caller's membership in this one workspace.
-        var match = await (
-                from workspace in db.Workspaces.AsNoTracking()
-                join membership in db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).AsNoTracking()
-                    on workspace.Id equals membership.WorkspaceId
-                where workspace.Slug == request.Slug && membership.ActorId == currentActor.Id
-                select new { workspace.Id, workspace.Slug, workspace.ArchivedAt, Membership = membership })
-            .SingleOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
+        // Runs before a tenant exists, so the tenant filter and row-level security have to be bypassed (instance area).
+        // Bounded by the caller's own actor id: the query can only ever return the caller's membership in this one workspace.
+        var query =
+            from workspace in db.Workspaces.AsNoTracking()
+            join membership in db.Memberships.IgnoreQueryFilters([TenantQueryFilter.Name]).AsNoTracking()
+                on workspace.Id equals membership.WorkspaceId
+            where workspace.Slug == request.Slug && membership.ActorId == currentActor.Id
+            select new { workspace.Id, workspace.Slug, workspace.ArchivedAt, Membership = membership };
+        var match = await ReadAsInstance(query, cancellationToken).ConfigureAwait(false);
 
         if (match is null)
         {
@@ -57,5 +57,13 @@ public sealed class ResolveTenant(IAgcoworkDbContext db, ICurrentActor currentAc
 
         var effective = EffectiveScopes.Compute(match.Membership.Scopes, currentActor.KeyScopes);
         return new TenantContext(match.Id, match.Slug, match.ArchivedAt is not null, match.Membership, effective);
+    }
+
+    private async Task<T?> ReadAsInstance<T>(IQueryable<T> query, CancellationToken cancellationToken)
+    {
+        using (instanceAccess.Enter("the caller's own membership, before the tenant exists"))
+        {
+            return await query.SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 }

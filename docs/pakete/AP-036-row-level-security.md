@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten); Tenancy `src/backend/Agcowork.Application/Tenancy/` (`ResolveTenant`, `TenantQueryFilter`), `Infrastructure/Persistence/AgcoworkDbContextOptions.cs` (zentrale Provider-Konfiguration, Interceptoren), `TenantSaveChangesInterceptor`, Katalogtest `tests/Agcowork.Api.Tests/Tenancy/TenantInterceptorTests.cs` |
@@ -61,3 +61,12 @@ Selbst wenn ein künftiger Code-Pfad den EF-Filter vergisst, Raw-SQL ohne `works
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zur Nacharbeit AP-034) |
+| 2026-11-08 | Bericht: 1385/1385; `InstanceAccess.Enter(reason)`, `DatabaseSessionInterceptor` (set_config beim Öffnen und vor Befehlen bei Abweichung, Neusetzen nach Rollback), `ConfigureOwner` für Migrationen/Design-Time/Tests, Instanz-Pfade nur `ResolveTenant`, `ListMyWorkspaces`, `InstanceActivityReader`; `CreateWorkspace` setzt Tenant vor dem Speichern; Migration auf Kopie der Bestandsdaten erprobt; LEAKPROOF für `jsonb_contains`/`ts_match_vq` (nur als Superuser) – sonst Suche 28 ms statt 4 ms bei 100k Records |
+| 2026-11-08 | Orchestrator: LEAKPROOF-Markierung angenommen (fällt ohne Superuser auf Warnung und langsamere Pläne zurück), Sicherheit der Markierung im Review prüfen |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Rauchtest (Wegwerf-Stack, frisch migriert): Bootstrap, Login, Passwortwechsel, zwei Workspaces, Records, Suche je Workspace getrennt, Kommentar, Activity je Record, Record aus alpha über beta 404, Hub alpha erhält Ereignis, Hub beta nicht; 11 Policies, LEAKPROOF gesetzt |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – wichtig: verworfene Transaktion auf offener Verbindung kann Instanz-Bereich offen lassen (heute nicht erreichbar), Multiplexing/Transaction-Pooling hebeln RLS aus; Hinweise: Instanz-Bereich nur lesend (zwei Policies), Selbstheilung beim Start (Rolle, Rechte, LEAKPROOF), Architekturtest auf `SET ROLE`/`set_config`-Literale; LEAKPROOF-Markierung vertretbar |
+| 2026-11-08 | Nacharbeit an implementer-opus (W1, W2, H1, H2, H4) |
+| 2026-11-08 | Nacharbeit: `TransactionStarted/Used` vergessen offene Einstellungen, Multiplexing beim Start abgelehnt, zwei Policies (Instanz-Bereich nur lesend), Selbstheilung beim Start (Rolle, Rechte, Default Privileges, LEAKPROOF), Architekturtest auf Rollen-/Scope-Literale; 1398/1398 |
+| 2026-11-08 | abgeschlossen |

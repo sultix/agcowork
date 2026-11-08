@@ -84,8 +84,8 @@ internal sealed class RacingDbContext(AgcoworkDbContext inner, Func<Task> before
     public static Func<Task> BumpSchemaVersion(AgcoworkDbContext db, Guid collectionId) =>
         async () =>
         {
-            var options = (DbContextOptions<AgcoworkDbContext>)db.GetService<IDbContextOptions>();
-            await using var other = new AgcoworkDbContext(options);
+            // As the owner: without a tenant, row-level security would hide the row from the application role.
+            await using var other = PostgresFixture.OpenOwner(db);
             await other.Database.ExecuteSqlAsync($"UPDATE collections SET schema_version = schema_version + 1 WHERE id = {collectionId}");
         };
 

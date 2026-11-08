@@ -22,11 +22,16 @@ namespace Agcowork.Infrastructure.Persistence;
 /// <summary>
 /// EF Core context. Tenancy (architecture §2a): every <see cref="ITenantEntity"/> gets the global query
 /// filter <see cref="TenantQueryFilter.Name"/> (<c>WorkspaceId == current tenant</c>, nothing outside a
-/// tenant), and <see cref="Tenancy.TenantSaveChangesInterceptor"/> refuses writes to other tenants.
+/// tenant), <see cref="Tenancy.TenantSaveChangesInterceptor"/> refuses writes to other tenants, and
+/// <see cref="DatabaseSessionInterceptor"/> runs every command under PostgreSQL row-level security for the same tenant.
 /// </summary>
 /// <param name="options">Provider options (see AgcoworkDbContextOptions).</param>
 /// <param name="tenantAccessor">Tenant of the current scope; null (e.g. design time) behaves like "no tenant".</param>
-public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> options, ITenantContextAccessor? tenantAccessor = null)
+/// <param name="instanceAccess">Instance area of the current scope (<see cref="InstanceAccess"/>); null behaves like "never entered".</param>
+public sealed class AgcoworkDbContext(
+    DbContextOptions<AgcoworkDbContext> options,
+    ITenantContextAccessor? tenantAccessor = null,
+    InstanceAccess? instanceAccess = null)
     : DbContext(options), IAgcoworkDbContext
 {
     private static readonly MethodInfo ApplyTenantFilterMethod =
@@ -67,6 +72,12 @@ public sealed class AgcoworkDbContext(DbContextOptions<AgcoworkDbContext> option
     /// Read by the query filter on every query, so it always reflects the accessor's current state.
     /// </summary>
     public Guid TenantWorkspaceId => tenantAccessor?.Current?.WorkspaceId ?? Guid.Empty;
+
+    /// <summary>Session settings the row-level security of this context's commands has to follow, read before every command.</summary>
+    internal SessionSettings WantedSession => new(TenantWorkspaceId, instanceAccess?.IsActive == true);
+
+    /// <summary>What <see cref="DatabaseSessionInterceptor"/> last applied on this context's connection.</summary>
+    internal DatabaseSession Session { get; } = new();
 
     public Task LockWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken)
     {

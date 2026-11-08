@@ -108,11 +108,13 @@ public sealed class RecordActivityTests(PostgresFixture postgres) : CommentTestB
         var spoiled = await Db.ActivityEvents.AsNoTracking()
             .Where(e => e.TargetType == ActivityTargets.Comment && e.CollectionId == d.A.Collection.Id)
             .OrderBy(e => e.Seq).Select(e => e.Id).FirstAsync(Ct);
-        var migrator = Db.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>();
+        // Migrations run as the owner, like at startup.
+        await using var owner = PostgresFixture.OpenOwner(Db);
+        var migrator = owner.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>();
         await migrator.MigrateAsync("20261108082350_AddComments", Ct);
 
         // Existing data before the migration, including a comment event whose diff has no usable record id.
-        await Db.Database.ExecuteSqlAsync($"UPDATE activity_events SET diff = jsonb_set(diff, '{{recordId}}', '\"kaputt\"') WHERE id = {spoiled}", Ct);
+        await owner.Database.ExecuteSqlAsync($"UPDATE activity_events SET diff = jsonb_set(diff, '{{recordId}}', '\"kaputt\"') WHERE id = {spoiled}", Ct);
         await migrator.MigrateAsync(cancellationToken: Ct);
         Db.ChangeTracker.Clear();
 

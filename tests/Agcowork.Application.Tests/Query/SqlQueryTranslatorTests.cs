@@ -501,7 +501,11 @@ public sealed class SqlQueryTranslatorTests(PostgresFixture postgres) : QueryTes
         }, null, seed.A.Seed.AlphaOwner.Id, clock));
         await Db.SaveChangesAsync(Ct);
         Db.ChangeTracker.Clear();
-        await Db.Database.ExecuteSqlRawAsync("ANALYZE records", Ct);
+        // As the owner: the application role may not analyze (autovacuum does it in production).
+        await using (var owner = PostgresFixture.OpenOwner(Db))
+        {
+            await owner.Database.ExecuteSqlRawAsync("ANALYZE records", Ct);
+        }
 
         var schema = (await Schemas().GetSchemaAsync(seed.CollectionId, Ct))!;
         string Plan(string filterJson)
