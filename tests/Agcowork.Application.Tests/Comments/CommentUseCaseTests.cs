@@ -333,8 +333,8 @@ public sealed class CommentUseCaseTests(PostgresFixture postgres) : CommentTestB
         var d = await ArrangeDiscussionAsync();
         await AddAsync(d, "Bitte \"prüfen\"");
 
-        var with = await new GetRecordMarkdown(Db, As(d, d.A.Seed.AlphaOwner)).HandleAsync(new GetRecordMarkdownRequest(d.Record.Id, IncludeComments: true), Ct);
-        var without = await new GetRecordMarkdown(Db, As(d, d.A.Seed.AlphaOwner)).HandleAsync(new GetRecordMarkdownRequest(d.Record.Id), Ct);
+        var with = await new GetRecordMarkdown(Db, As(d, d.A.Seed.AlphaOwner), RecordTranslator).HandleAsync(new GetRecordMarkdownRequest(d.Record.Id, IncludeComments: true), Ct);
+        var without = await new GetRecordMarkdown(Db, As(d, d.A.Seed.AlphaOwner), RecordTranslator).HandleAsync(new GetRecordMarkdownRequest(d.Record.Id), Ct);
 
         Assert.StartsWith(without.Value.TrimEnd(), with.Value, StringComparison.Ordinal);
         Assert.Contains("\n---\n\n# Comments\n\n1 thread(s)", with.Value, StringComparison.Ordinal);
@@ -360,8 +360,8 @@ public sealed class CommentUseCaseTests(PostgresFixture postgres) : CommentTestB
         var root = await AddAsync(d, "Frage");
         await AddAsync(d, "Antwort", root.Id);
 
-        var with = await new GetRecord(Db, As(d, d.A.Seed.AlphaOwner)).HandleAsync(new GetRecordRequest(d.Record.Id, IncludeComments: true), Ct);
-        var without = await new GetRecord(Db, As(d, d.A.Seed.AlphaOwner)).HandleAsync(new GetRecordRequest(d.Record.Id), Ct);
+        var with = await new GetRecord(Db, As(d, d.A.Seed.AlphaOwner), RecordTranslator).HandleAsync(new GetRecordRequest(d.Record.Id, IncludeComments: true), Ct);
+        var without = await new GetRecord(Db, As(d, d.A.Seed.AlphaOwner), RecordTranslator).HandleAsync(new GetRecordRequest(d.Record.Id), Ct);
 
         Assert.Single(Assert.Single(with.Value.Comments!.Threads).Replies!);
         Assert.Null(without.Value.Comments);

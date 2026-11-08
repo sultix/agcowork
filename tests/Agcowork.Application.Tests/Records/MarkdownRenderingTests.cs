@@ -96,7 +96,7 @@ public sealed class MarkdownRenderingTests(PostgresFixture postgres) : RecordTes
         var a = await ArrangeAsync();
         var record = await CreateRecordAsync(a, "Index anlegen", """{ "tags": ["db"] }""", "## Kontext\nText\n");
 
-        var markdown = await new GetRecordMarkdown(Db, a.Tenant).HandleAsync(new GetRecordMarkdownRequest(record.Id), Ct);
+        var markdown = await new GetRecordMarkdown(Db, a.Tenant, RecordTranslator).HandleAsync(new GetRecordMarkdownRequest(record.Id), Ct);
 
         Assert.True(markdown.IsSuccess);
         Assert.StartsWith($"---\nid: {record.Id}\ncollection: Aufgaben\ncollection_id: {a.Collection.Id}\nspace: Produkt\n", markdown.Value, StringComparison.Ordinal);
@@ -110,7 +110,7 @@ public sealed class MarkdownRenderingTests(PostgresFixture postgres) : RecordTes
         var a = await ArrangeAsync();
         var page = (await TryCreateAsync(a, new CreateRecordRequest(SpaceId: a.SpaceId, Title: "Notiz", Body: "Text"))).Value;
 
-        var markdown = (await new GetRecordMarkdown(Db, a.Tenant).HandleAsync(new GetRecordMarkdownRequest(page.Id), Ct)).Value;
+        var markdown = (await new GetRecordMarkdown(Db, a.Tenant, RecordTranslator).HandleAsync(new GetRecordMarkdownRequest(page.Id), Ct)).Value;
 
         Assert.DoesNotContain("collection", markdown, StringComparison.Ordinal);
         Assert.Contains("\nspace: Produkt\n", markdown, StringComparison.Ordinal);

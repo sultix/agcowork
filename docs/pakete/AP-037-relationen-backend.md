@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Gebündelte Titelauflösung `src/backend/Agcowork.Application/Activity/ListActivity.cs` (`ActivityTitles.ResolveAsync`); Relation-Prüfung `Application/Schema/ReferenceCheckers.cs`, `PropertyTypeRegistry.CheckRelation`; JSONB-Containment `Infrastructure/Query/SqlQueryTranslator.cs` (`Holds`); Keyset-Paginierung `Application/Query/`; MCP `Api/Mcp/Tools/RecordTools.cs` |
@@ -47,3 +47,10 @@ Menschen und Agenten sehen zu jeder Relation den Titel des Ziels und finden zu j
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zu AP-039) |
+| 2026-11-08 | Bericht: 1423/1423; Lookup in einer Abfrage, Backlinks gruppiert mit Cursor je Gruppe (`UNION ALL`, GIN bei großen Gruppen, 9,6 ms bei 100k), `expandRelations`/`includeBacklinks` in REST und `record_get` ohne neue Tools, `target_archived` auch bei archiviertem Space; keine Migration |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – wichtig: Zahl der Backlink-Gruppen je Aufruf unbegrenzt (2000 UNION-Zweige möglich), unpassender Cursor liefert still leer; Hinweise: Collections in SQL vorfiltern, Dictionary im Markdown, `more` für Agenten, Test U+2028, Slow-Trait |
+| 2026-11-08 | Nacharbeit an implementer-opus (W1, W2, H3–H7) |
+| 2026-11-08 | Nacharbeit: höchstens 50 Gruppen je Aufruf mit `nextGroupsCursor`, Cursor an Record und `includeArchived` gebunden (400), Collections per `schema @>` vorgefiltert, `more` je Gruppe für Agenten, Tests für Zeilentrenner, Slow-Trait; 1431/1431 |
+| 2026-11-08 | abgeschlossen |

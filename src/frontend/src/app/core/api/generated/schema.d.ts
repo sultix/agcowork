@@ -665,7 +665,7 @@ export interface paths {
         };
         /**
          * Get a record
-         * @description One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown body, includeHistory=n (0..100) the latest n revisions, includeComments=true the discussion ('comments': threads with replies, as GET …/comments returns them; with format=markdown a '# Comments' section after the body). format=markdown returns text/markdown: a YAML frontmatter block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the easiest form to read for language models. Requires read.
+         * @description One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown body, includeHistory=n (0..100) the latest n revisions, includeComments=true the discussion ('comments': threads with replies, as GET …/comments returns them; with format=markdown a '# Comments' section after the body). expandRelations=true adds 'relations': per relation property with a value, the referenced records as { id, title, archived } (title null when not available); with format=markdown each referenced id gets its title as a YAML comment. includeBacklinks=true adds 'backlinks': the records that reference this one, grouped by source collection and property (up to 50 groups), the newest 10 active ones per group, 'nextCursor' continues a group via GET …/records/{id}/backlinks (format=markdown: a '# Backlinks' section after the body). format=markdown returns text/markdown: a YAML frontmatter block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the easiest form to read for language models. Requires read.
          */
         get: operations["GetRecord"];
         put?: never;
@@ -678,6 +678,46 @@ export interface paths {
          * @description Partial update. 'properties' is a patch: only sent keys change, null removes a value (not for required properties). 'title' and 'body' replace the old values when sent; to add text without sending the whole body use POST …/append. Send 'expectedRevision' (the 'revision' you read) so concurrent changes are not overwritten: if the record moved on, 409 'revision_mismatch' carries 'currentRevision' and 'changedKeys' (title, property keys, body) changed since then; if your change does not touch them, retry with the current revision. Without 'expectedRevision' the last writer wins. 'reason' is stored with the revision. A change that changes nothing creates no revision. Requires write. Archived record: 409 'record_archived'.
          */
         patch: operations["UpdateRecord"];
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/records/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve record ids to titles
+         * @description Titles of many records in one call, e.g. for the values of relation properties: send 'ids' (1..200 record ids, duplicates allowed). Answers 'items' in the order of the request, each id once, with 'id', 'title', 'collectionId' (null for free pages), 'spaceId' and 'archived' (the record, its collection or its space is archived; references stay valid). Unknown ids and ids of other workspaces are simply missing. Reads only, despite POST. Requires read. More than 200 ids: 400 'too_long' on 'ids'.
+         */
+        post: operations["LookupRecords"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/backlinks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the records that reference a record
+         * @description Who references this record? Relations are stored only at the source record; this lists the records of every collection whose schema has a relation property targeting this record's collection (also the same collection) and whose value holds this record. Answers 'groups', one per source collection and property ('collectionId', 'collectionName', 'spaceId', 'propertyKey', 'propertyName'), ordered by collection name, each with 'items' ({ id, title, archived }, newest first), its own 'nextCursor' and, when it has more, 'more': the collectionId and filter for POST /collections/{id}/query that lists all of the group. 'limit' (1..200, default 50) applies per group. To continue one group pass its 'nextCursor' as 'cursor': the answer then holds only that group. At most 50 groups are looked at per call; 'nextGroupsCursor' (null when done) as 'cursor' returns the next groups. Archived source records (also those of archived collections or spaces) only with includeArchived=true; send the same value with the cursor. A cursor of another record or includeArchived setting, or of a group that no longer exists: 400 on 'cursor'. Free pages have no backlinks. Requires read. Unknown record: 404.
+         */
+        get: operations["GetRecordBacklinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/w/{workspaceSlug}/records/{recordId}/append": {
@@ -1134,6 +1174,64 @@ export interface components {
             /** @description Why; stored with the revision. */
             reason?: null | string;
         };
+        /** @description The filter of a BacklinkQueryDto: `{ "prop": key, "op": "contains", "value": recordId }`. */
+        BacklinkFilterDto: {
+            /** @description Key of the relation property. */
+            prop: string;
+            /** @description Always `contains`. */
+            op: string;
+            /**
+             * Format: uuid
+             * @description The referenced record.
+             */
+            value: string;
+        };
+        /** @description Records of one collection that reference the record through one relation property. */
+        BacklinkGroupDto: {
+            /**
+             * Format: uuid
+             * @description Source collection.
+             */
+            collectionId: string;
+            /** @description Name of the source collection. */
+            collectionName: string;
+            /**
+             * Format: uuid
+             * @description Space of the source collection.
+             */
+            spaceId: string;
+            /** @description Key of the relation property that holds the reference. */
+            propertyKey: string;
+            /** @description Display name of that property. */
+            propertyName: string;
+            /** @description The referencing records of this page, newest first. */
+            items: components["schemas"]["BacklinkItemDto"][];
+            /** @description Cursor of the next page of this group (GET …/backlinks?cursor=…); null when the group is complete. */
+            nextCursor: null | string;
+            more: null | components["schemas"]["BacklinkQueryDto"];
+        };
+        /** @description One referencing record. */
+        BacklinkItemDto: {
+            /**
+             * Format: uuid
+             * @description Record id.
+             */
+            id: string;
+            /** @description Current title. */
+            title: string;
+            /** @description True when the record, its collection or its space is archived (listed only with includeArchived). */
+            archived: boolean;
+        };
+        /** @description A records_query call that lists all backlinks of one group. */
+        BacklinkQueryDto: {
+            /**
+             * Format: uuid
+             * @description The source collection to query.
+             */
+            collectionId: string;
+            /** @description Filter DSL node: the relation property contains the referenced record. */
+            filter: components["schemas"]["BacklinkFilterDto"];
+        };
         ChangeOwnPasswordRequest: {
             /** @description The password the caller logged in with. */
             currentPassword: null | string;
@@ -1442,6 +1540,10 @@ export interface components {
         LoginRequest: {
             email: null | string;
             password: null | string;
+        };
+        LookupRecordsRequest: {
+            /** @description Record ids to resolve, 1..200; duplicates are allowed and answered once. */
+            ids: null | string[];
         };
         MarkMentionsReadRequest: {
             /** @description Mentions to mark read (ids from the inbox). Either this or All. */
@@ -1801,6 +1903,24 @@ export interface components {
             /** @description Why; stored with the revision. */
             reason?: null | string;
         };
+        /** @description The backlinks of a record, grouped by source collection and relation property. */
+        RecordBacklinksDto: {
+            /**
+             * Format: uuid
+             * @description The referenced record.
+             */
+            recordId: string;
+            /**
+             * @description One group per source collection and relation property that has at least one (listed) referencing record; ordered by
+             *     collection name, then by the property's position in the schema. Empty when nothing references the record.
+             */
+            groups: components["schemas"]["BacklinkGroupDto"][];
+            /**
+             * @description Set when more groups exist than one answer holds (at most 50 are looked at per call): pass it as `cursor` to get the
+             *     next groups. Null when all groups were looked at.
+             */
+            nextGroupsCursor: null | string;
+        };
         /** @description A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoints (AP-009). */
         RecordDto: {
             /**
@@ -1865,6 +1985,53 @@ export interface components {
             /** @description Latest revisions, newest first; only with `includeHistory`. */
             history?: null | components["schemas"]["RevisionSummaryDto"][];
             comments?: null | components["schemas"]["CommentThreadsDto"];
+            /**
+             * @description Only with `expandRelations`: per relation property with a value, the referenced records in stored order with
+             *     `id`, current `title` (null when not available) and `archived`.
+             */
+            relations?: null | {
+                [key: string]: components["schemas"]["RelationTargetDto"][];
+            };
+            backlinks?: null | components["schemas"]["RecordBacklinksDto"];
+        };
+        /** @description Answer of `POST /records/lookup`. */
+        RecordLookupDto: {
+            /** @description The records found, in the order of the request (each id once); unknown ids and ids of other workspaces are missing. */
+            items: components["schemas"]["RecordLookupItemDto"][];
+        };
+        /** @description Title and place of one record. */
+        RecordLookupItemDto: {
+            /**
+             * Format: uuid
+             * @description Record id.
+             */
+            id: string;
+            /** @description Current title. */
+            title: string;
+            /**
+             * Format: uuid
+             * @description Collection of the record; null for a free page.
+             */
+            collectionId: null | string;
+            /**
+             * Format: uuid
+             * @description Space of the record.
+             */
+            spaceId: string;
+            /** @description True when the record, its collection or its space is archived (as in search). References to it stay valid. */
+            archived: boolean;
+        };
+        /** @description A relation value resolved to its target record. */
+        RelationTargetDto: {
+            /**
+             * Format: uuid
+             * @description Id of the referenced record, as stored.
+             */
+            id: string;
+            /** @description Current title of the referenced record; null when it is not available (unknown id). */
+            title: null | string;
+            /** @description True when the referenced record, its collection or its space is archived. */
+            archived: boolean;
         };
         /** @description Body of `PUT /actors/{id}/password`; the id comes from the route. */
         ResetPasswordBody: {
@@ -4887,6 +5054,8 @@ export interface operations {
                 includeBody?: boolean;
                 includeHistory?: number | string;
                 includeComments?: boolean;
+                expandRelations?: boolean;
+                includeBacklinks?: boolean;
             };
             header?: never;
             path: {
@@ -5001,6 +5170,115 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    LookupRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupRecordsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordLookupDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetRecordBacklinks: {
+        parameters: {
+            query?: {
+                limit?: number | string;
+                cursor?: string;
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404. */
+                workspaceSlug: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordBacklinksDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

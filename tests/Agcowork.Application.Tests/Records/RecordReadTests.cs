@@ -13,9 +13,9 @@ public sealed class RecordReadTests(PostgresFixture postgres) : RecordTestBase(p
         var record = await CreateRecordAsync(a, body: "B");
         Assert.True((await UpdateAsync(a, new UpdateRecordRequest(record.Id, Title: "Zwei", Reason: "Umbenannt"))).IsSuccess);
 
-        var plain = await new GetRecord(Db, a.Tenant).HandleAsync(new GetRecordRequest(record.Id), Ct);
-        var full = await new GetRecord(Db, a.Tenant).HandleAsync(new GetRecordRequest(record.Id, IncludeBody: true, IncludeHistory: 5), Ct);
-        var tooMuch = await new GetRecord(Db, a.Tenant).HandleAsync(new GetRecordRequest(record.Id, IncludeHistory: 101), Ct);
+        var plain = await new GetRecord(Db, a.Tenant, RecordTranslator).HandleAsync(new GetRecordRequest(record.Id), Ct);
+        var full = await new GetRecord(Db, a.Tenant, RecordTranslator).HandleAsync(new GetRecordRequest(record.Id, IncludeBody: true, IncludeHistory: 5), Ct);
+        var tooMuch = await new GetRecord(Db, a.Tenant, RecordTranslator).HandleAsync(new GetRecordRequest(record.Id, IncludeHistory: 101), Ct);
 
         Assert.Null(plain.Value.Body);
         Assert.Null(plain.Value.History);

@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
 using Agcowork.Application.Query;
+using Agcowork.Domain.Collections;
 using Agcowork.Domain.Records;
 using Microsoft.EntityFrameworkCore;
 
@@ -107,6 +108,17 @@ internal sealed class SqlQueryTranslator : IRecordQueryTranslator
             Expression.AndAlso(Compare(createdAt, ExpressionType.Equal, position.CreatedAt), Compare(id, ExpressionType.GreaterThan, position.Id)));
         after = Or(after, And(equalSoFar, tieAfter));
         return records.Where(Expression.Lambda<Func<Record, bool>>(after, Row));
+    }
+
+    /// <summary>
+    /// <c>schema @&gt; '{"properties": [{"type": "relation", "targetCollectionId": "…"}]}'</c>, matching the stored schema
+    /// envelope (<see cref="Persistence.JsonColumns"/>: camelCase members, snake_case types, ids as lowercase D strings).
+    /// </summary>
+    public IQueryable<Collection> RelationSources(IQueryable<Collection> collections, Guid targetCollectionId)
+    {
+        ArgumentNullException.ThrowIfNull(collections);
+        var json = JsonSerializer.Serialize(new { properties = new[] { new { type = "relation", targetCollectionId = targetCollectionId.ToString("D") } } });
+        return collections.Where(c => EF.Functions.JsonContains((object)c.Schema, (object)JsonbFunctions.Json(json)));
     }
 
     public IQueryable<RecordRow> Project(IQueryable<Record> records, IReadOnlyList<QuerySort> sorts, bool includeBody)

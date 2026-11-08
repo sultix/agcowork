@@ -24,6 +24,15 @@ namespace Agcowork.Application.Records;
 /// <param name="ArchivedAt">Set when archived; archived records are read-only until restored.</param>
 /// <param name="History">Latest revisions, newest first; only with <c>includeHistory</c>.</param>
 /// <param name="Comments">The discussion (threads with replies); only with <c>includeComments</c>.</param>
+/// <param name="Relations">
+/// Only with <c>expandRelations</c>: per relation property with a value, the referenced records in stored order with
+/// <c>id</c>, current <c>title</c> (null when not available) and <c>archived</c>.
+/// </param>
+/// <param name="Backlinks">
+/// Only with <c>includeBacklinks</c>: records that reference this one, grouped by source collection and property (up to 50
+/// groups), the newest 10 per group (active records only); a group's <c>nextCursor</c> continues it via GET
+/// …/records/{id}/backlinks, its <c>more</c> names the equivalent records_query.
+/// </param>
 public sealed record RecordDto(
     Guid Id,
     Guid SpaceId,
@@ -39,7 +48,9 @@ public sealed record RecordDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? ArchivedAt,
     IReadOnlyList<RevisionSummaryDto>? History = null,
-    Comments.CommentThreadsDto? Comments = null);
+    Comments.CommentThreadsDto? Comments = null,
+    IReadOnlyDictionary<string, IReadOnlyList<RelationTargetDto>>? Relations = null,
+    RecordBacklinksDto? Backlinks = null);
 
 /// <summary>One revision without its content.</summary>
 /// <param name="No">Revision number, from 1.</param>

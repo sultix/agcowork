@@ -2,6 +2,7 @@ using Agcowork.Application.Comments;
 using Agcowork.Application.Common;
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Common.Results;
+using Agcowork.Application.Query;
 using Agcowork.Application.Tenancy;
 using Agcowork.Domain.Workspaces;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +13,18 @@ namespace Agcowork.Application.Records;
 /// <param name="IncludeBody">Include the Markdown body.</param>
 /// <param name="IncludeHistory">Attach the latest n revisions (0..100), newest first.</param>
 /// <param name="IncludeComments">Attach the discussion (all threads, resolved ones included), as <see cref="ListComments"/> returns it.</param>
-public sealed record GetRecordRequest(Guid RecordId, bool IncludeBody = false, int IncludeHistory = 0, bool IncludeComments = false);
+/// <param name="ExpandRelations">Attach the titles of the records the relation properties reference (<see cref="RecordDto.Relations"/>).</param>
+/// <param name="IncludeBacklinks">Attach the records that reference this one, first page per group (<see cref="RecordDto.Backlinks"/>).</param>
+public sealed record GetRecordRequest(
+    Guid RecordId,
+    bool IncludeBody = false,
+    int IncludeHistory = 0,
+    bool IncludeComments = false,
+    bool ExpandRelations = false,
+    bool IncludeBacklinks = false);
 
 /// <summary>One record as JSON, archived ones included. Requires <c>read</c>. The Markdown form is <see cref="GetRecordMarkdown"/>.</summary>
-public sealed class GetRecord(IAgcoworkDbContext db, ITenantContext tenant) : IUseCase<GetRecordRequest, RecordDto>
+public sealed class GetRecord(IAgcoworkDbContext db, ITenantContext tenant, IRecordQueryTranslator translator) : IUseCase<GetRecordRequest, RecordDto>
 {
     public const int MaxHistory = 100;
 
@@ -55,7 +64,13 @@ public sealed class GetRecord(IAgcoworkDbContext db, ITenantContext tenant) : IU
         var comments = request.IncludeComments
             ? await CommentReads.ThreadsAsync(db, record.Id, includeResolved: true, cancellationToken).ConfigureAwait(false)
             : null;
-        return RecordMapper.ToDto(record, schema, request.IncludeBody, history) with { Comments = comments };
+        var relations = request.ExpandRelations
+            ? await RecordTitles.ExpandAsync(db, schema, record.Properties, cancellationToken).ConfigureAwait(false)
+            : null;
+        var backlinks = request.IncludeBacklinks
+            ? await Backlinks.ReadAsync(db, translator, record.Id, record.CollectionId, Backlinks.PerGroupInRecord, cursor: null, includeArchived: false, cancellationToken).ConfigureAwait(false)
+            : null;
+        return RecordMapper.ToDto(record, schema, request.IncludeBody, history) with { Comments = comments, Relations = relations, Backlinks = backlinks };
     }
 }
 

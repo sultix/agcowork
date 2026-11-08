@@ -35,6 +35,9 @@ public static class ErrorCodes
     public const string KeyImmutable = Domain.Collections.Schema.SchemaViolationCodes.KeyImmutable;
     public const string RemovalNotConfirmed = "removal_not_confirmed";
 
+    /// <summary>A new relation targets an archived collection (or one in an archived space), AP-037.</summary>
+    public const string TargetArchived = "target_archived";
+
     // Field codes of the filter DSL and queries (AP-009).
     public const string UnknownOperator = "unknown_operator";
     public const string OperatorNotApplicable = "operator_not_applicable";

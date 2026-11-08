@@ -3472,7 +3472,7 @@
           "Records"
         ],
         "summary": "Get a record",
-        "description": "One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown body, includeHistory=n (0..100) the latest n revisions, includeComments=true the discussion ('comments': threads with replies, as GET …/comments returns them; with format=markdown a '# Comments' section after the body). format=markdown returns text/markdown: a YAML frontmatter block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the easiest form to read for language models. Requires read.",
+        "description": "One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown body, includeHistory=n (0..100) the latest n revisions, includeComments=true the discussion ('comments': threads with replies, as GET …/comments returns them; with format=markdown a '# Comments' section after the body). expandRelations=true adds 'relations': per relation property with a value, the referenced records as { id, title, archived } (title null when not available); with format=markdown each referenced id gets its title as a YAML comment. includeBacklinks=true adds 'backlinks': the records that reference this one, grouped by source collection and property (up to 50 groups), the newest 10 active ones per group, 'nextCursor' continues a group via GET …/records/{id}/backlinks (format=markdown: a '# Backlinks' section after the body). format=markdown returns text/markdown: a YAML frontmatter block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the easiest form to read for language models. Requires read.",
         "operationId": "GetRecord",
         "parameters": [
           {
@@ -3521,6 +3521,20 @@
           },
           {
             "name": "includeComments",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "expandRelations",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeBacklinks",
             "in": "query",
             "schema": {
               "type": "boolean"
@@ -3665,6 +3679,177 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/records/lookup": {
+      "post": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "Resolve record ids to titles",
+        "description": "Titles of many records in one call, e.g. for the values of relation properties: send 'ids' (1..200 record ids, duplicates allowed). Answers 'items' in the order of the request, each id once, with 'id', 'title', 'collectionId' (null for free pages), 'spaceId' and 'archived' (the record, its collection or its space is archived; references stay valid). Unknown ids and ids of other workspaces are simply missing. Reads only, despite POST. Requires read. More than 200 ids: 400 'too_long' on 'ids'.",
+        "operationId": "LookupRecords",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LookupRecordsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordLookupDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{workspaceSlug}/records/{recordId}/backlinks": {
+      "get": {
+        "tags": [
+          "Records"
+        ],
+        "summary": "List the records that reference a record",
+        "description": "Who references this record? Relations are stored only at the source record; this lists the records of every collection whose schema has a relation property targeting this record's collection (also the same collection) and whose value holds this record. Answers 'groups', one per source collection and property ('collectionId', 'collectionName', 'spaceId', 'propertyKey', 'propertyName'), ordered by collection name, each with 'items' ({ id, title, archived }, newest first), its own 'nextCursor' and, when it has more, 'more': the collectionId and filter for POST /collections/{id}/query that lists all of the group. 'limit' (1..200, default 50) applies per group. To continue one group pass its 'nextCursor' as 'cursor': the answer then holds only that group. At most 50 groups are looked at per call; 'nextGroupsCursor' (null when done) as 'cursor' returns the next groups. Archived source records (also those of archived collections or spaces) only with includeArchived=true; send the same value with the cursor. A cursor of another record or includeArchived setting, or of a group that no longer exists: 400 on 'cursor'. Free pages have no backlinks. Requires read. Unknown record: 404.",
+        "operationId": "GetRecordBacklinks",
+        "parameters": [
+          {
+            "name": "workspaceSlug",
+            "in": "path",
+            "description": "Slug of the workspace (see GET /api/v1/workspaces). Unknown workspaces and workspaces the caller is not a member of both answer 404.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordBacklinksDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5655,6 +5840,136 @@
         },
         "description": "Body of `POST /records/{recordId}/append`."
       },
+      "BacklinkFilterDto": {
+        "required": [
+          "prop",
+          "op",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "prop": {
+            "type": "string",
+            "description": "Key of the relation property."
+          },
+          "op": {
+            "type": "string",
+            "description": "Always `contains`."
+          },
+          "value": {
+            "type": "string",
+            "description": "The referenced record.",
+            "format": "uuid"
+          }
+        },
+        "description": "The filter of a BacklinkQueryDto: `{ \"prop\": key, \"op\": \"contains\", \"value\": recordId }`."
+      },
+      "BacklinkGroupDto": {
+        "required": [
+          "collectionId",
+          "collectionName",
+          "spaceId",
+          "propertyKey",
+          "propertyName",
+          "items",
+          "nextCursor",
+          "more"
+        ],
+        "type": "object",
+        "properties": {
+          "collectionId": {
+            "type": "string",
+            "description": "Source collection.",
+            "format": "uuid"
+          },
+          "collectionName": {
+            "type": "string",
+            "description": "Name of the source collection."
+          },
+          "spaceId": {
+            "type": "string",
+            "description": "Space of the source collection.",
+            "format": "uuid"
+          },
+          "propertyKey": {
+            "type": "string",
+            "description": "Key of the relation property that holds the reference."
+          },
+          "propertyName": {
+            "type": "string",
+            "description": "Display name of that property."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BacklinkItemDto"
+            },
+            "description": "The referencing records of this page, newest first."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Cursor of the next page of this group (GET …/backlinks?cursor=…); null when the group is complete."
+          },
+          "more": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Null when the group is complete. Otherwise the query that lists all records of this group: call records_query (or POST\n/collections/{collectionId}/query) with exactly this `collectionId` and `filter`; it can also sort and filter further.",
+                "$ref": "#/components/schemas/BacklinkQueryDto"
+              }
+            ]
+          }
+        },
+        "description": "Records of one collection that reference the record through one relation property."
+      },
+      "BacklinkItemDto": {
+        "required": [
+          "id",
+          "title",
+          "archived"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Record id.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Current title."
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "True when the record, its collection or its space is archived (listed only with includeArchived)."
+          }
+        },
+        "description": "One referencing record."
+      },
+      "BacklinkQueryDto": {
+        "required": [
+          "collectionId",
+          "filter"
+        ],
+        "type": "object",
+        "properties": {
+          "collectionId": {
+            "type": "string",
+            "description": "The source collection to query.",
+            "format": "uuid"
+          },
+          "filter": {
+            "description": "Filter DSL node: the relation property contains the referenced record.",
+            "$ref": "#/components/schemas/BacklinkFilterDto"
+          }
+        },
+        "description": "A records_query call that lists all backlinks of one group."
+      },
       "ChangeOwnPasswordRequest": {
         "required": [
           "currentPassword",
@@ -6426,6 +6741,25 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "LookupRecordsRequest": {
+        "required": [
+          "ids"
+        ],
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Record ids to resolve, 1..200; duplicates are allowed and answered once."
           }
         }
       },
@@ -7412,6 +7746,36 @@
         },
         "description": "Optional body of archive and restore."
       },
+      "RecordBacklinksDto": {
+        "required": [
+          "recordId",
+          "groups",
+          "nextGroupsCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string",
+            "description": "The referenced record.",
+            "format": "uuid"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BacklinkGroupDto"
+            },
+            "description": "One group per source collection and relation property that has at least one (listed) referencing record; ordered by\ncollection name, then by the property's position in the schema. Empty when nothing references the record."
+          },
+          "nextGroupsCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when more groups exist than one answer holds (at most 50 are looked at per call): pass it as `cursor` to get the\nnext groups. Null when all groups were looked at."
+          }
+        },
+        "description": "The backlinks of a record, grouped by source collection and relation property."
+      },
       "RecordDto": {
         "required": [
           "id",
@@ -7528,9 +7892,115 @@
                 "$ref": "#/components/schemas/CommentThreadsDto"
               }
             ]
+          },
+          "relations": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/RelationTargetDto"
+              }
+            },
+            "description": "Only with `expandRelations`: per relation property with a value, the referenced records in stored order with\n`id`, current `title` (null when not available) and `archived`."
+          },
+          "backlinks": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Only with `includeBacklinks`: records that reference this one, grouped by source collection and property (up to 50\ngroups), the newest 10 per group (active records only); a group's `nextCursor` continues it via GET\n…/records/{id}/backlinks, its `more` names the equivalent records_query.",
+                "$ref": "#/components/schemas/RecordBacklinksDto"
+              }
+            ]
           }
         },
         "description": "A record (data set or page). The single JSON shape of records for REST, MCP (AP-011) and the query endpoints (AP-009)."
+      },
+      "RecordLookupDto": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordLookupItemDto"
+            },
+            "description": "The records found, in the order of the request (each id once); unknown ids and ids of other workspaces are missing."
+          }
+        },
+        "description": "Answer of `POST /records/lookup`."
+      },
+      "RecordLookupItemDto": {
+        "required": [
+          "id",
+          "title",
+          "collectionId",
+          "spaceId",
+          "archived"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Record id.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Current title."
+          },
+          "collectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Collection of the record; null for a free page.",
+            "format": "uuid"
+          },
+          "spaceId": {
+            "type": "string",
+            "description": "Space of the record.",
+            "format": "uuid"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "True when the record, its collection or its space is archived (as in search). References to it stay valid."
+          }
+        },
+        "description": "Title and place of one record."
+      },
+      "RelationTargetDto": {
+        "required": [
+          "id",
+          "title",
+          "archived"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id of the referenced record, as stored.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Current title of the referenced record; null when it is not available (unknown id)."
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "True when the referenced record, its collection or its space is archived."
+          }
+        },
+        "description": "A relation value resolved to its target record."
       },
       "ResetPasswordBody": {
         "required": [

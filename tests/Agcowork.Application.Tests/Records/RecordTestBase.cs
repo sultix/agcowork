@@ -3,12 +3,14 @@ using System.Text.Json.Nodes;
 using Agcowork.Application.Collections;
 using Agcowork.Application.Collections.Templates;
 using Agcowork.Application.Common.Results;
+using Agcowork.Application.Query;
 using Agcowork.Application.Records;
 using Agcowork.Application.Schema;
 using Agcowork.Application.Tenancy;
 using Agcowork.Application.Tests.Collections;
 using Agcowork.Application.Tests.Tenancy;
 using Agcowork.Domain.Identity;
+using Agcowork.Infrastructure.Query;
 
 namespace Agcowork.Application.Tests.Records;
 
@@ -33,6 +35,9 @@ public abstract class RecordTestBase(PostgresFixture postgres) : SchemaTestBase(
             new PropertyDefinitionInput("notes", "Notes", "markdown"));
         return new Arranged(seed, tenant, space.Id, collection);
     }
+
+    /// <summary>The production query translator, for the record reads that need it (backlinks).</summary>
+    internal static IRecordQueryTranslator RecordTranslator { get; } = new SqlQueryTranslator();
 
     internal static JsonElement Json(string json) => JsonDocument.Parse(json).RootElement.Clone();
 

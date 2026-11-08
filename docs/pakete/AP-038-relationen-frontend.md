@@ -27,6 +27,11 @@ Relationen sind überall lesbar und navigierbar: Tabelle, Board, Dokument und Fi
 **Ausdrücklich nicht drin:**
 - Backend, Schema-Editor, Gegen-Properties, Graph-Ansicht.
 
+## Fachlicher Kontext
+
+- Vertrag aus AP-037 (committet): `POST /api/v1/w/{slug}/records/lookup { ids }` (1–200) → `{ items: [{ id, title, collectionId, spaceId, archived }] }` in Anfrage-Reihenfolge, fremde/unbekannte fehlen. `GET /records/{id}/backlinks?limit&cursor&includeArchived` → `{ recordId, groups: [{ collectionId, collectionName, spaceId, propertyKey, propertyName, items: [{ id, title, archived }], nextCursor, more }], nextGroupsCursor }`; `limit` je Gruppe; `nextCursor` einer Gruppe holt nur diese Gruppe; höchstens 50 Gruppen je Aufruf, weitere über `nextGroupsCursor` (als `cursor`); falscher Cursor → 400 `invalid_format` an `cursor`.
+- Titel kommen als reiner Text; `archived` umfasst Container.
+
 ## Akzeptanzkriterien
 
 1. Tabelle mit 100 Zeilen und Relationen erzeugt höchstens eine Lookup-Anfrage je 200 verschiedene IDs (Test).

@@ -28,7 +28,7 @@ public sealed class ComputedPropertiesTests(PostgresFixture postgres) : RecordTe
         var updated = await UpdateUseCase(Enter(a.Seed.Alpha, a.Seed.MemberOfBoth), a.Seed.MemberOfBoth)
             .HandleAsync(new UpdateRecordRequest(created.Value.Id, Properties: Props("""{ "summary": "länger" }""")), Ct);
 
-        var record = (await new GetRecord(Db, a.Tenant).HandleAsync(new GetRecordRequest(created.Value.Id), Ct)).Value;
+        var record = (await new GetRecord(Db, a.Tenant, RecordTranslator).HandleAsync(new GetRecordRequest(created.Value.Id), Ct)).Value;
 
         Assert.True(updated.IsSuccess, Describe(updated.Error));
         Assert.Equal(["summary", "created", "author", "updated_at", "editor"], record.Properties.Keys);
@@ -60,7 +60,7 @@ public sealed class ComputedPropertiesTests(PostgresFixture postgres) : RecordTe
         var (a, collectionId) = await ArrangeComputedAsync();
         var created = await TryCreateAsync(a, new CreateRecordRequest(collectionId, Title: "Eintrag"));
 
-        var markdown = (await new GetRecordMarkdown(Db, a.Tenant).HandleAsync(new GetRecordMarkdownRequest(created.Value.Id), Ct)).Value;
+        var markdown = (await new GetRecordMarkdown(Db, a.Tenant, RecordTranslator).HandleAsync(new GetRecordMarkdownRequest(created.Value.Id), Ct)).Value;
 
         Assert.Contains("\ncreated: 2026-11-07T12:00:00Z\n", markdown, StringComparison.Ordinal);
         Assert.Contains($"\nauthor: {a.Seed.AlphaOwner.Id}\n", markdown, StringComparison.Ordinal);

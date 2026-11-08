@@ -79,7 +79,14 @@ internal static class RecordTools
         + "properties, revision, timestamps, actors) followed by the Markdown body, the easiest form to read. format 'json' returns "
         + "the record object (id, title, properties, body, revision, …) and allows includeHistory. Note 'revision': send it as "
         + "'expectedRevision' to record_update so you do not overwrite a concurrent change. includeComments: true adds the "
-        + "discussion (threads with replies, as comments_list) in both formats. Requires read.")]
+        + "discussion (threads with replies, as comments_list) in both formats. Relation properties store only record ids: "
+        + "expandRelations: true adds their titles (markdown: as a comment next to each id, e.g. 'affects: <id> # \"Billing\"'; "
+        + "structured result 'relations': { key: [ { id, title, archived } ] }), so you need no extra call per id. "
+        + "includeBacklinks: true answers 'who references this record?': the records whose relation properties point here, "
+        + "grouped by collection and property (up to 50 groups), the newest 10 active ones per group (markdown: a '# Backlinks' "
+        + "section after the body; structured: 'backlinks.groups'). A group with more has 'more': the collectionId and filter "
+        + "to pass to records_query to list all of them (filter { \"prop\": <key>, \"op\": \"contains\", \"value\": <this "
+        + "record id> }). Requires read.")]
     public static async Task<CallToolResult> Get(
         GetRecord getRecord,
         GetRecordMarkdown getMarkdown,
@@ -90,6 +97,8 @@ internal static class RecordTools
         [Description("json only: include the Markdown body. Default true.")] bool? includeBody = null,
         [Description("json only: attach the latest n revisions (0..100). Default 0.")] int? includeHistory = null,
         [Description("Attach the comments (threads with replies). Default false.")] bool? includeComments = null,
+        [Description("Resolve relation values to the titles of the referenced records. Default false.")] bool? expandRelations = null,
+        [Description("Attach the records that reference this one (first 10 per collection and property). Default false.")] bool? includeBacklinks = null,
         CancellationToken cancellationToken = default)
     {
         format ??= FormatMarkdown;
@@ -100,26 +109,30 @@ internal static class RecordTools
 
         if (format == FormatMarkdown)
         {
-            var markdown = await getMarkdown.HandleAsync(new GetRecordMarkdownRequest(recordId), cancellationToken);
-            if (markdown.IsFailure)
+            var rendered = await getMarkdown.RenderAsync(
+                new GetRecordMarkdownRequest(recordId, ExpandRelations: expandRelations ?? false, IncludeBacklinks: includeBacklinks ?? false), cancellationToken);
+            if (rendered.IsFailure)
             {
-                return output.Failure(markdown.Error);
+                return output.Failure(rendered.Error);
             }
 
+            var view = rendered.Value;
             if (includeComments != true)
             {
-                return output.Success(new RecordMarkdownResult(recordId, FormatMarkdown, markdown.Value), markdown.Value);
+                return output.Success(new RecordMarkdownResult(recordId, FormatMarkdown, view.Markdown, Relations: view.Relations, Backlinks: view.Backlinks), view.Markdown);
             }
 
             var comments = await listComments.HandleAsync(new ListCommentsRequest(recordId), cancellationToken);
             return comments.IsSuccess
                 ? output.Success(
-                    new RecordMarkdownResult(recordId, FormatMarkdown, markdown.Value, comments.Value),
-                    CommentText.AppendTo(markdown.Value, comments.Value))
+                    new RecordMarkdownResult(recordId, FormatMarkdown, view.Markdown, comments.Value, view.Relations, view.Backlinks),
+                    CommentText.AppendTo(view.Markdown, comments.Value))
                 : output.Failure(comments.Error);
         }
 
-        var result = await getRecord.HandleAsync(new GetRecordRequest(recordId, includeBody ?? true, includeHistory ?? 0, includeComments ?? false), cancellationToken);
+        var result = await getRecord.HandleAsync(
+            new GetRecordRequest(recordId, includeBody ?? true, includeHistory ?? 0, includeComments ?? false, expandRelations ?? false, includeBacklinks ?? false),
+            cancellationToken);
         return output.From(result, record => output.SummaryWithJson($"Record {record.Title} (id {record.Id}, revision {record.Revision}).", record));
     }
 
@@ -271,4 +284,12 @@ internal static class RecordTools
 /// <param name="Format">Always <c>markdown</c>.</param>
 /// <param name="Markdown">Frontmatter plus body.</param>
 /// <param name="Comments">The discussion; only with <c>includeComments</c>.</param>
-internal sealed record RecordMarkdownResult(Guid Id, string Format, string Markdown, CommentThreadsDto? Comments = null);
+/// <param name="Relations">Relation values resolved to { id, title, archived } per property; only with <c>expandRelations</c>.</param>
+/// <param name="Backlinks">Records that reference this one, grouped by collection and property; only with <c>includeBacklinks</c>.</param>
+internal sealed record RecordMarkdownResult(
+    Guid Id,
+    string Format,
+    string Markdown,
+    CommentThreadsDto? Comments = null,
+    IReadOnlyDictionary<string, IReadOnlyList<RelationTargetDto>>? Relations = null,
+    RecordBacklinksDto? Backlinks = null);

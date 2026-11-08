@@ -12,8 +12,9 @@ using Microsoft.OpenApi;
 namespace Agcowork.Api.Endpoints.Records;
 
 /// <summary>
-/// Records: create, read (JSON or Markdown with frontmatter), patch, append, archive, restore, history. Descriptions are
-/// written so an agent can use them as tool descriptions (AP-011). Thin: bind, call the use case, map the result.
+/// Records: create, read (JSON or Markdown with frontmatter), patch, append, archive, restore, history, title lookup and
+/// backlinks (AP-037). Descriptions are written so an agent can use them as tool descriptions (AP-011). Thin: bind, call the
+/// use case, map the result.
 /// </summary>
 internal static class RecordEndpoints
 {
@@ -62,7 +63,12 @@ internal static class RecordEndpoints
             .WithDescription(
                 "One record, archived ones included. format=json (default) returns the record; includeBody=true adds the Markdown "
                 + "body, includeHistory=n (0..100) the latest n revisions, includeComments=true the discussion ('comments': threads with replies, "
-                + "as GET …/comments returns them; with format=markdown a '# Comments' section after the body). format=markdown returns text/markdown: a YAML frontmatter "
+                + "as GET …/comments returns them; with format=markdown a '# Comments' section after the body). expandRelations=true adds "
+                + "'relations': per relation property with a value, the referenced records as { id, title, archived } (title null when not "
+                + "available); with format=markdown each referenced id gets its title as a YAML comment. includeBacklinks=true adds "
+                + "'backlinks': the records that reference this one, grouped by source collection and property (up to 50 groups), the newest "
+                + "10 active ones per group, 'nextCursor' continues a group via GET …/records/{id}/backlinks (format=markdown: a '# Backlinks' section "
+                + "after the body). format=markdown returns text/markdown: a YAML frontmatter "
                 + "block (id, collection, space, title, all properties, revision, timestamps, actors) followed by the body, the "
                 + "easiest form to read for language models. Requires read.")
             .AddOpenApiOperationTransformer((operation, _, _) =>
@@ -75,6 +81,34 @@ internal static class RecordEndpoints
 
                 return Task.CompletedTask;
             })
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        records.MapPost("/lookup", LookupAsync)
+            .WithName("LookupRecords")
+            .WithSummary("Resolve record ids to titles")
+            .WithDescription(
+                "Titles of many records in one call, e.g. for the values of relation properties: send 'ids' (1..200 record ids, "
+                + "duplicates allowed). Answers 'items' in the order of the request, each id once, with 'id', 'title', 'collectionId' "
+                + "(null for free pages), 'spaceId' and 'archived' (the record, its collection or its space is archived; references stay "
+                + "valid). Unknown ids and ids of other workspaces are simply missing. Reads only, despite POST. Requires read. "
+                + "More than 200 ids: 400 'too_long' on 'ids'.")
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        records.MapGet("/{recordId:guid}/backlinks", BacklinksAsync)
+            .WithName("GetRecordBacklinks")
+            .WithSummary("List the records that reference a record")
+            .WithDescription(
+                "Who references this record? Relations are stored only at the source record; this lists the records of every "
+                + "collection whose schema has a relation property targeting this record's collection (also the same collection) "
+                + "and whose value holds this record. Answers 'groups', one per source collection and property ('collectionId', "
+                + "'collectionName', 'spaceId', 'propertyKey', 'propertyName'), ordered by collection name, each with 'items' "
+                + "({ id, title, archived }, newest first), its own 'nextCursor' and, when it has more, 'more': the collectionId and "
+                + "filter for POST /collections/{id}/query that lists all of the group. 'limit' (1..200, default 50) applies per group. "
+                + "To continue one group pass its 'nextCursor' as 'cursor': the answer then holds only that group. At most 50 groups "
+                + "are looked at per call; 'nextGroupsCursor' (null when done) as 'cursor' returns the next groups. Archived source "
+                + "records (also those of archived collections or spaces) only with includeArchived=true; send the same value with "
+                + "the cursor. A cursor of another record or includeArchived setting, or of a group that no longer exists: 400 on "
+                + "'cursor'. Free pages have no backlinks. Requires read. Unknown record: 404.")
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         records.MapPatch("/{recordId:guid}", UpdateAsync)
@@ -174,6 +208,8 @@ internal static class RecordEndpoints
         [FromQuery] bool? includeBody,
         [FromQuery] int? includeHistory,
         [FromQuery] bool? includeComments,
+        [FromQuery] bool? expandRelations,
+        [FromQuery] bool? includeBacklinks,
         CancellationToken cancellationToken)
     {
         format ??= "json";
@@ -184,11 +220,35 @@ internal static class RecordEndpoints
 
         if (format == "markdown")
         {
-            var markdown = await getMarkdown.HandleAsync(new GetRecordMarkdownRequest(recordId, includeComments ?? false), cancellationToken);
+            var markdown = await getMarkdown.HandleAsync(
+                new GetRecordMarkdownRequest(recordId, includeComments ?? false, expandRelations ?? false, includeBacklinks ?? false), cancellationToken);
             return markdown.IsSuccess ? TypedResults.Text(markdown.Value, MarkdownContentType, Encoding.UTF8) : markdown.Error.ToProblem();
         }
 
-        var result = await getRecord.HandleAsync(new GetRecordRequest(recordId, includeBody ?? false, includeHistory ?? 0, includeComments ?? false), cancellationToken);
+        var result = await getRecord.HandleAsync(
+            new GetRecordRequest(recordId, includeBody ?? false, includeHistory ?? 0, includeComments ?? false, expandRelations ?? false, includeBacklinks ?? false),
+            cancellationToken);
+        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
+    }
+
+    private static async Task<Results<Ok<RecordLookupDto>, ProblemHttpResult>> LookupAsync(
+        LookupRecordsRequest body,
+        LookupRecords useCase,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.HandleAsync(body, cancellationToken);
+        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
+    }
+
+    private static async Task<Results<Ok<RecordBacklinksDto>, ProblemHttpResult>> BacklinksAsync(
+        Guid recordId,
+        GetBacklinks useCase,
+        [FromQuery] int? limit,
+        [FromQuery] string? cursor,
+        [FromQuery] bool? includeArchived,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.HandleAsync(new GetBacklinksRequest(recordId, limit, cursor, includeArchived ?? false), cancellationToken);
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }
 

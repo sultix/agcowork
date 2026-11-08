@@ -37,8 +37,10 @@ internal static class CollectionInputValidation
     }
 
     /// <summary>
-    /// Relation targets must be collections of the current workspace (the tenant filter hides all others).
-    /// <paramref name="relations"/>: field of the <c>targetCollectionId</c> and the definition.
+    /// Targets of new relations must be collections of the current workspace (the tenant filter hides all others) that are
+    /// not archived: an archived collection, or one in an archived space, is read-only and cannot become a new target
+    /// (<c>target_archived</c>, AP-037). Existing relations to a collection archived later stay valid; this check only runs
+    /// for relations being created. <paramref name="relations"/>: field of the <c>targetCollectionId</c> and the definition.
     /// </summary>
     public static async Task CheckRelationTargetsAsync(
         IAgcoworkDbContext db,
@@ -55,15 +57,29 @@ internal static class CollectionInputValidation
         }
 
         var ids = targets.Select(r => r.Property.TargetCollectionId!.Value).Distinct().ToList();
-        var existing = await db.Collections.AsNoTracking()
-            .Where(c => ids.Contains(c.Id))
-            .Select(c => c.Id)
-            .ToListAsync(cancellationToken)
+        var existing = await (
+                from collection in db.Collections.AsNoTracking()
+                join space in db.Spaces.AsNoTracking() on collection.SpaceId equals space.Id
+                where ids.Contains(collection.Id)
+                select new { collection.Id, Archived = collection.ArchivedAt != null || space.ArchivedAt != null })
+            .ToDictionaryAsync(c => c.Id, c => c.Archived, cancellationToken)
             .ConfigureAwait(false);
 
-        foreach (var (field, property) in targets.Where(r => !existing.Contains(r.Property.TargetCollectionId!.Value)))
+        foreach (var (field, property) in targets)
         {
-            errors.Add(field, ErrorCodes.NotFound, $"No collection {property.TargetCollectionId} exists in this workspace. Relations can only target collections of the same workspace.");
+            var target = property.TargetCollectionId!.Value;
+            if (!existing.TryGetValue(target, out var archived))
+            {
+                errors.Add(field, ErrorCodes.NotFound, $"No collection {target} exists in this workspace. Relations can only target collections of the same workspace.");
+            }
+            else if (archived)
+            {
+                errors.Add(
+                    field,
+                    ErrorCodes.TargetArchived,
+                    $"Collection {target} is archived (or its space is). An archived collection is read-only and cannot become the target of a "
+                    + "new relation; choose an active collection. Existing relations to it stay valid.");
+            }
         }
     }
 }

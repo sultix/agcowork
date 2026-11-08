@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Agcowork.Domain.Collections;
 using Agcowork.Domain.Records;
 
 namespace Agcowork.Application.Query;
@@ -24,6 +25,12 @@ public interface IRecordQueryTranslator
 
     /// <summary>The rows to return, with their sort values as the database computed them (for the next cursor).</summary>
     IQueryable<RecordRow> Project(IQueryable<Record> records, IReadOnlyList<QuerySort> sorts, bool includeBody);
+
+    /// <summary>
+    /// Collections whose schema has a relation property targeting <paramref name="targetCollectionId"/> (the sources of
+    /// backlinks, AP-037): JSONB containment on the stored schema, so other schemas are never loaded.
+    /// </summary>
+    IQueryable<Collection> RelationSources(IQueryable<Collection> collections, Guid targetCollectionId);
 }
 
 /// <summary>A record as read by a query: the columns of <see cref="Record"/> (body only on request) plus its sort values.</summary>

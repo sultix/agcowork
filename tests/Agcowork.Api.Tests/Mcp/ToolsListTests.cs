@@ -72,6 +72,17 @@ public sealed class ToolsListTests(AgcoworkApiFactory factory)
         Assert.Contains("'deleted': true", tools.Single(tool => tool.Name == "comment_update").Description, StringComparison.Ordinal);
         Assert.Contains("mentions_list", client.ServerInstructions, StringComparison.Ordinal);
         Assert.True(tools.Single(tool => tool.Name == "record_get").JsonSchema.GetProperty("properties").TryGetProperty("includeComments", out _));
+
+        // Relations (AP-037): titles and backlinks through record_get, no extra tools; the description says how to page further.
+        var get = tools.Single(tool => tool.Name == "record_get");
+        foreach (var parameter in new[] { "expandRelations", "includeBacklinks" })
+        {
+            Assert.Contains(parameter, get.Description, StringComparison.Ordinal);
+            Assert.False(string.IsNullOrWhiteSpace(get.JsonSchema.GetProperty("properties").GetProperty(parameter).GetProperty("description").GetString()));
+        }
+
+        Assert.Contains("who references this record", get.Description, StringComparison.Ordinal);
+        Assert.Contains("records_query", get.Description, StringComparison.Ordinal);
     }
 
     [Fact]

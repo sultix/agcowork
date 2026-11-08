@@ -104,6 +104,7 @@ erDiagram
 - **Einseitig gespeichert, Rückverweise abgeleitet:** Eine Relation speichert nur IDs am Quell-Record. Es gibt keine Gegen-Property (z. B. kein `superseded_by`); „Wer verweist auf mich?“ beantwortet `GET /records/{id}/backlinks` bzw. `record_get(includeBacklinks)`: gruppiert nach Quell-Collection und Property, nur Collections, deren Schema eine Relation auf die Collection des Records hat, Tenant-gefiltert, paginiert.
 - **Titel-Auflösung:** `POST /records/lookup { ids }` (max. 200) liefert je ID `id`, `title`, `collectionId`, `spaceId`, `archived`; unbekannte oder fremde IDs fehlen in der Antwort (kein Existenz-Leak). `record_get` löst Relationstitel für Agenten mit `expandRelations` auf. Die UI hält einen geteilten Titel-Cache, der live auf `record.updated|archived|restored` reagiert.
 - **Archiv:** Verweise auf archivierte Records bleiben gültig und werden in UI und Lookup als archiviert markiert. Eine archivierte Collection kann nicht neues Ziel einer Relation werden (400 `target_archived`).
+- **Umsetzung (AP-037):** `POST /records/lookup` (1–200 Einträge, eine Abfrage, Reihenfolge der Anfrage; `archived` = Record, Collection oder Space archiviert). `GET /records/{id}/backlinks?limit&cursor&includeArchived` liefert `groups` je Quell-Collection und Relation-Property (Collection-Name, dann Schema-Reihenfolge; leere fehlen), Items neueste zuerst; `limit` gilt je Gruppe, jede Gruppe hat `nextCursor` (nur diese Gruppe) und `more` (`collectionId` + `filter` für `records_query`); höchstens 50 Gruppen je Aufruf, Rest über `nextGroupsCursor`. Cursor sind an Record und `includeArchived` gebunden (sonst 400 an `cursor`). Quell-Collections werden in SQL vorgefiltert (`schema @>`), die Treffer per `@>` über GIN `(workspace_id, properties)` in einem `UNION ALL`. `record_get`/`GET /records/{id}` mit `expandRelations` (JSON `relations`, Markdown: Titel als YAML-Kommentar) und `includeBacklinks` (10 je Gruppe, Markdown-Abschnitt `# Backlinks`). `target_archived` gilt auch für Collections in archivierten Spaces.
 - **Auswahl:** Der Relations-Picker sucht serverseitig in der Ziel-Collection (Query-Endpunkt mit `title contains`, aktiv, neueste zuerst), nicht mehr über die ersten 200 Records.
 
 ### Schema-Regeln (aus AP-006)
@@ -343,7 +344,7 @@ Regeln:
 | `collection_create(spaceId, name, description, schema)` | Neue Sammlung anlegen |
 | `collection_update_schema(collectionId, changes)` | Felder hinzufügen/ändern (additiv bevorzugt) |
 | `records_query(collectionId, filter?, sort?, fields?, limit?, cursor?)` | Abfrage mit Filter-DSL |
-| `record_get(recordId, includeBody?, includeHistory?, includeComments?)` | Einzelner Datensatz |
+| `record_get(recordId, format?, includeBody?, includeHistory?, includeComments?, expandRelations?, includeBacklinks?)` | Einzelner Datensatz; Relationstitel und Rückverweise (AP-037) |
 | `record_create(collectionId | spaceId, title, properties?, body?, templateId?)` | Anlegen |
 | `record_update(recordId, properties?, body?, expectedRevision?, reason?)` | Ändern (Properties als Patch, Body ersetzen) |
 | `record_append(recordId, markdown, section?)` | Markdown anhängen, z. B. Log-Einträge, ohne den Body zu kennen |
@@ -407,6 +408,8 @@ GET    /collections/{id}/describe       (Schema + JSON Schema + Vorlagen + Beisp
 GET|POST /collections/{id}/templates    PATCH|DELETE /collections/{id}/templates/{templateId}
 POST   /collections/{id}/query          (Filter-DSL im Body)
 GET    /records/{id}                    POST   /records
+GET    /records/{id}?expandRelations&includeBacklinks   POST /records/lookup ({ids}, max. 200)
+GET    /records/{id}/backlinks?limit&cursor&includeArchived
 PATCH  /records/{id}                    POST   /records/{id}/append
 GET    /records/{id}/history            POST   /records/{id}/comments
 GET    /records/{id}/comments   PATCH|DELETE /comments/{id}   POST /comments/{id}/resolve|reopen
