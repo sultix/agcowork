@@ -1,6 +1,5 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Agcowork.Api.Auth;
+using Agcowork.Api.Http;
 using Agcowork.Api.Tenancy;
 using Agcowork.Application.Realtime;
 using Agcowork.Infrastructure.Realtime;
@@ -19,12 +18,8 @@ internal static class RealtimeSetup
     /// <param name="startDispatcher">False only for build-time OpenAPI generation, which runs without a database.</param>
     public static IServiceCollection AddAgcoworkRealtime(this IServiceCollection services, bool startDispatcher = true)
     {
-        // Same JSON as REST: snake_case enums, nulls omitted (e.g. targetTitle of member events).
-        services.AddSignalR().AddJsonProtocol(options =>
-        {
-            options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
-            options.PayloadSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-        });
+        // Same JSON as REST (WireJson): snake_case enums, required members also as null (e.g. "targetTitle": null of member events).
+        services.AddSignalR().AddJsonProtocol(options => WireJson.Configure(options.PayloadSerializerOptions));
         services.AddRealtimeOptions();
         services.AddSingleton<RealtimeConnections>();
         services.AddSingleton<IRealtimeConnections>(sp => sp.GetRequiredService<RealtimeConnections>());

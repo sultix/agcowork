@@ -87,7 +87,8 @@ public sealed class QueryEndpointsTests(AgcoworkApiFactory factory)
         Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
         var json = await SchemaApi.ReadJsonAsync(empty);
         Assert.Equal(records.Select(r => r.Id.ToString()), json.GetProperty("items").EnumerateArray().Select(r => r.GetProperty("id").GetString()));
-        Assert.False(json.TryGetProperty("nextCursor", out _));
+        // nextCursor is required in the contract: present as null on the last page; count is optional (only with includeCount).
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("nextCursor").ValueKind);
         Assert.False(json.TryGetProperty("count", out _));
 
         var walked = new List<string>();

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Agcowork.Api.Tests.Records;
 using Agcowork.Api.Tests.Tenancy;
 using Agcowork.Application.Identity.Actors;
@@ -66,6 +67,22 @@ public sealed class HubTests(AgcoworkApiFactory factory)
         var diff = activity.GetProperty("diff");
         Assert.Equal(record.Id, diff.GetProperty("recordId").GetGuid());
         Assert.Equal(editor.ActorId, Assert.Single(diff.GetProperty("mentionedActorIds").EnumerateArray()).GetGuid());
+    }
+
+    [Fact]
+    public async Task Hub_MemberEvent_TargetTitleAsNull()
+    {
+        var (workspace, owner, editor, _) = await ArrangeAsync();
+        var newcomer = await factory.CreateAgentAsync(cancellationToken: Ct);
+        await using var hub = await HubClient.WithKey(factory, workspace.Slug, editor.Key).StartAsync();
+
+        await TenancyFixture.AddMemberAsync(owner.Client, workspace.Slug, newcomer.ActorId, "viewer");
+        var activity = await hub.WaitForAsync(e => e.GetProperty("type").GetString() == "member.added", HubClient.Patience);
+
+        // Same wire rule as REST (AP-033): required members are present also when null.
+        Assert.True(activity.TryGetProperty("targetTitle", out var title), activity.GetRawText());
+        Assert.Equal(JsonValueKind.Null, title.ValueKind);
+        Assert.Equal(JsonValueKind.Null, activity.GetProperty("collectionId").ValueKind);
     }
 
     [Fact]
@@ -142,7 +159,7 @@ public sealed class HubTests(AgcoworkApiFactory factory)
         var received = alpha.Received.Concat(restricted.Received).ToList();
         Assert.NotEmpty(received);
         Assert.All(received, e => Assert.NotEqual(beta.Id, e.GetProperty("targetId").GetGuid()));
-        Assert.DoesNotContain(received, e => e.TryGetProperty("collectionId", out var c) && c.GetGuid() == betaCollection.Id);
+        Assert.DoesNotContain(received, e => e.GetProperty("collectionId") is { ValueKind: JsonValueKind.String } c && c.GetGuid() == betaCollection.Id);
     }
 
     [Fact]

@@ -18,7 +18,7 @@ namespace Agcowork.Api.Mcp;
 /// </summary>
 internal sealed class McpOutput(IOptions<JsonOptions> jsonOptions)
 {
-    /// <summary>The REST serializer settings (camelCase, snake_case enums, nulls omitted).</summary>
+    /// <summary>The REST serializer settings (camelCase, snake_case enums, required members also as null; see <see cref="WireJson"/>).</summary>
     public JsonSerializerOptions Json { get; } = jsonOptions.Value.SerializerOptions;
 
     /// <summary>Success with a rendered text; failure as structured error.</summary>

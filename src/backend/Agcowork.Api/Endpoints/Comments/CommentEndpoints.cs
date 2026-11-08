@@ -29,7 +29,7 @@ internal static class CommentEndpoints
             .WithSummary("List the comments of a record")
             .WithDescription(
                 "The discussion of a record as threads: roots oldest first, each with its 'replies' oldest first, authors with name and "
-                + "kind. Deleted comments are left out; a deleted root that still has replies stays as placeholder without 'markdown'. "
+                + "kind. Deleted comments are left out; a deleted root that still has replies stays as placeholder with 'markdown': null. "
                 + "includeResolved=false hides resolved threads. At most 500 threads (the newest); 'omittedThreads' counts older ones "
                 + "left out. Archived records can be read. Requires read.")
             .ProducesProblem(StatusCodes.Status400BadRequest);

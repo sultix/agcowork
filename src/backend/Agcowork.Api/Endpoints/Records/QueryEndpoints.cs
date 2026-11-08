@@ -47,7 +47,7 @@ internal static class QueryEndpoints
         + "\"value\": \"2026-12-01\" }, { \"prop\": \"priority\", \"op\": \"eq\", \"value\": \"high\" } ] } ] }. ";
 
     private static readonly string PagingDescription =
-        "Results: 'items' (records without body unless requested), 'nextCursor' (pass as 'cursor' for the next page; null when there are no further "
+        "Results: 'items' (records; 'body' is null unless requested), 'nextCursor' (pass as 'cursor' for the next page; null when there are no further "
         + $"matches) and, with 'includeCount': true, 'count' (all matches, at most {QueryParser.MaxCount}). 'limit' 1..{QueryParser.MaxLimit}, "
         + $"default {QueryParser.DefaultLimit}. Archived records only with 'includeArchived': true. Invalid input: 400 with 'errors[]' on the path "
         + "(e.g. 'filter.and[1].op'), codes unknown_property, unknown_operator, operator_not_applicable, invalid_value, not_in_options, not_sortable, "

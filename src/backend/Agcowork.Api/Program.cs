@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Agcowork.Api.Auth;
 using Agcowork.Api.Endpoints;
 using Agcowork.Api.Http;
@@ -30,13 +28,9 @@ builder.EnrichNpgsqlDbContext<AgcoworkDbContext>(settings =>
     settings.DisableRetry = true;
 });
 
-// Enums travel as snake_case strings ("human", "agent").
-// Nulls are omitted, so optional members (filter nodes, DTOs) appear only when set.
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
-    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-});
+// Wire JSON (also MCP structured content, see WireJson): snake_case enums; required members always written, also as null;
+// optional members (filter nodes, includes such as history) only when set.
+builder.Services.ConfigureHttpJsonOptions(options => WireJson.Configure(options.SerializerOptions));
 
 // Every error response is ProblemDetails with a machine-readable "code" (see ProblemDetailsMapping).
 builder.Services.AddProblemDetails(options =>

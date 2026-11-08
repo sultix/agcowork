@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | `src/backend/Agcowork.Api/Program.cs:38` (`DefaultIgnoreCondition = WhenWritingNull`), `src/backend/Agcowork.Api/Realtime/RealtimeSetup.cs:26` |
@@ -49,3 +49,9 @@ Das JSON auf dem Draht entspricht dem OpenAPI-Schema: Felder, die dort als `requ
 | Datum | Ereignis |
 |---|---|
 | 2026-11-08 | angelegt nach Fund im Rauchtest |
+| 2026-11-08 | Bericht: `WireJson` (Never + Modifier: `null` nur bei im Schema optionalen Feldern weggelassen) für HTTP, SignalR, MCP; generischer Vertragstest gegen OpenAPI; 1314/1314, Frontend 993 |
+| 2026-11-08 | Rauchtest (Wegwerf-Stack mit Fix): `"readAt": null` auf dem Draht, Klick im Posteingang markiert gelesen (Server 0, Badge weg), Erledigen-Knopf an beiden Wurzeln, Thread erledigen blendet ihn aus |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: Freigabe mit Hinweisen (0 Abweichungen Schema ↔ Draht über alle Schemas, ProblemDetails unverändert, keine neuen sensiblen Felder) |
+| 2026-11-08 | Nacharbeit: Kommentar in `WireJson` (Default `= null` statt `JsonIgnore`), `WireJsonSchemaTests` über alle Schemas und per Reflection, Beschreibungen für Agenten auf `null` umgestellt; 1316/1316 |
+| 2026-11-08 | abgeschlossen |

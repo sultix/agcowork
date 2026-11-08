@@ -28,7 +28,7 @@ Menschen suchen aus jeder Seite eines Workspaces heraus und springen direkt zum 
 
 ## Fachlicher Kontext
 
-- Vertrag aus AP-026 (committet `923b736`, siehe OpenAPI `GET /api/v1/w/{slug}/search`): Antwort `{ items, nextCursor }`, `nextCursor` fehlt auf der letzten Seite (null-Felder werden weggelassen). Treffer: `recordId`, `title`, `collectionId?`, `spaceId`, `snippet`, `rank`, `updatedAt`, `archived`.
+- Vertrag aus AP-026 (committet `923b736`, siehe OpenAPI `GET /api/v1/w/{slug}/search`): Antwort `{ items, nextCursor }`, `nextCursor` fehlt auf der letzten Seite (null-Felder wurden damals weggelassen; seit AP-033 kommt `null`). Treffer: `recordId`, `title`, `collectionId?`, `spaceId`, `snippet`, `rank`, `updatedAt`, `archived`.
 - `snippet` ist **reiner Text** und kann `<`, `>` und Markup aus dem Inhalt enthalten; nur `⟦` (U+27E6) und `⟧` (U+27E7) stammen vom Server. Snippets entstehen aus den ersten 20.000 Zeichen; ein Treffer weiter hinten hat ein Snippet ohne Marker, ein reiner Titeltreffer ebenfalls.
 - `archived: true` auch dann, wenn Collection oder Space archiviert ist; ohne `includeArchived` erscheinen solche Records nicht.
 - Syntax für den Leer-Hinweis: Wörter, `"Phrase"`, `-Wort`, `or`; das letzte Wort wird ab 2 Zeichen als Präfix gesucht.

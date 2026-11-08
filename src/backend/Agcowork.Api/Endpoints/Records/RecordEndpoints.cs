@@ -31,7 +31,7 @@ internal static class RecordEndpoints
             .WithSummary("List records")
             .WithDescription(
                 "Records of a collection (?collectionId=) or the free pages of a space (?spaceId=), exactly one of both, oldest first, "
-                + "without bodies. Archived records only with includeArchived=true. Paginated: 'limit' (1..200, default 50) and 'cursor' "
+                + "with 'body': null. Archived records only with includeArchived=true. Paginated: 'limit' (1..200, default 50) and 'cursor' "
                 + "(the 'nextCursor' of the previous page; null on the last page). Filtering comes with POST /collections/{id}/query. "
                 + "Requires read. Unknown collection or space: 404.")
             .ProducesProblem(StatusCodes.Status400BadRequest);

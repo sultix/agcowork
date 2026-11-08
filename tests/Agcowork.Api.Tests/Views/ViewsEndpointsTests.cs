@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Agcowork.Api.Tests.Identity;
 using Agcowork.Api.Tests.Tenancy;
 using Agcowork.Application.Workspaces;
@@ -306,7 +307,7 @@ public sealed class ViewsEndpointsTests(AgcoworkApiFactory factory)
     }
 
     [Fact]
-    public async Task Responses_OmitNullMembers()
+    public async Task Responses_RequiredMembersAsNull_FilterNodeMembersOmitted()
     {
         var (owner, workspace) = await OwnWorkspaceAsync();
         var (collectionId, _) = await ViewsApi.SeedAsync(owner.Client, workspace.Slug);
@@ -316,8 +317,10 @@ public sealed class ViewsEndpointsTests(AgcoworkApiFactory factory)
 
         var filtered = views.EnumerateArray().Single(v => v.GetProperty("name").GetString() == "F");
         Assert.Equal(["op", "prop"], filtered.GetProperty("filter").EnumerateObject().Select(p => p.Name).Order());
-        Assert.False(views[0].TryGetProperty("filter", out _));
-        Assert.False(views[0].TryGetProperty("groupBy", out _));
+        // filter, groupBy and cardCoverProperty are required (nullable) in the contract: present as null (AP-033).
+        Assert.Equal(JsonValueKind.Null, views[0].GetProperty("filter").ValueKind);
+        Assert.Equal(JsonValueKind.Null, views[0].GetProperty("groupBy").ValueKind);
+        Assert.Equal(JsonValueKind.Null, views[0].GetProperty("cardCoverProperty").ValueKind);
     }
 
     [Fact]

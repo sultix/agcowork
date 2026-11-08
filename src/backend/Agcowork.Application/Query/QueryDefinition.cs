@@ -16,7 +16,7 @@ namespace Agcowork.Application.Query;
 /// <param name="Sorts">[ { "prop", "dir": "asc"|"desc" } ] in order of priority (max. 10); ties are broken by creation time, then id. Empty values sort last.</param>
 /// <param name="Limit">Page size, 1..500, default 50.</param>
 /// <param name="Cursor"><c>nextCursor</c> of the previous page, unchanged; it only fits the same sorts.</param>
-/// <param name="Fields">Property keys to return (default: all). <c>body</c> adds the Markdown body, which is otherwise omitted.</param>
+/// <param name="Fields">Property keys to return (default: all). <c>body</c> adds the Markdown body, which is otherwise null.</param>
 /// <param name="IncludeArchived">Also return archived records.</param>
 /// <param name="IncludeCount">Also count all matches (up to 10 000).</param>
 public sealed record QueryDefinition(

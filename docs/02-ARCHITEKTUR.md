@@ -311,6 +311,7 @@ Regeln:
 - **Fehler sind Hinweise:** Validierungsfehler kommen strukturiert
   (`{ "field": "status", "error": "not_in_options", "allowed": [...] }`), damit sich der
   Agent selbst korrigieren kann.
+- **Draht folgt dem Schema** (AP-033): REST, MCP-Structured-Content und SignalR serialisieren über `WireJson`: Felder, die OpenAPI als `required` führt, kommen immer, auch als `"feld": null`; nur im Schema optionale Felder (Konstruktorparameter mit Default `= null`) fehlen bei `null`. Kein `[JsonIgnore]` für optionale DTO-Felder (Ausnahme: von Hand gepflegte ProblemDetails). `WireJsonSchemaTests` prüft das für alle Schemas, `NullFieldsContractTests` an echten Antworten.
 - **Unlesbare Eingaben** (AP-028): NUL und ungepaarte Surrogate in Texten ergeben 400 `invalid_value` am Feld (zentral `StorableText`/`FieldErrors.Storable`), nie 500 oder stille Ersetzung. Binder-Fehler mit JSON-Pfad (falscher Typ, ungültiges Format, Surrogat in typisierten Feldern) liefern `validation_failed` mit Feld statt `bad_request` – auch in Production (`ThrowOnBadRequest = true`, ohne Error-Log); kaputtes JSON bleibt `bad_request`. MCP fängt unlesbare Tool-Argumente vor dem SDK ab und antwortet ebenso.
 - **Idempotenz & Nebenläufigkeit:** `Idempotency-Key` bei Create, `expectedRevision` bei Update.
 - **Actor überall:** Der API-Key bestimmt den Actor. Der Agent gibt sich nicht selbst aus.

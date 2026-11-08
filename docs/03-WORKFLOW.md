@@ -149,6 +149,12 @@ sequenceDiagram
 - **Rauchtest im Wegwerf-Stack** (`docker compose -p agcowork-smoke`, eigener Port, Zugangsdaten aus `.env.example`, danach `down -v`), damit die lokale Instanz unberührt bleibt.
 - **Nutzungslimit:** unterbrochene Implementierer per Nachricht fortsetzen; beide Agenten haben ohne Verlust weitergemacht.
 
+## 7c. Gelernt aus Kommentaren und Erwähnungen (AP-029 bis AP-033)
+
+- **Der Rauchtest fand, was 2 300 Tests nicht fanden.** Die API ließ `null`-Felder weg, OpenAPI und alle Frontend-Fixtures sagten `null`. Posteingang und Kommentar-Wurzeln brachen nur im echten Browser. Lehre: Ein Vertragstest, der echte Antworten gegen das Schema prüft, gehört ab jetzt zu jedem neuen DTO; Widersprüche zwischen Schema und Draht nie als „kosmetisch“ ins Backlog schieben.
+- **Reviews mit Messung** (Parser-Laufzeiten, Stack Overflow, Sperren über `pg_stat_activity`) fanden Denial-of-Service- und Nebenläufigkeitsprobleme, die Funktionstests nicht abdecken. Schwellen gegen pathologische Eingaben brauchen eine zweite Grenze über die Summe (Seitenbudget), sonst werden sie unterlaufen.
+- **Parallel auf disjunkten Ordnern** (AP-031/AP-032, AP-029/AP-030) hat gut funktioniert; committet wurde jedes Paket einzeln mit Prüfung im temporären Worktree.
+
 ## 8. Wenn etwas schiefgeht
 
 - **Implementierer meldet Unklarheit:** Orchestrator klärt im Paket nach, nicht im Chat mit dem Agenten; das Paket bleibt die Quelle.

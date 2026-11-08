@@ -36,7 +36,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-030](AP-030-realtime-frontend-nachzug.md) | Frontend-Kleinpaket Realtime: Reconnect-Backoff, Record-Zähler, Live für Mitglieder/Views/Schema | 2 | implementer-opus | AP-025, AP-028 | abgeschlossen | ff77388 |
 | [AP-031](AP-031-kommentare-frontend.md) | Kommentare Frontend: Seitenleiste, Threads, `@`-Auswahl, live | 2 | implementer-opus | AP-029, AP-030 | abgeschlossen | 821449e |
 | [AP-032](AP-032-erwaehnungen-posteingang.md) | Erwähnungen Frontend: Posteingang, Badge, gelesen markieren | 2 | implementer-sonnet | AP-029 | abgeschlossen | 6661e5e |
-| [AP-033](AP-033-null-felder-im-vertrag.md) | API-Vertrag: `null`-Felder mitsenden statt weglassen (Fund im Rauchtest) | 2 | implementer-opus | AP-029–AP-032 | in Arbeit | |
+| [AP-033](AP-033-null-felder-im-vertrag.md) | API-Vertrag: `null`-Felder mitsenden statt weglassen (Fund im Rauchtest) | 2 | implementer-opus | AP-029–AP-032 | abgeschlossen | |
 
 ## Zurückgestellte Review-Hinweise
 

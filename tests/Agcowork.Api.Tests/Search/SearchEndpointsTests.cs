@@ -52,8 +52,8 @@ public sealed class SearchEndpointsTests(AgcoworkApiFactory factory)
             Assert.Equal(space.Id, hit.GetProperty("spaceId").GetGuid());
             Assert.Equal(collection.Id, hit.GetProperty("collectionId").GetGuid());
             Assert.Contains($"⟦{oldWord}⟧", hit.GetProperty("snippet").GetString(), StringComparison.Ordinal);
-            // Nulls are omitted on the wire (API convention): no nextCursor on the last page.
-            Assert.False(json.TryGetProperty("nextCursor", out _));
+            // Required members travel also as null (AP-033): nextCursor is null on the last page.
+            Assert.Equal(JsonValueKind.Null, json.GetProperty("nextCursor").ValueKind);
         }
 
         using var patch = await client.PatchAsJsonAsync(

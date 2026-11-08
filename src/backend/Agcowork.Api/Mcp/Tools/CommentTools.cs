@@ -46,7 +46,7 @@ internal static class CommentTools
     [Description(
         "Reads the discussion of a record: threads oldest first, each root with its replies oldest first, every comment with id, "
         + "author (authorId, name, human or agent), Markdown, time, editedAt and, for roots, resolvedAt. Deleted comments are left "
-        + "out, a deleted root with replies stays as placeholder without text. includeResolved: false hides resolved threads. "
+        + "out, a deleted root with replies stays as placeholder with 'markdown': null. includeResolved: false hides resolved threads. "
         + "At most 500 threads (the newest; 'omittedThreads' counts older ones). Also available with record_get(includeComments: "
         + "true). Requires read.")]
     public static async Task<CallToolResult> List(

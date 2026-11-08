@@ -26,7 +26,7 @@ internal static class RecordTools
     [McpServerTool(Name = "records_list", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description(
         "Simple list of the records of a collection (collectionId) or of the free pages of a space (spaceId), exactly one of both, "
-        + "oldest first, without bodies. For filtering and sorting use records_query. Paginated: 'limit' 1..200 (default 50); pass "
+        + "oldest first, with 'body': null. For filtering and sorting use records_query. Paginated: 'limit' 1..200 (default 50); pass "
         + "'nextCursor' of the previous page as 'cursor' (null on the last page). Requires read.")]
     public static async Task<CallToolResult> List(
         ListRecords useCase,
@@ -130,7 +130,7 @@ internal static class RecordTools
         + "collection's default template (or 'templateId') fills preset values and the body when you send none, e.g. the ADR "
         + "structure of 'Entscheidungen'; values you send win. 'body' is Markdown. Send 'idempotencyKey' (e.g. a UUID) so a retry "
         + "within 24 h returns the first record instead of creating a duplicate. Invalid values come back as errors[] on "
-        + "'properties.<key>' (e.g. 'unknown_property' or 'not_in_options' with 'allowed'). Returns the record without body; read "
+        + "'properties.<key>' (e.g. 'unknown_property' or 'not_in_options' with 'allowed'). Returns the record with 'body': null; read "
         + "it with record_get. Requires write.")]
     public static async Task<CallToolResult> Create(
         CreateRecord useCase,
