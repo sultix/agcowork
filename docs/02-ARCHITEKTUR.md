@@ -99,6 +99,13 @@ erDiagram
 - **Zitate und Tiefe (AP-035):** Der Erwähnungs-Parser kennt Blockquotes (Code-Regeln gelten im Zitat, Lazy Continuation), arbeitet iterativ per Offset und begrenzt die Verschachtelung auf 32 (`MaxQuoteDepth`); weitere `>` sind Text der innersten Ebene. Der Frontend-Port übernimmt diese Regel.
 - **Activity:** `comment.created|updated|deleted|resolved|reopened` mit `targetType = comment`, `targetId = CommentId`, Diff enthält `recordId`, `parentCommentId` und `mentionedActorIds`. Damit liefern Realtime (AP-024) und `activity_recent` Kommentare und Erwähnungen ohne neuen Kanal.
 
+### Relationen (Entscheidungen 2026-11-08, AP-037 bis AP-039)
+
+- **Einseitig gespeichert, Rückverweise abgeleitet:** Eine Relation speichert nur IDs am Quell-Record. Es gibt keine Gegen-Property (z. B. kein `superseded_by`); „Wer verweist auf mich?“ beantwortet `GET /records/{id}/backlinks` bzw. `record_get(includeBacklinks)`: gruppiert nach Quell-Collection und Property, nur Collections, deren Schema eine Relation auf die Collection des Records hat, Tenant-gefiltert, paginiert.
+- **Titel-Auflösung:** `POST /records/lookup { ids }` (max. 200) liefert je ID `id`, `title`, `collectionId`, `spaceId`, `archived`; unbekannte oder fremde IDs fehlen in der Antwort (kein Existenz-Leak). `record_get` löst Relationstitel für Agenten mit `expandRelations` auf. Die UI hält einen geteilten Titel-Cache, der live auf `record.updated|archived|restored` reagiert.
+- **Archiv:** Verweise auf archivierte Records bleiben gültig und werden in UI und Lookup als archiviert markiert. Eine archivierte Collection kann nicht neues Ziel einer Relation werden (400 `target_archived`).
+- **Auswahl:** Der Relations-Picker sucht serverseitig in der Ziel-Collection (Query-Endpunkt mit `title contains`, aktiv, neueste zuerst), nicht mehr über die ersten 200 Records.
+
 ### Schema-Regeln (aus AP-006)
 
 - Keys `^[a-z][a-z0-9_]{0,62}\z`, unveränderlich; reserviert: `id`, `collection`, `space`, `revision`, `body`; `title` ist immer vorhanden und vom Typ text.

@@ -40,6 +40,9 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-034](AP-034-haertung-frontend-body.md) | Härtung Frontend: Record-Body gegen präparierten Markdown, Kommentare im Feed, Fehlertexte | 2 | implementer-opus | AP-031, AP-033 | abgeschlossen | b60c8ee |
 | [AP-035](AP-035-haertung-backend-idempotenz-erwaehnungen.md) | Härtung Backend: Idempotenz mit Inhaltsprüfung, Erwähnungen in Zitaten, Activity je Record, Schema-Hooks | 2 | implementer-opus | AP-033 | abgeschlossen | e13d5e2 |
 | [AP-036](AP-036-row-level-security.md) | PostgreSQL Row-Level-Security als zweites Netz (Rolle `agcowork_app`, Policies, Instanz-Bereich) | 2 | implementer-opus | AP-035 | abgeschlossen | 5a6708a |
+| [AP-037](AP-037-relationen-backend.md) | Relationen Backend: Titel-Lookup, Rückverweise, `expandRelations`/`includeBacklinks`, archivierte Ziele | 2 | implementer-opus | AP-036 | in Arbeit | |
+| [AP-038](AP-038-relationen-frontend.md) | Relationen Frontend: Titel-Cache, Chips als Links, Picker mit Serversuche, Rückverweise im Dokument | 2 | implementer-opus | AP-037, AP-039 | angelegt | |
+| [AP-039](AP-039-schema-editor.md) | Schema-Editor im Frontend: Properties aller Typen inkl. Relationen anlegen, ändern, entfernen | 2 | implementer-opus | – | in Arbeit | |
 
 ## Zurückgestellte Review-Hinweise
 
