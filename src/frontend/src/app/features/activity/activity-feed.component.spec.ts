@@ -10,6 +10,7 @@ import {
   SPACE_ID,
   activityEvent,
   collection,
+  expectRequest,
   member,
   pageProviders,
   respond,
@@ -17,19 +18,25 @@ import {
   settle,
   space,
 } from '../../core/testing/test-utils';
-import { ActivityFeedComponent } from './activity-feed.component';
+import { FakeRealtime, provideFakeRealtime } from '../../core/testing/fake-hub';
+import { ActivityFeedComponent, matchesQuery } from './activity-feed.component';
 
 const OTHER_COLLECTION_ID = '0199a000-0000-7000-8000-0000000000c2';
 
 describe('ActivityFeedComponent', () => {
   let harness: RouterTestingHarness;
   let http: HttpTestingController;
+  let realtime: FakeRealtime;
 
   async function render(first: { items: unknown[]; nextCursor: string | null }): Promise<void> {
+    realtime = new FakeRealtime();
     TestBed.configureTestingModule({
-      providers: pageProviders({
-        routes: [{ path: 'w/:workspaceSlug/activity', component: ActivityFeedComponent }],
-      }),
+      providers: [
+        ...pageProviders({
+          routes: [{ path: 'w/:workspaceSlug/activity', component: ActivityFeedComponent }],
+        }),
+        provideFakeRealtime(realtime),
+      ],
     });
     http = TestBed.inject(HttpTestingController);
     harness = await RouterTestingHarness.create();
@@ -289,5 +296,147 @@ describe('ActivityFeedComponent', () => {
     await settle(harness.fixture);
 
     expect(text(q('activity-error'))).toContain('Rechte');
+  });
+
+  // --- live events (AP-025) -------------------------------------------------------------------
+
+  it('live_NewEvent_AppearsOnTopWithoutReload', async () => {
+    await render({
+      items: [activityEvent({ id: 'b', seq: 5 }), activityEvent({ id: 'a', seq: 4 })],
+      nextCursor: 'c1',
+    });
+
+    realtime.emit(
+      activityEvent({ id: 'c', seq: 6, type: 'record.created', targetTitle: 'Neu vom Agenten' }),
+    );
+    await settle(harness.fixture);
+
+    const entries = all('activity-item');
+    expect(entries).toHaveLength(3);
+    expect(text(entries[0].querySelector('[data-testid="entry-text"]'))).toContain(
+      'Record angelegt',
+    );
+    expect(text(entries[0])).toContain('Neu vom Agenten');
+    http.expectNone(`${API}/activity?limit=30`);
+    // the cursor of the loaded pages is untouched
+    q('load-more')!.click();
+    await respond(http, 'GET', `${API}/activity?limit=30&cursor=c1`, {
+      items: [activityEvent({ id: 'z', seq: 3 })],
+      nextCursor: null,
+    });
+    await settle(harness.fixture);
+    expect(all('activity-item')).toHaveLength(4);
+  });
+
+  it('live_SameSeqAsListed_IsNotShownTwice', async () => {
+    await render({ items: [activityEvent({ id: 'b', seq: 5 })], nextCursor: null });
+
+    realtime.emit(activityEvent({ id: 'b', seq: 5 }));
+    realtime.emit(activityEvent({ id: 'c', seq: '6' as never }));
+    realtime.emit(activityEvent({ id: 'c', seq: 6 }));
+    await settle(harness.fixture);
+
+    expect(all('activity-item')).toHaveLength(2);
+  });
+
+  it('live_FilteredOut_IsNotShown', async () => {
+    await render({ items: [], nextCursor: null });
+    const change = choose('filter-collection', COLLECTION_ID);
+    await respond(http, 'GET', `${API}/activity?collectionId=${COLLECTION_ID}&limit=30`, {
+      items: [],
+      nextCursor: null,
+    });
+    await change;
+    await settle(harness.fixture);
+
+    realtime.emit(activityEvent({ id: 'other', seq: 7, collectionId: OTHER_COLLECTION_ID }));
+    // member events come without collection (null fields are omitted by the hub)
+    const memberEvent = activityEvent({ id: 'member', seq: 8, type: 'member.added' });
+    delete (memberEvent as Partial<typeof memberEvent>).collectionId;
+    realtime.emit(memberEvent);
+    realtime.emit(activityEvent({ id: 'match', seq: 9 }));
+    await settle(harness.fixture);
+
+    expect(all('activity-item')).toHaveLength(1);
+    expect(text(all('activity-item')[0])).not.toContain('Mitglied');
+  });
+
+  it('live_EventDuringFirstLoad_IsMergedOnceThePageIsThere', async () => {
+    realtime = new FakeRealtime();
+    TestBed.configureTestingModule({
+      providers: [
+        ...pageProviders({
+          routes: [{ path: 'w/:workspaceSlug/activity', component: ActivityFeedComponent }],
+        }),
+        provideFakeRealtime(realtime),
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    harness = await RouterTestingHarness.create();
+    const navigation = harness.navigateByUrl('/w/demo/activity');
+    const first = await expectRequest(http, 'GET', `${API}/activity?limit=30`);
+    realtime.emit(activityEvent({ id: 'listed', seq: 5 }));
+    realtime.emit(activityEvent({ id: 'new', seq: 6 }));
+    first.flush({ items: [activityEvent({ id: 'listed', seq: 5 })], nextCursor: null });
+    await serve(http, [
+      [`${API}/spaces`, [space()]],
+      [`${API}/collections`, [collection()]],
+      [`${API}/members`, [member()]],
+    ]);
+    await navigation;
+    await settle(harness.fixture);
+
+    expect(all('activity-item')).toHaveLength(2);
+  });
+
+  it('live_OtherWorkspaceConnection_IsIgnored', async () => {
+    await render({ items: [], nextCursor: null });
+    realtime.slug = 'other';
+
+    realtime.emit(activityEvent({ id: 'x', seq: 9 }));
+    await settle(harness.fixture);
+
+    expect(all('activity-item')).toHaveLength(0);
+  });
+
+  it('resync_ReloadsTheFirstPage', async () => {
+    await render({ items: [activityEvent({ id: 'a', seq: 4 })], nextCursor: null });
+
+    realtime.emitResync();
+    await respond(http, 'GET', `${API}/activity?limit=30`, {
+      items: [activityEvent({ id: 'b', seq: 5 }), activityEvent({ id: 'a', seq: 4 })],
+      nextCursor: null,
+    });
+    await settle(harness.fixture);
+
+    expect(all('activity-item')).toHaveLength(2);
+  });
+});
+
+describe('matchesQuery', () => {
+  it('matchesQuery_NoFilters_LetsEverythingThrough', () => {
+    expect(matchesQuery(activityEvent(), {})).toBe(true);
+  });
+
+  it('matchesQuery_EachFilter_MustMatch', () => {
+    const event = activityEvent({ type: 'record.updated', actorId: AGENT_ID });
+    expect(matchesQuery(event, { spaceId: SPACE_ID, collectionId: COLLECTION_ID })).toBe(true);
+    expect(matchesQuery(event, { spaceId: 'other' })).toBe(false);
+    expect(matchesQuery(event, { collectionId: OTHER_COLLECTION_ID })).toBe(false);
+    expect(matchesQuery(event, { actorId: ADMIN_ME.id })).toBe(false);
+    expect(matchesQuery(event, { types: ['record.created'] })).toBe(false);
+    expect(matchesQuery(event, { types: ['record.created', 'record.updated'] })).toBe(true);
+    expect(matchesQuery(event, { since: '2026-11-08T00:00:00Z' })).toBe(false);
+    expect(matchesQuery(event, { since: '2026-11-07T00:00:00Z' })).toBe(true);
+  });
+
+  it('matchesQuery_FieldOmittedByHub_DoesNotMatchAFilterOnIt', () => {
+    const event = activityEvent({ type: 'member.added', targetType: 'member' });
+    delete (event as Partial<typeof event>).spaceId;
+    delete (event as Partial<typeof event>).collectionId;
+
+    expect(matchesQuery(event, {})).toBe(true);
+    expect(matchesQuery(event, { spaceId: SPACE_ID })).toBe(false);
+    expect(matchesQuery(event, { collectionId: COLLECTION_ID })).toBe(false);
   });
 });

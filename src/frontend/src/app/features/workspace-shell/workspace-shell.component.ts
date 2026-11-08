@@ -1,12 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideActivity,
   lucideHouse,
+  lucideRefreshCw,
   lucideSearch,
   lucideSettings,
   lucideUsers,
+  lucideWifiOff,
 } from '@ng-icons/lucide';
 import { HlmBreadcrumbImports } from '@spartan-ng/helm/breadcrumb';
 import { HlmSeparator } from '@spartan-ng/helm/separator';
@@ -17,6 +19,7 @@ import {
 } from '@spartan-ng/helm/sidebar';
 import { HlmTooltip } from '@spartan-ng/helm/tooltip';
 import { BackendStatus, HealthService } from '../../core/api/health.service';
+import { RealtimeService, RealtimeStatus } from '../../core/realtime/realtime.service';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { ADMIN_ROLES, WorkspacesStore } from '../workspaces/workspaces.store';
 import { WorkspaceTreeComponent } from '../spaces/workspace-tree.component';
@@ -38,6 +41,16 @@ const STATUS_DOTS: Record<BackendStatus, string> = {
   unreachable: 'bg-destructive',
 };
 
+/** Text of the live-update indicator; `null`: nothing to show (connected, or about to be). */
+const REALTIME_LABELS: Record<RealtimeStatus, string | null> = {
+  idle: null,
+  connecting: null,
+  live: null,
+  reconnecting:
+    'Live-Aktualisierung unterbrochen, Verbindung wird wiederhergestellt (Klick verbindet sofort neu)',
+  offline: 'Live-Aktualisierung getrennt (Klick zum erneuten Verbinden)',
+};
+
 interface NavItem {
   readonly path: string;
   readonly label: string;
@@ -47,8 +60,8 @@ interface NavItem {
 
 /**
  * Layout for everything under `/w/:workspaceSlug`: collapsible Helm sidebar (workspace switcher,
- * navigation, space tree), header (sidebar toggle, breadcrumb, backend status, theme, session) and
- * the content outlet.
+ * navigation, space tree), header (sidebar toggle, breadcrumb, live-update and backend status,
+ * theme, session) and the content outlet. Keeps the realtime connection of the open workspace.
  */
 @Component({
   selector: 'ag-workspace-shell',
@@ -67,7 +80,15 @@ interface NavItem {
     WorkspaceTreeComponent,
   ],
   providers: [
-    provideIcons({ lucideActivity, lucideHouse, lucideSearch, lucideSettings, lucideUsers }),
+    provideIcons({
+      lucideActivity,
+      lucideHouse,
+      lucideRefreshCw,
+      lucideSearch,
+      lucideSettings,
+      lucideUsers,
+      lucideWifiOff,
+    }),
     // Helm's sidebar service is root-provided and reads its config from the root injector, so the
     // shell provides its own instance together with the config. The keyboard shortcut is off:
     // the service listens for Mod+B on window without checking defaultPrevented, which would also
@@ -139,6 +160,29 @@ interface NavItem {
             </ol>
           </nav>
           <div class="ml-auto flex items-center gap-1">
+            @if (realtimeText(); as label) {
+              <button
+                type="button"
+                class="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                data-testid="realtime-status"
+                [attr.data-status]="realtime.status()"
+                [attr.aria-label]="label"
+                [hlmTooltip]="label"
+                (click)="realtime.retry()"
+              >
+                @if (realtime.status() === 'offline') {
+                  <ng-icon name="lucideWifiOff" class="text-destructive" />
+                } @else {
+                  <ng-icon
+                    name="lucideRefreshCw"
+                    class="motion-safe:animate-spin motion-safe:[animation-duration:2s]"
+                  />
+                }
+              </button>
+            }
+            <span class="sr-only" role="status" data-testid="realtime-status-live">{{
+              realtimeText() ?? ''
+            }}</span>
             <button
               type="button"
               class="inline-flex size-9 items-center justify-center rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -168,6 +212,7 @@ interface NavItem {
 export class WorkspaceShellComponent {
   private readonly workspace = inject(WorkspaceContext);
   protected readonly health = inject(HealthService);
+  protected readonly realtime = inject(RealtimeService);
 
   protected readonly slug = this.workspace.slug;
 
@@ -197,4 +242,11 @@ export class WorkspaceShellComponent {
     return `Backend: ${STATUS_LABELS[status]}${hint}`;
   });
   protected readonly statusDot = computed(() => STATUS_DOTS[this.health.status()]);
+  protected readonly realtimeText = computed(() => REALTIME_LABELS[this.realtime.status()]);
+
+  constructor() {
+    // One hub connection per tab while a workspace is open; the service follows the slug.
+    this.realtime.start();
+    inject(DestroyRef).onDestroy(() => this.realtime.stop());
+  }
 }

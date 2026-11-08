@@ -10,9 +10,11 @@ import {
   expectRequest,
   pageProviders,
   respond,
+  activityEvent,
   space,
 } from '../../core/testing/test-utils';
-import { WorkspaceTreeStore } from './workspace-tree.store';
+import { FakeRealtime, provideFakeRealtime } from '../../core/testing/fake-hub';
+import { TREE_RELOAD_DELAY_MS, WorkspaceTreeStore } from './workspace-tree.store';
 
 @Component({ template: '' })
 class BlankComponent {}
@@ -24,15 +26,20 @@ describe('WorkspaceTreeStore', () => {
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
   let store: WorkspaceTreeStore;
+  let realtime: FakeRealtime;
 
   beforeEach(async () => {
+    realtime = new FakeRealtime();
     TestBed.configureTestingModule({
-      providers: pageProviders({
-        routes: [
-          { path: 'w/:workspaceSlug', component: BlankComponent },
-          { path: 'workspaces', component: BlankComponent },
-        ],
-      }),
+      providers: [
+        ...pageProviders({
+          routes: [
+            { path: 'w/:workspaceSlug', component: BlankComponent },
+            { path: 'workspaces', component: BlankComponent },
+          ],
+        }),
+        provideFakeRealtime(realtime),
+      ],
     });
     http = TestBed.inject(HttpTestingController);
     harness = await RouterTestingHarness.create();
@@ -100,5 +107,42 @@ describe('WorkspaceTreeStore', () => {
     await respond(http, 'GET', `${API}/collections`, []);
 
     await vi.waitFor(() => expect(store.error()?.code).toBe('forbidden'));
+  });
+
+  it('live_SpaceAndCollectionEvents_ReloadTheTreeOnce', async () => {
+    await harness.navigateByUrl('/w/demo');
+    await answer('demo', [space()], [collection()]);
+    await vi.waitFor(() => expect(store.spaces()).toHaveLength(1));
+
+    realtime.emit(activityEvent({ seq: 1, type: 'space.created', targetType: 'space' }));
+    realtime.emit(activityEvent({ seq: 2, type: 'collection.updated', targetType: 'collection' }));
+    await answer('demo', [space(), OTHER_SPACE], [collection(), OTHER_COLLECTION]);
+
+    await vi.waitFor(() => expect(store.spaces()).toHaveLength(2));
+    expect(store.findCollection('c2')?.name).toBe('Entscheidungen');
+    await new Promise((resolve) => setTimeout(resolve, TREE_RELOAD_DELAY_MS + 50));
+    http.expectNone(`${API}/spaces`);
+  });
+
+  it('live_RecordEvent_DoesNotReloadTheTree', async () => {
+    await harness.navigateByUrl('/w/demo');
+    await answer('demo', [space()], [collection()]);
+    await vi.waitFor(() => expect(store.spaces()).toHaveLength(1));
+
+    realtime.emit(activityEvent({ seq: 1, type: 'record.created' }));
+    await new Promise((resolve) => setTimeout(resolve, TREE_RELOAD_DELAY_MS + 50));
+
+    http.expectNone(`${API}/spaces`);
+  });
+
+  it('live_Resync_ReloadsTheTree', async () => {
+    await harness.navigateByUrl('/w/demo');
+    await answer('demo', [space()], [collection()]);
+    await vi.waitFor(() => expect(store.spaces()).toHaveLength(1));
+
+    realtime.emitResync();
+    await answer('demo', [space(), OTHER_SPACE], [collection()]);
+
+    await vi.waitFor(() => expect(store.spaces()).toHaveLength(2));
   });
 });

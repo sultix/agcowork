@@ -2,6 +2,7 @@ import {
   DestroyRef,
   EnvironmentInjector,
   Injectable,
+  computed,
   createEnvironmentInjector,
   inject,
   signal,
@@ -58,6 +59,18 @@ export class InlineEditService implements CellEditor {
   readonly conflict = signal<CellConflict | null>(null);
   readonly resolving = signal(false);
 
+  /** Saves queued or running, across records. */
+  private readonly activeSaves = signal(0);
+  /** Counts saves started; a reload fetched before a save must not be applied after it. */
+  readonly generation = signal(0);
+  /**
+   * True while a save is queued or running or a conflict waits for the dialog: the rows hold
+   * values the server does not have yet, so they must not be replaced by a reload.
+   */
+  readonly busy = computed(
+    () => this.activeSaves() > 0 || this.conflict() !== null || this.resolving(),
+  );
+
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       for (const id of [...this.savers.keys()]) {
@@ -95,12 +108,17 @@ export class InlineEditService implements CellEditor {
     const pendingValue = value ?? null;
     entry.pending.set(key, pendingValue);
     entry.running++;
+    this.activeSaves.update((n) => n + 1);
+    this.generation.update((n) => n + 1);
     this.rows.replace(withValue(row, key, pendingValue));
     this.setCell(record.id, key, { status: 'saving', message: null });
 
     const run = entry.queue.then(() => this.run(slug, entry, key, pendingValue, options));
     entry.queue = run.catch(() => undefined);
-    return run.finally(() => entry.running--);
+    return run.finally(() => {
+      entry.running--;
+      this.activeSaves.update((n) => n - 1);
+    });
   }
 
   /** "Neu laden": takes the server state of the conflicting record, dropping the user's values. */

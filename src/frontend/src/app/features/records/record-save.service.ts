@@ -14,6 +14,19 @@ export const AUTOSAVE_DELAY_MS = 2000;
 
 export type PropertyValues = Record<string, unknown>;
 
+/**
+ * Outcome of {@link RecordSaveService.checkRemote}: `unchanged` (nothing newer than the local
+ * revision, e.g. the event of an own save), `reloaded` (no local edits: the server state was
+ * taken over), `changed` (newer on the server, local edits kept), `archived` (archived on the
+ * server, local edits kept), `failed` (could not ask).
+ */
+export type RemoteCheck =
+  | { readonly kind: 'unchanged' }
+  | { readonly kind: 'failed' }
+  | { readonly kind: 'reloaded'; readonly record: RecordDto }
+  | { readonly kind: 'changed'; readonly record: RecordDto }
+  | { readonly kind: 'archived'; readonly record: RecordDto };
+
 /** The record changed on the server since it was loaded (409 `revision_mismatch`). */
 export interface RevisionConflict {
   readonly currentRevision: number | null;
@@ -90,6 +103,12 @@ export class RecordSaveService {
   /** Called before every save to pull text the editor has not reported yet (see document view). */
   beforeSave: (() => void) | null = null;
 
+  /**
+   * Input of the view that is not in the edits and must not be replaced by a silent reload
+   * ({@link checkRemote}): invalid text an editor keeps to itself, an open question, focus.
+   */
+  hasLocalInput: (() => boolean) | null = null;
+
   /** `false` turns the 2 s auto-save off: saves happen only on request (raw view). */
   autosave = true;
 
@@ -119,20 +138,7 @@ export class RecordSaveService {
       if (token !== this.loadToken) {
         return;
       }
-      this.record.set(record);
-      this.title.set(record.title);
-      this.properties.set({ ...record.properties });
-      this.body.set(record.body ?? '');
-      this.editorValue.set(record.body ?? '');
-      this.loadCount.update((n) => n + 1);
-      this.titleDirty.set(false);
-      this.dirtyKeys.set(new Set());
-      this.bodyDirty.set(false);
-      this.conflict.set(null);
-      this.fieldErrors.set({});
-      this.saveError.set(null);
-      this.savedAt.set(null);
-      this.bodyStale.set(null);
+      this.applyLoaded(record);
     } catch (error) {
       if (token === this.loadToken) {
         this.record.set(null);
@@ -143,6 +149,104 @@ export class RecordSaveService {
         this.loading.set(false);
       }
     }
+  }
+
+  /** Shows `record` as loaded: server state everywhere, no edits, editor re-created. */
+  private applyLoaded(record: RecordDto): void {
+    this.record.set(record);
+    this.title.set(record.title);
+    this.properties.set({ ...record.properties });
+    this.body.set(record.body ?? '');
+    this.editorValue.set(record.body ?? '');
+    this.loadCount.update((n) => n + 1);
+    this.titleDirty.set(false);
+    this.dirtyKeys.set(new Set());
+    this.bodyDirty.set(false);
+    this.conflict.set(null);
+    this.fieldErrors.set({});
+    this.saveError.set(null);
+    this.savedAt.set(null);
+    this.bodyStale.set(null);
+  }
+
+  /**
+   * Someone may have changed the record (realtime event): asks the server. A save of this view
+   * that is running is awaited first, so its own revision is never mistaken for a foreign one.
+   * The revision is compared without the body; the body is only loaded for a silent reload.
+   * Without local input a newer server state is taken over (`reloaded`). Local input is: unsaved
+   * edits, text the editor has not reported yet (`beforeSave`), and whatever
+   * {@link hasLocalInput} reports (invalid text, focus); then nothing is touched (`changed`) and
+   * the next save runs into the conflict dialog as usual. A record archived on the server is
+   * never taken over silently (`archived`): editing stays possible until the next save.
+   */
+  async checkRemote(): Promise<RemoteCheck> {
+    for (let round = 0; ; round++) {
+      while (this.inflight) {
+        await this.inflight.catch(() => undefined);
+      }
+      const token = this.loadToken;
+      if (!this.record() || !this.bodyTracked || this.loading()) {
+        return { kind: 'unchanged' };
+      }
+      const client = this.api.workspace(this.slug);
+      const path = { recordId: this.recordId };
+      let meta: RecordDto;
+      try {
+        meta = await firstValueFrom(client.get('/records/{recordId}', { path }));
+      } catch {
+        return { kind: 'failed' };
+      }
+      if (token !== this.loadToken) {
+        return { kind: 'unchanged' }; // reloaded or switched meanwhile
+      }
+      if (this.inflight && round < 3) {
+        continue; // a save started while asking: compare against its result
+      }
+      const local = this.record();
+      if (!local) {
+        return { kind: 'unchanged' };
+      }
+      const newer = Number(meta.revision) > Number(local.revision);
+      const archivedNow = !!meta.archivedAt && !local.archivedAt;
+      if (!newer && !archivedNow && !!meta.archivedAt === !!local.archivedAt) {
+        return { kind: 'unchanged' };
+      }
+      if (archivedNow) {
+        return { kind: 'archived', record: meta };
+      }
+      if (this.hasInput()) {
+        return { kind: 'changed', record: meta };
+      }
+      let fresh: RecordDto;
+      try {
+        fresh = await firstValueFrom(
+          client.get('/records/{recordId}', { path, query: { includeBody: true } }),
+        );
+      } catch {
+        return { kind: 'failed' };
+      }
+      if (token !== this.loadToken) {
+        return { kind: 'unchanged' };
+      }
+      if (this.inflight || this.hasInput()) {
+        return { kind: 'changed', record: fresh }; // the user started typing meanwhile
+      }
+      this.clearTimer();
+      this.applyLoaded(fresh);
+      return { kind: 'reloaded', record: fresh };
+    }
+  }
+
+  /** Local input that a reload would destroy. */
+  private hasInput(): boolean {
+    this.beforeSave?.(); // typed but not yet reported counts as an edit
+    return (
+      this.isDirty() ||
+      !!this.conflict() ||
+      this.bodyStale() !== null ||
+      this.saving() ||
+      !!this.hasLocalInput?.()
+    );
   }
 
   /**

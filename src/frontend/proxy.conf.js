@@ -13,5 +13,10 @@ module.exports = {
   // SPA routes under /w/ stay with the dev server; it is matched against the URL including the query string.
   // changeOrigin false: the API compares the browser's Origin with Host for cookie connections, so Host must stay
   // the dev server's host:port.
-  '^/w/[^/?]+/hub(/negotiate)?/?(\\?.*)?$': { target, secure: false, changeOrigin: false, ws: true },
+  '^/w/[^/?]+/hub(/negotiate)?/?(\\?.*)?$': {
+    target,
+    secure: false,
+    changeOrigin: false,
+    ws: true,
+  },
 };

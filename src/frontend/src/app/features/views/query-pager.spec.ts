@@ -151,4 +151,55 @@ describe('createQueryPager', () => {
     expect(pager.items()).toEqual([]);
     expect(pager.error()).toContain('view.filter.and[0].op');
   });
+
+  it('refresh_TwoPagesLoaded_ReloadsAsManyRowsAtOnceWithoutLoadingState', async () => {
+    (await expectRequest(http, 'POST', VIEW_URL)).flush(
+      queryPage([recordDto({ id: 'a' }), recordDto({ id: 'b' })], 'c1', 4),
+    );
+    await flushTicks();
+    const more = pager.loadMore();
+    http.expectOne(VIEW_URL).flush(queryPage([recordDto({ id: 'c' })], 'c2'));
+    await more;
+
+    const refreshing = pager.refresh();
+    const head = http.expectOne(VIEW_URL);
+    expect(head.request.body).toEqual({ limit: 2, includeCount: true });
+    expect(pager.isLoading()).toBe(false);
+    head.flush(queryPage([recordDto({ id: 'new' }), recordDto({ id: 'a' })], 'n1', 5));
+    await flushTicks();
+    expect(ids()).toEqual(['a', 'b', 'c']); // nothing swapped before all pages are there
+    const next = http.expectOne(VIEW_URL);
+    expect(next.request.body).toEqual({ limit: 2, includeCount: false, cursor: 'n1' });
+    next.flush(queryPage([recordDto({ id: 'b' }), recordDto({ id: 'c' })], 'n2'));
+
+    expect(await refreshing).toBe(true);
+    expect(ids()).toEqual(['new', 'a', 'b', 'c']);
+    expect(pager.count()).toBe(5);
+    expect(pager.hasMore()).toBe(true);
+  });
+
+  it('refresh_CanApplyFalse_KeepsTheRows', async () => {
+    (await expectRequest(http, 'POST', VIEW_URL)).flush(queryPage([recordDto({ id: 'a' })]));
+    await flushTicks();
+
+    const refreshing = pager.refresh(() => false);
+    http.expectOne(VIEW_URL).flush(queryPage([recordDto({ id: 'b' })]));
+
+    expect(await refreshing).toBe(false);
+    expect(ids()).toEqual(['a']);
+  });
+
+  it('refresh_Fails_KeepsTheRows', async () => {
+    (await expectRequest(http, 'POST', VIEW_URL)).flush(queryPage([recordDto({ id: 'a' })]));
+    await flushTicks();
+
+    const refreshing = pager.refresh();
+    http
+      .expectOne(VIEW_URL)
+      .flush({ code: 'internal_error' }, { status: 500, statusText: 'Server Error' });
+
+    expect(await refreshing).toBe(false);
+    expect(ids()).toEqual(['a']);
+    expect(pager.error()).toBeNull();
+  });
 });

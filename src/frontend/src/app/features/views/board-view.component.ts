@@ -2,6 +2,7 @@ import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cd
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
   inject,
@@ -26,6 +27,7 @@ import { ConflictDialogComponent } from '../records/conflict-dialog.component';
 import type { RecordDto } from '../records/record-save.service';
 import type { ViewDto } from './collection.store';
 import { InlineEditService } from './inline-edit.service';
+import { liveRefresh } from './live-refresh';
 import { QuerySource, createQueryPager } from './query-pager';
 import { ViewWorkingState, tableColumns, viewQuery } from './view-state';
 
@@ -84,7 +86,8 @@ export function groupRecords(
 /**
  * A view rendered as a board: columns are the options of the view's `groupBy` (select/status),
  * cards show the title and up to three properties. Dragging a card into another column saves the
- * new value at once (optimistic, rolled back when the save fails).
+ * new value at once (optimistic, rolled back when the save fails). Changes by others reload the
+ * cards (see {@link liveRefresh}), never during a drag or while a move is saved.
  */
 @Component({
   selector: 'ag-board-view',
@@ -192,6 +195,8 @@ export function groupRecords(
                   [attr.data-id]="record.id"
                   [cdkDragData]="record"
                   [cdkDragDisabled]="!canMove(record)"
+                  (cdkDragStarted)="onDragStarted()"
+                  (cdkDragEnded)="onDragEnded()"
                 >
                   <a
                     class="font-medium underline underline-offset-4"
@@ -235,6 +240,11 @@ export class BoardViewComponent {
 
   protected readonly limit = BOARD_LIMIT;
   protected readonly moveError = signal<string | null>(null);
+  /** A card is being dragged (from drag start until its drop has been handled). */
+  readonly dragging = signal(false);
+  /** Counts drags started (a reload fetched before one began is outdated). */
+  private readonly drags = signal(0);
+  private dragEndTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly groupDefinition = computed(() => {
     const key = this.view().groupBy;
@@ -288,6 +298,38 @@ export class BoardViewComponent {
         this.moveError.set(null);
       });
     });
+    liveRefresh({
+      collectionId: () => this.view().collectionId,
+      blocked: () => this.dragging() || this.edits.busy(),
+      generation: () => this.drags() + this.edits.generation(),
+      refresh: (canApply) => this.pager.refresh(canApply),
+    });
+    inject(DestroyRef).onDestroy(() => this.clearDragEndTimer());
+  }
+
+  /** Drag start (also called by tests). */
+  onDragStarted(): void {
+    this.drags.update((n) => n + 1);
+    this.dragging.set(true);
+  }
+
+  /**
+   * CDK ends the drag before the drop animation and only then reports the drop; the drop handler
+   * clears {@link dragging}. Should no drop follow, the flag goes after a moment anyway.
+   */
+  protected onDragEnded(): void {
+    this.clearDragEndTimer();
+    this.dragEndTimer = setTimeout(() => {
+      this.dragEndTimer = null;
+      this.dragging.set(false);
+    }, 1000);
+  }
+
+  private clearDragEndTimer(): void {
+    if (this.dragEndTimer !== null) {
+      clearTimeout(this.dragEndTimer);
+      this.dragEndTimer = null;
+    }
   }
 
   protected groupLabel(group: string): string {
@@ -316,9 +358,17 @@ export class BoardViewComponent {
   async onDrop(event: CdkDragDrop<string | null, string | null, RecordDto>): Promise<void> {
     const definition = this.groupDefinition();
     if (!definition || event.previousContainer === event.container) {
+      this.endDrag();
       return;
     }
-    await this.move(event.item.data, event.container.data);
+    const moving = this.move(event.item.data, event.container.data);
+    this.endDrag(); // the save now keeps reloads away (edits.busy)
+    await moving;
+  }
+
+  private endDrag(): void {
+    this.clearDragEndTimer();
+    this.dragging.set(false);
   }
 
   /** Moves a card to the column of `value` (`null`: without a value). */

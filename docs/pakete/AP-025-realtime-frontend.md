@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | – (erstes Auftreten); Workspace-Wechsel `src/frontend/src/app/core/workspace/workspace-context.service.ts`, Speichern/Konflikt `features/records/record-save.service.ts` und `conflict-dialog.component.ts`, Inline-Edit `features/views/inline-edit.service.ts`, Stores `features/views/collection.store.ts` |
@@ -82,3 +82,14 @@ Wer einen Workspace offen hat, sieht Änderungen anderer (vor allem von Agenten)
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-08 | an implementer-opus übergeben (parallel zur Nacharbeit AP-024); nach Nutzungslimit per Nachricht fortgesetzt |
+| 2026-11-08 | Bericht: 767 Tests grün, Gegenproben (Schutzlogik entfernt → rot); Nachholen per `afterSeq` zentral im Service, Fortsetzung ab letzter Live-seq, eigener Reconnect mit REST-Vorabprüfung (401/403/404 → offline), „eigenes Speichern“ über Revisionsabgleich, SignalR lazy geladen; Status `idle` zusätzlich |
+| 2026-11-08 | Review gestartet; Orchestrator hat `proxy.conf.js` (aus AP-024) per Prettier formatiert |
+| 2026-11-08 | Review: **Blockiert** – B1 `retry()` legt neuen Link an und verliert die Position (kein Nachholen, kein Resync), B2 stilles Neuladen verwirft ungültige/halb getippte Property-Eingaben (JSON, Zahl, Datum melden nicht an den Saver); wichtig: veraltetes Refresh-Ergebnis überschreibt Edit aus dem Fetch-Fenster (falscher 409), Handshake-Fenster rückt Position vor; Live-seq als Cursor bestätigt |
+| 2026-11-08 | Nacharbeit an implementer-opus (B1, B2, W1, W2a, Hinweise) |
+| 2026-11-08 | Nacharbeit: `retry()` auf bestehendem Link, Hook `hasLocalInput` (ungültig, Leave-Dialog, Fokus → Banner), Edit-Generation in `liveRefresh`, `catchingUp` vor `hub.start()`, Revision erst ohne Body, Debounce 500/2000 ms; 777 Tests |
+| 2026-11-08 | Nachprüfung: B2, W1, W2a freigegeben; **Blockiert** durch neuen N1 aus dem B1-Fix (Abbruch während Nachholen → `attempting` verschluckt den automatischen Retry, Status bleibt `reconnecting`); Hinweis Banner-Text bei „nur Fokus“ |
+| 2026-11-08 | zweite Nacharbeit an implementer-opus (N1, Banner-Text) |
+| 2026-11-08 | Nacharbeit: `attempting` nur über Probe und `hub.start()`, Zähler `catchUps` (nur jüngster Nachhol-Lauf setzt Position/Resync), Banner-Text nach Fall; 779 Tests |
+| 2026-11-08 | Nachprüfung: Freigabe |
+| 2026-11-08 | abgeschlossen (Kriterium 9, Rauchtest im Compose-Stack, folgt nach AP-026) |

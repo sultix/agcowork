@@ -23,6 +23,13 @@ export interface QueryPager {
   readonly moreError: Signal<string | null>;
   loadMore(): Promise<void>;
   reload(): void;
+  /**
+   * Reloads as many rows as are loaded, page by page, without a loading state, and swaps them in
+   * at once (scroll position and the rows' DOM stay). `canApply` is asked before the swap; when
+   * it says no (an edit started meanwhile) nothing changes. Resolves whether the rows were
+   * replaced.
+   */
+  refresh(canApply?: () => boolean): Promise<boolean>;
   find(id: string): RecordDto | undefined;
   /** Replaces a loaded record (after an inline edit). */
   replace(record: RecordDto): void;
@@ -62,20 +69,21 @@ export function createQueryPager(source: () => QuerySource | undefined): QueryPa
 
   const state = linkedSignal<
     QueryResult | undefined,
-    { items: readonly RecordDto[]; cursor: string | null }
+    { items: readonly RecordDto[]; cursor: string | null; count: number | null }
   >({
     source: () => (first.hasValue() ? first.value() : undefined),
-    computation: (page) => ({ items: page?.items ?? [], cursor: page?.nextCursor ?? null }),
+    computation: (page) => ({
+      items: page?.items ?? [],
+      cursor: page?.nextCursor ?? null,
+      count: countOf(page),
+    }),
   });
   const loadingMore = signal(false);
   const moreError = signal<string | null>(null);
 
   return {
     items: computed(() => state().items),
-    count: computed(() => {
-      const count = first.hasValue() ? first.value().count : null;
-      return count === null || count === undefined ? null : Number(count);
-    }),
+    count: computed(() => state().count),
     isLoading: computed(() => first.isLoading()),
     error: computed(() => (first.error() ? describeError(first.error()) : null)),
     hasMore: computed(() => state().cursor !== null),
@@ -103,7 +111,11 @@ export function createQueryPager(source: () => QuerySource | undefined): QueryPa
         if (JSON.stringify(source()) !== key || state().cursor !== cursor) {
           return; // switched to another query (or reloaded) meanwhile
         }
-        state.update((s) => ({ items: [...s.items, ...page.items], cursor: page.nextCursor }));
+        state.update((s) => ({
+          ...s,
+          items: [...s.items, ...page.items],
+          cursor: page.nextCursor,
+        }));
       } catch (error) {
         if (JSON.stringify(source()) === key) {
           moreError.set(describeError(error));
@@ -112,5 +124,36 @@ export function createQueryPager(source: () => QuerySource | undefined): QueryPa
         loadingMore.set(false);
       }
     },
+    async refresh(canApply = () => true) {
+      const src = source();
+      if (!src || !first.hasValue()) {
+        return false;
+      }
+      const key = JSON.stringify(src);
+      const wanted = state().items.length;
+      try {
+        const head = await fetchPage(src, undefined);
+        const items = [...head.items];
+        let cursor = head.nextCursor;
+        while (cursor && items.length < wanted) {
+          const page = await fetchPage(src, cursor);
+          items.push(...page.items);
+          cursor = page.nextCursor;
+        }
+        if (JSON.stringify(source()) !== key || first.isLoading() || !canApply()) {
+          return false;
+        }
+        state.set({ items, cursor, count: countOf(head) });
+        moreError.set(null);
+        return true;
+      } catch {
+        return false; // keep showing what is there; the next change or reload tries again
+      }
+    },
   };
+}
+
+function countOf(page: QueryResult | undefined): number | null {
+  const count = page?.count;
+  return count === null || count === undefined ? null : Number(count);
 }

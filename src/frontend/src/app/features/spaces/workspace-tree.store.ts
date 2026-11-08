@@ -1,13 +1,18 @@
-import { Injectable, Signal, computed, inject, resource } from '@angular/core';
+import { DestroyRef, Injectable, Signal, computed, inject, resource } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import { ApiError } from '../../core/api/api-error';
 import type { components } from '../../core/api/generated/schema';
 import { SessionStore } from '../../core/auth/session.store';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 
 export type Space = components['schemas']['SpaceDto'];
 export type Collection = components['schemas']['CollectionDto'];
+
+/** Changes to spaces and collections within this window reload the tree once. */
+export const TREE_RELOAD_DELAY_MS = 300;
 
 export interface SpaceNode {
   readonly space: Space;
@@ -17,13 +22,16 @@ export interface SpaceNode {
 /**
  * Spaces and their collections of the active workspace (`GET /spaces`, `GET /collections`):
  * the data behind the sidebar tree and the space and collection pages. Reloads when the
- * workspace slug changes and stays idle while nobody is signed in.
+ * workspace slug changes, when spaces or collections change elsewhere (realtime events, bundled)
+ * and after a resync; stays idle while nobody is signed in.
  */
 @Injectable({ providedIn: 'root' })
 export class WorkspaceTreeStore {
   private readonly api = inject(ApiClient);
   private readonly context = inject(WorkspaceContext);
   private readonly session = inject(SessionStore);
+  private readonly realtime = inject(RealtimeService);
+  private reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly slug = computed(
     () => (this.session.status() === 'authenticated' ? this.context.slug() : null) ?? undefined,
@@ -58,6 +66,32 @@ export class WorkspaceTreeStore {
     const error = this.spacesResource.error() ?? this.collectionsResource.error();
     return error ? ApiError.from(error) : null;
   });
+
+  constructor() {
+    this.realtime.activity.pipe(takeUntilDestroyed()).subscribe((event) => {
+      if (
+        (event.targetType === 'space' || event.targetType === 'collection') &&
+        this.realtime.slug === this.slug()
+      ) {
+        this.scheduleReload();
+      }
+    });
+    this.realtime.resync.pipe(takeUntilDestroyed()).subscribe(() => this.scheduleReload());
+    inject(DestroyRef).onDestroy(() => {
+      if (this.reloadTimer !== null) {
+        clearTimeout(this.reloadTimer);
+      }
+    });
+  }
+
+  private scheduleReload(): void {
+    this.reloadTimer ??= setTimeout(() => {
+      this.reloadTimer = null;
+      if (this.slug()) {
+        this.reload();
+      }
+    }, TREE_RELOAD_DELAY_MS);
+  }
 
   findSpace(id: string | null | undefined): Space | undefined {
     return id ? this.spaces().find((s) => s.id === id) : undefined;

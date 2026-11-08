@@ -2,10 +2,13 @@ import { Component, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { Router, Routes } from '@angular/router';
+import { FakeRealtime, provideFakeRealtime } from '../../core/testing/fake-hub';
 import {
   API,
   BOARD_VIEW_ID,
+  COLLECTION_ID,
   RECORD_ID,
+  activityEvent,
   expectRequest,
   pageProviders,
   propertyDefinition,
@@ -19,6 +22,7 @@ import { WorkspaceContext } from '../../core/workspace/workspace-context.service
 import type { RecordDto } from '../records/record-save.service';
 import { BoardViewComponent, groupRecords } from './board-view.component';
 import type { ViewDto } from './collection.store';
+import { LIVE_REFRESH_DELAY_MS } from './live-refresh';
 import { ViewWorkingState, savedState } from './view-state';
 
 const STATUS = propertyDefinition({
@@ -89,14 +93,23 @@ describe('BoardViewComponent', () => {
   let fixture: ComponentFixture<HostComponent>;
   let host: HostComponent;
   let http: HttpTestingController;
+  let realtime: FakeRealtime;
 
   const ROUTES: Routes = [{ path: 'w/:workspaceSlug', children: [] }];
+  const DELAY = 30;
 
   async function render(
     items: RecordDto[],
     options: { canWrite?: boolean; nextCursor?: string | null; count?: number } = {},
   ): Promise<void> {
-    TestBed.configureTestingModule({ providers: pageProviders({ routes: ROUTES }) });
+    realtime = new FakeRealtime();
+    TestBed.configureTestingModule({
+      providers: [
+        ...pageProviders({ routes: ROUTES }),
+        provideFakeRealtime(realtime),
+        { provide: LIVE_REFRESH_DELAY_MS, useValue: DELAY },
+      ],
+    });
     http = TestBed.inject(HttpTestingController);
     // the board reads the slug from the URL
     await TestBed.inject(Router).navigateByUrl('/w/demo');
@@ -230,5 +243,85 @@ describe('BoardViewComponent', () => {
 
     expect(await host.board().move(record(RECORD_ID, 'open'), 'done')).toBe(false);
     http.expectNone(`${API}/records/${RECORD_ID}`);
+  });
+
+  describe('live updates', () => {
+    const QUERY_URL = `${API}/views/${BOARD_VIEW_ID}/query`;
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const recordEvent = (seq: number) =>
+      activityEvent({ seq, id: `e${seq}`, collectionId: COLLECTION_ID, targetId: 'r9' });
+
+    it('live_SeveralEvents_ReloadOnce', async () => {
+      await render([record(RECORD_ID, 'open')]);
+
+      realtime.emit(recordEvent(1));
+      realtime.emit(recordEvent(2));
+      const query = await expectRequest(http, 'POST', QUERY_URL);
+      query.flush(queryPage([record(RECORD_ID, 'open'), record('r9', 'done')]));
+      await settle(fixture);
+      await wait(DELAY * 2);
+
+      http.expectNone(QUERY_URL);
+      expect(cards('done')).toEqual(['r9']);
+    });
+
+    it('live_DuringDragAndMoveSave_WaitsThenReloadsOnce', async () => {
+      await render([record(RECORD_ID, 'open')]);
+
+      host.board().onDragStarted();
+      realtime.emit(recordEvent(1));
+      await wait(DELAY * 3);
+      http.expectNone(QUERY_URL);
+
+      const moving = host.board().onDrop({
+        previousContainer: { id: 'a' },
+        container: { id: 'b', data: 'done' },
+        item: { data: record(RECORD_ID, 'open') },
+      } as never);
+      expect(host.board().dragging()).toBe(false);
+      const patch = await expectRequest(http, 'PATCH', `${API}/records/${RECORD_ID}`);
+      await wait(DELAY * 2);
+      http.expectNone(QUERY_URL); // the save runs: the optimistic card stays
+      fixture.detectChanges();
+      expect(cards('done')).toEqual([RECORD_ID]);
+
+      patch.flush(recordDto({ revision: 3, properties: { status: 'done' } as never }));
+      await moving;
+      (await expectRequest(http, 'POST', QUERY_URL)).flush(
+        queryPage([record(RECORD_ID, 'done'), record('r9', 'open')]),
+      );
+      await settle(fixture);
+
+      expect(cards('done')).toEqual([RECORD_ID]);
+      expect(cards('open')).toEqual(['r9']);
+    });
+
+    it('live_MoveStartedAndEndedWhileReloading_DiscardsOutdatedCards', async () => {
+      await render([record(RECORD_ID, 'open')]);
+
+      realtime.emit(recordEvent(1));
+      const outdated = await expectRequest(http, 'POST', QUERY_URL);
+      host.board().onDragStarted();
+      const moving = host.board().onDrop({
+        previousContainer: { id: 'a' },
+        container: { id: 'b', data: 'done' },
+        item: { data: record(RECORD_ID, 'open') },
+      } as never);
+      (await expectRequest(http, 'PATCH', `${API}/records/${RECORD_ID}`)).flush(
+        recordDto({ revision: 3, properties: { status: 'done' } as never }),
+      );
+      await moving;
+      await settle(fixture);
+
+      outdated.flush(queryPage([record(RECORD_ID, 'open')]));
+      await settle(fixture);
+      expect(cards('done')).toEqual([RECORD_ID]);
+
+      (await expectRequest(http, 'POST', QUERY_URL)).flush(
+        queryPage([recordDto({ revision: 3, properties: { status: 'done' } as never })]),
+      );
+      await settle(fixture);
+      expect(cards('done')).toEqual([RECORD_ID]);
+    });
   });
 });

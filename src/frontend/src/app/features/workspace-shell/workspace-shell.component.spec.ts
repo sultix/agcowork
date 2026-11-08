@@ -18,6 +18,7 @@ import {
   space,
   workspace,
 } from '../../core/testing/test-utils';
+import { FakeRealtime, provideFakeRealtime } from '../../core/testing/fake-hub';
 import { WorkspacesStore } from '../workspaces/workspaces.store';
 import { workspaceShellRoutes } from './workspace-shell.routes';
 
@@ -250,6 +251,7 @@ describe('WorkspaceShellComponent sidebar tree', () => {
         ...pageProviders({
           routes: [{ path: 'w/:workspaceSlug', children: workspaceShellRoutes }],
         }),
+        provideFakeRealtime(),
       ],
     });
     const http = TestBed.inject(HttpTestingController);
@@ -293,5 +295,83 @@ describe('WorkspaceShellComponent sidebar tree', () => {
     expect(collections[1].getAttribute('data-active')).toBe('false');
     expect(collections[1].getAttribute('aria-current')).toBeNull();
     http.verify();
+  });
+});
+
+describe('WorkspaceShellComponent realtime status', () => {
+  let harness: RouterTestingHarness;
+  let realtime: FakeRealtime;
+
+  beforeEach(async () => {
+    realtime = new FakeRealtime();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(
+          [
+            { path: 'w/:workspaceSlug', children: workspaceShellRoutes },
+            { path: 'workspaces', children: [] },
+          ],
+          withComponentInputBinding(),
+        ),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideFakeRealtime(realtime),
+      ],
+    });
+    harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/w/demo/search');
+    TestBed.inject(HttpTestingController).expectOne('/health').flush('Healthy');
+    await harness.fixture.whenStable();
+  });
+
+  const indicator = () =>
+    (harness.routeNativeElement as HTMLElement | null)?.querySelector<HTMLButtonElement>(
+      '[data-testid="realtime-status"]',
+    ) ?? null;
+  const live = () =>
+    (harness.routeNativeElement as HTMLElement)
+      .querySelector('[data-testid="realtime-status-live"]')!
+      .textContent!.trim();
+
+  it('create_StartsRealtimeAndDestroy_StopsIt', async () => {
+    expect(realtime.starts).toBe(1);
+
+    await harness.navigateByUrl('/workspaces');
+
+    expect(realtime.stops).toBe(1);
+  });
+
+  it('render_Live_ShowsNoIndicator', () => {
+    expect(indicator()).toBeNull();
+    expect(live()).toBe('');
+  });
+
+  it('render_Reconnecting_ShowsIndicatorWithText', async () => {
+    realtime.status.set('reconnecting');
+    await harness.fixture.whenStable();
+
+    expect(indicator()!.getAttribute('data-status')).toBe('reconnecting');
+    expect(indicator()!.getAttribute('aria-label')).toBe(
+      'Live-Aktualisierung unterbrochen, Verbindung wird wiederhergestellt (Klick verbindet sofort neu)',
+    );
+    expect(live()).toContain('unterbrochen');
+    expect(indicator()!.querySelector('ng-icon')!.getAttribute('class')).toContain(
+      'motion-safe:animate-spin',
+    );
+    indicator()!.click();
+    expect(realtime.retries).toBe(1);
+  });
+
+  it('render_Offline_ShowsIndicatorAndClickRetries', async () => {
+    realtime.status.set('offline');
+    await harness.fixture.whenStable();
+
+    expect(indicator()!.getAttribute('data-status')).toBe('offline');
+    expect(indicator()!.getAttribute('aria-label')).toBe(
+      'Live-Aktualisierung getrennt (Klick zum erneuten Verbinden)',
+    );
+    indicator()!.click();
+
+    expect(realtime.retries).toBe(1);
   });
 });

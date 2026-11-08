@@ -8,6 +8,7 @@ import {
   output,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { firstValueFrom } from 'rxjs';
@@ -23,6 +24,7 @@ import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component
 import { ConflictDialogComponent } from '../records/conflict-dialog.component';
 import type { ViewDto } from './collection.store';
 import { InlineEditService } from './inline-edit.service';
+import { liveRefresh } from './live-refresh';
 import { QuerySource, createQueryPager } from './query-pager';
 import { ViewWorkingState, normaliseVisible, tableColumns, viewQuery } from './view-state';
 
@@ -32,7 +34,8 @@ export const TABLE_PAGE_SIZE = 200;
 /**
  * A view rendered as a table: loads the records page by page through the query endpoints,
  * hands column, sort and width changes up as a new working state, saves inline edits and
- * archives selected records.
+ * archives selected records. Changes by others reload the loaded rows in place (see
+ * {@link liveRefresh}), never while a cell is edited or saved.
  */
 @Component({
   selector: 'ag-table-view',
@@ -156,6 +159,8 @@ export class TableViewComponent {
 
   protected readonly pager = createQueryPager(() => this.source());
 
+  private readonly table = viewChild(DataTableComponent);
+
   constructor() {
     this.edits.bind(() => this.context.slug(), this.pager);
     effect(() => {
@@ -165,6 +170,31 @@ export class TableViewComponent {
         this.edits.reset();
       });
     });
+    liveRefresh({
+      collectionId: () => this.view().collectionId,
+      blocked: () => !!this.table()?.isEditing() || this.edits.busy() || this.archiving(),
+      generation: () => (this.table()?.editsStarted() ?? 0) + this.edits.generation(),
+      refresh: async (canApply) => {
+        const applied = await this.pager.refresh(canApply);
+        if (applied) {
+          this.keepLoadedSelection();
+        }
+        return applied;
+      },
+    });
+  }
+
+  /** Records that left the result (archived, filtered out) leave the selection too. */
+  private keepLoadedSelection(): void {
+    const selected = this.selection();
+    if (selected.size === 0) {
+      return;
+    }
+    const loaded = new Set(this.pager.items().map((r) => r.id));
+    const kept = [...selected].filter((id) => loaded.has(id));
+    if (kept.length !== selected.size) {
+      this.selection.set(new Set(kept));
+    }
   }
 
   protected onSort(prop: string, multi: boolean): void {

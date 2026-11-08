@@ -4,10 +4,12 @@ import { Router } from '@angular/router';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
+  ADMIN_ME,
   API,
   COLLECTION_ID,
   RECORD_ID,
   SPACE_ID,
+  activityEvent,
   collection,
   expectRequest,
   member,
@@ -27,6 +29,7 @@ import {
   MarkdownEditorOptions,
 } from '../../shared/editor/markdown-editor.adapter';
 import { FakeCodeEditor, provideFakeCodeEditor } from '../../shared/raw-view/fake-code-editor';
+import { FakeRealtime, provideFakeRealtime } from '../../core/testing/fake-hub';
 import { RecordDocumentComponent } from './record-document.component';
 import { recordLeaveGuard } from './record-leave.guard';
 import { AUTOSAVE_DELAY_MS } from './record-save.service';
@@ -85,6 +88,7 @@ describe('RecordDocumentComponent', () => {
   let http: HttpTestingController;
   let engines: FakeMarkdownEngine[];
   let codeEditors: FakeCodeEditor[];
+  let realtime: FakeRealtime;
 
   /** Renders the document and answers all initial requests. */
   async function render(
@@ -96,8 +100,10 @@ describe('RecordDocumentComponent', () => {
   ): Promise<void> {
     engines = [];
     codeEditors = [];
+    realtime = new FakeRealtime();
     TestBed.configureTestingModule({
       providers: [
+        provideFakeRealtime(realtime),
         ...pageProviders({
           ws: workspace({ scopes: options.scopes ?? ['read', 'write'] }),
           routes: [
@@ -799,6 +805,237 @@ describe('RecordDocumentComponent', () => {
       await settle(harness.fixture);
 
       expect(codeEditors[0].getValue()).toBe('# Neu');
+    });
+  });
+
+  describe('changes by others (realtime)', () => {
+    const PAYLOAD = propertyDefinition({ key: 'payload', name: 'Payload', type: 'json' });
+    const changedBy = (actorId = 'agent-1', type = 'record.updated') =>
+      activityEvent({ seq: 40, id: 'e40', type, actorId, targetId: RECORD_ID });
+    const foreign = (overrides = {}) =>
+      recordDto({
+        title: 'Vom Agenten',
+        body: 'Agententext',
+        revision: 4,
+        updatedBy: 'agent-1',
+        ...overrides,
+      });
+    /** The revision check asks without body. */
+    const answerMeta = (record = foreign()) =>
+      respond(http, 'GET', RECORD_URL, { ...record, body: null });
+
+    it('remote_NoLocalEdits_ReloadsSilentlyAndShowsHint', async () => {
+      await render();
+
+      realtime.emit(changedBy());
+      await answerMeta();
+      await respond(http, 'GET', LOAD_URL, foreign());
+      await settle(harness.fixture);
+
+      expect(q<HTMLInputElement>('record-title')!.value).toBe('Vom Agenten');
+      expect(text(q('record-revision'))).toBe('Revision 4');
+      expect(bodyEditor().current).toBe('Agententext');
+      expect(text(q('remote-hint'))).toBe('Aktualisiert von Coder');
+      expect(q('remote-hint')!.getAttribute('role')).toBe('status');
+      expect(q('remote-change')).toBeNull();
+    });
+
+    it('remote_EventOfAnotherRecord_IsIgnored', async () => {
+      await render();
+
+      realtime.emit(activityEvent({ seq: 41, targetId: 'other-record' }));
+      realtime.emit(activityEvent({ seq: 42, targetType: 'collection', targetId: COLLECTION_ID }));
+      await wait(20);
+
+      http.expectNone({ method: 'GET', url: RECORD_URL });
+      http.expectNone(LOAD_URL);
+    });
+
+    it('remote_WithLocalEdits_ShowsBannerAndKeepsEdits', async () => {
+      await render();
+      await edit();
+
+      realtime.emit(changedBy());
+      await answerMeta();
+      await settle(harness.fixture);
+
+      expect(text(q('remote-change-text'))).toBe('Coder hat diesen Eintrag geändert.');
+      expect(text(q('remote-change'))).toContain('Deine ungespeicherten Änderungen sind noch da.');
+      expect(text(q('remote-reload'))).toBe('Neu laden (eigene Änderungen verwerfen)');
+      expect(q<HTMLInputElement>('record-title')!.value).toBe('Login fertig');
+      expect(row('status').querySelector('select')!.value).toBe('done');
+      expect(text(q('record-revision'))).toBe('Revision 3');
+      expect(q('remote-hint')).toBeNull();
+    });
+
+    it('remote_ContinueEditing_KeepsEditsAndSaveRunsIntoConflictDialog', async () => {
+      await render();
+      await edit();
+      realtime.emit(changedBy());
+      await answerMeta();
+      await settle(harness.fixture);
+
+      q('remote-dismiss')!.click();
+      await change();
+      expect(q('remote-change')).toBeNull();
+      expect(q<HTMLInputElement>('record-title')!.value).toBe('Login fertig');
+
+      q('save')!.click();
+      const patch = await expectRequest(http, 'PATCH', RECORD_URL);
+      expect(patch.request.body).toMatchObject({ title: 'Login fertig', expectedRevision: 3 });
+      patch.flush(
+        { code: 'revision_mismatch', status: 409, currentRevision: 4, changedKeys: ['title'] },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await settle(harness.fixture);
+
+      expect(q('conflict-dialog')).not.toBeNull();
+    });
+
+    it('remote_ReloadFromBanner_DiscardsOwnEdits', async () => {
+      await render();
+      await edit();
+      realtime.emit(changedBy());
+      await answerMeta();
+      await settle(harness.fixture);
+
+      q('remote-reload')!.click();
+      await respond(http, 'GET', LOAD_URL, foreign());
+      await settle(harness.fixture);
+
+      expect(q('remote-change')).toBeNull();
+      expect(q<HTMLInputElement>('record-title')!.value).toBe('Vom Agenten');
+      expect(bodyEditor().current).toBe('Agententext');
+      expect(text(q('save-status'))).toBe('');
+    });
+
+    it('remote_BodyTypedButNotYetReported_CountsAsLocalEdit', async () => {
+      await render();
+      typeBody('Mein ungespeicherter Text');
+
+      realtime.emit(changedBy());
+      await answerMeta();
+      await settle(harness.fixture);
+
+      expect(engines).toHaveLength(1); // the editor was not re-created
+      expect(bodyEditor().current).toBe('Mein ungespeicherter Text');
+      expect(q('remote-change')).not.toBeNull();
+    });
+
+    it('remote_InvalidJsonTyped_ShowsBannerAndKeepsText', async () => {
+      await render({ schema: [PAYLOAD] });
+      codeEditors[0].type('{"a": ');
+      await change();
+
+      realtime.emit(changedBy());
+      await answerMeta();
+      await settle(harness.fixture);
+
+      expect(q('remote-change')).not.toBeNull();
+      expect(codeEditors).toHaveLength(1); // the JSON editor was not re-created
+      expect(codeEditors[0].getValue()).toBe('{"a": ');
+    });
+
+    it('remote_EditorFocused_ShowsBannerInsteadOfReloading', async () => {
+      await render();
+      q<HTMLInputElement>('record-title')!.focus();
+
+      realtime.emit(changedBy());
+      await answerMeta();
+      await settle(harness.fixture);
+
+      expect(q('remote-change')).not.toBeNull();
+      // nothing was changed here: the banner does not claim otherwise
+      expect(text(q('remote-change'))).toContain('Neu laden, um die aktuelle Fassung zu sehen.');
+      expect(text(q('remote-change'))).not.toContain('ungespeicherten');
+      expect(text(q('remote-reload'))).toBe('Neu laden');
+      expect(document.activeElement).toBe(q('record-title'));
+      expect(q<HTMLInputElement>('record-title')!.value).toBe('Login bauen');
+    });
+
+    it('remote_UserTypesWhileBodyIsLoaded_KeepsTheInput', async () => {
+      await render();
+
+      realtime.emit(changedBy());
+      await answerMeta();
+      const load = await expectRequest(http, 'GET', LOAD_URL);
+      typeInto(q<HTMLInputElement>('record-title')!, 'Während des Ladens');
+      load.flush(foreign());
+      await settle(harness.fixture);
+
+      expect(q<HTMLInputElement>('record-title')!.value).toBe('Während des Ladens');
+      expect(q('remote-change')).not.toBeNull();
+    });
+
+    it('remote_OwnSave_ShowsNoHintAndLoadsNoBody', async () => {
+      await render();
+      await edit();
+
+      q('save')!.click();
+      const patch = await expectRequest(http, 'PATCH', RECORD_URL);
+      // the event of this save may come before its response
+      realtime.emit(changedBy(ADMIN_ME.id));
+      await wait(10);
+      http.expectNone({ method: 'GET', url: RECORD_URL }); // waits for the save first
+      patch.flush(saved({ updatedBy: ADMIN_ME.id }));
+      await answerMeta(saved({ updatedBy: ADMIN_ME.id }));
+      await settle(harness.fixture);
+
+      // and once more after it
+      realtime.emit(activityEvent({ seq: 41, actorId: ADMIN_ME.id, targetId: RECORD_ID }));
+      await answerMeta(saved({ updatedBy: ADMIN_ME.id }));
+      await settle(harness.fixture);
+
+      expect(q('remote-hint')).toBeNull();
+      expect(q('remote-change')).toBeNull();
+      expect(text(q('save-status'))).toBe('Gespeichert');
+      expect(engines).toHaveLength(1);
+    });
+
+    it('remote_OwnArchive_ShowsNoBanner', async () => {
+      await render();
+      q('archive-toggle')!.click();
+      await change();
+      q('confirm-ok')!.click();
+      const archive = await expectRequest(http, 'POST', `${RECORD_URL}/archive`);
+
+      // the event of the own archive comes before the response
+      realtime.emit(changedBy(ADMIN_ME.id, 'record.archived'));
+      await wait(10);
+      http.expectNone({ method: 'GET', url: RECORD_URL });
+      const archived = recordDto({ revision: 4, archivedAt: '2026-11-07T12:00:00Z' });
+      archive.flush(archived);
+      await answerMeta(archived);
+      await settle(harness.fixture);
+
+      expect(q('remote-change')).toBeNull();
+      expect(q('remote-hint')).toBeNull();
+      expect(text(q('archived-badge'))).toBe('archiviert');
+    });
+
+    it('remote_ArchivedByOther_ShowsBannerAndStaysEditable', async () => {
+      await render();
+      await edit();
+
+      realtime.emit(changedBy('agent-1', 'record.archived'));
+      await answerMeta(recordDto({ revision: 4, archivedAt: '2026-11-07T12:00:00Z' }));
+      await settle(harness.fixture);
+
+      expect(text(q('remote-change-text'))).toBe('Coder hat diesen Eintrag archiviert.');
+      expect(q<HTMLInputElement>('record-title')!.readOnly).toBe(false);
+      expect(q<HTMLInputElement>('record-title')!.value).toBe('Login fertig');
+      expect(q('archived-badge')).toBeNull();
+    });
+
+    it('remote_Resync_AsksTheServer', async () => {
+      await render();
+
+      realtime.emitResync();
+      await answerMeta();
+      await respond(http, 'GET', LOAD_URL, foreign());
+      await settle(harness.fixture);
+
+      expect(text(q('remote-hint'))).toBe('Aktualisiert von Coder');
     });
   });
 });

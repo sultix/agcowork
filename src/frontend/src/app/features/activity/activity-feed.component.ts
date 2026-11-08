@@ -7,6 +7,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronDown, lucideCircleAlert, lucideX } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
@@ -19,6 +20,7 @@ import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
 import { HlmPopoverImports } from '@spartan-ng/helm/popover';
 import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
 import { ApiClient } from '../../core/api/api-client';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { MembersStore } from '../../core/workspace/members.store';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { describeError } from '../../shared/ui/api-error-text';
@@ -32,7 +34,7 @@ import { firstValueFrom } from 'rxjs';
 
 const PAGE_SIZE = 30;
 
-interface ActivityQuery {
+export interface ActivityQuery {
   readonly spaceId?: string;
   readonly collectionId?: string;
   readonly actorId?: string;
@@ -40,7 +42,30 @@ interface ActivityQuery {
   readonly types?: string[];
 }
 
-/** `/w/:slug/activity`: what happened in the workspace, newest first, filterable. */
+/**
+ * Whether the feed's filters let `event` through, like the server does for `GET /activity`.
+ * Fields the hub leaves out (`null` is omitted) never match a filter on them.
+ */
+export function matchesQuery(event: ActivityEvent, query: ActivityQuery): boolean {
+  if (query.spaceId && event.spaceId !== query.spaceId) {
+    return false;
+  }
+  if (query.collectionId && event.collectionId !== query.collectionId) {
+    return false;
+  }
+  if (query.actorId && event.actorId !== query.actorId) {
+    return false;
+  }
+  if (query.types && query.types.length > 0 && !query.types.includes(event.type)) {
+    return false;
+  }
+  return !query.since || Date.parse(event.at) >= Date.parse(query.since);
+}
+
+/**
+ * `/w/:slug/activity`: what happened in the workspace, newest first, filterable. Live events
+ * (realtime hub) that pass the filters appear on top; the pages loaded below stay as they are.
+ */
 @Component({
   selector: 'ag-activity-feed',
   imports: [
@@ -227,6 +252,7 @@ export class ActivityFeedComponent {
   protected readonly members = inject(MembersStore);
   private readonly context = inject(WorkspaceContext);
   private readonly api = inject(ApiClient);
+  private readonly realtime = inject(RealtimeService);
 
   protected readonly typeOptions = Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => ({
     value,
@@ -245,6 +271,8 @@ export class ActivityFeedComponent {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   private token = 0;
+  /** Live events that arrived while the first page was loading; merged when it is there. */
+  private pendingLive: ActivityEvent[] = [];
 
   protected readonly collections = computed(() =>
     this.tree.collections().filter((c) => !this.spaceId() || c.spaceId === this.spaceId()),
@@ -289,6 +317,43 @@ export class ActivityFeedComponent {
         void this.load(slug, query, null);
       });
     });
+
+    this.realtime.activity.pipe(takeUntilDestroyed()).subscribe((event) => this.receive(event));
+    // Events may have been missed while the connection was down: start over.
+    this.realtime.resync.pipe(takeUntilDestroyed()).subscribe(() => {
+      const slug = this.context.slug();
+      if (slug) {
+        void this.load(slug, this.query(), null);
+      }
+    });
+  }
+
+  /** A live event: on top, unless filtered out or already listed (same `seq`). */
+  private receive(event: ActivityEvent): void {
+    if (this.realtime.slug !== this.context.slug()) {
+      return;
+    }
+    if (this.loading() && this.events().length === 0) {
+      this.pendingLive.push(event);
+      return;
+    }
+    this.prepend([event]);
+  }
+
+  private prepend(live: readonly ActivityEvent[]): void {
+    const query = this.query();
+    this.events.update((current) => {
+      const listed = new Set(current.map((e) => Number(e.seq)));
+      const fresh: ActivityEvent[] = [];
+      for (const event of live) {
+        const seq = Number(event.seq);
+        if (!listed.has(seq) && matchesQuery(event, query)) {
+          listed.add(seq);
+          fresh.unshift(event);
+        }
+      }
+      return fresh.length > 0 ? [...fresh, ...current] : current;
+    });
   }
 
   protected setSpace(id: string): void {
@@ -326,6 +391,7 @@ export class ActivityFeedComponent {
     if (cursor === null) {
       this.events.set([]);
       this.nextCursor.set(null);
+      this.pendingLive = [];
     }
     this.loading.set(true);
     this.error.set(null);
@@ -340,6 +406,11 @@ export class ActivityFeedComponent {
       }
       this.events.update((current) => (cursor ? [...current, ...page.items] : page.items));
       this.nextCursor.set(page.nextCursor);
+      if (cursor === null && this.pendingLive.length > 0) {
+        const live = this.pendingLive;
+        this.pendingLive = [];
+        this.prepend(live);
+      }
     } catch (error) {
       if (token === this.token) {
         this.error.set(describeError(error));

@@ -455,6 +455,10 @@ export class DataTableComponent {
   private readonly liveWidth = signal<{ key: string; width: number } | null>(null);
 
   protected readonly editing = signal<EditingCell | null>(null);
+  /** A cell editor is open (its row must not be replaced by a reload meanwhile). */
+  readonly isEditing = computed(() => this.editing() !== null);
+  /** Counts opened cell editors (a reload fetched before one opened is outdated). */
+  readonly editsStarted = signal(0);
   /**
    * How the draft was last changed. A choice made with the pointer is saved at once; with the
    * keyboard (arrow keys, type-ahead in a native select) only on Enter or when leaving.
@@ -621,6 +625,7 @@ export class DataTableComponent {
       failed?.status === 'error' && failed.draft !== undefined ? failed.draft : (initial ?? null),
     );
     this.lastInput = 'keyboard';
+    this.editsStarted.update((n) => n + 1);
     this.editing.set({ record: row, key, definition, initial: initial ?? null, origin });
   }
 

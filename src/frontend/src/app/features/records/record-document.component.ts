@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  ElementRef,
   computed,
   effect,
   inject,
@@ -13,8 +15,9 @@ import {
   viewChild,
   viewChildren,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCircleAlert } from '@ng-icons/lucide';
+import { lucideCircleAlert, lucideInfo, lucideTriangleAlert } from '@ng-icons/lucide';
 import type { BrnDialogState } from '@spartan-ng/brain/dialog';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -25,6 +28,7 @@ import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
 import { ApiError } from '../../core/api/api-error';
 import type { components } from '../../core/api/generated/schema';
+import { ActivityEvent, RealtimeService } from '../../core/realtime/realtime.service';
 import { MembersStore } from '../../core/workspace/members.store';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { MarkdownEditorComponent } from '../../shared/editor/markdown-editor.component';
@@ -38,14 +42,27 @@ import { WorkspacesStore } from '../workspaces/workspaces.store';
 import { WorkspaceTreeStore } from '../spaces/workspace-tree.store';
 import { ConflictDialogComponent } from './conflict-dialog.component';
 import { RecordTabsComponent } from './record-tabs.component';
-import { RecordSaveService } from './record-save.service';
+import { RecordDto, RecordSaveService } from './record-save.service';
 
 type Collection = components['schemas']['CollectionDto'];
+
+/** How long "Aktualisiert von …" stays after a silent reload. */
+export const REMOTE_HINT_MS = 6000;
+
+/** Someone else changed (or archived) the open record while it has local edits. */
+interface RemoteChange {
+  readonly kind: 'changed' | 'archived';
+  readonly actorId: string;
+  /** Server revision of that change; the banner goes once the view has caught up with it. */
+  readonly revision: number;
+}
 
 /**
  * `/w/:slug/records/:recordId`: a record as a document. Title, property panel and Markdown body
  * are edited in place; `RecordSaveService` saves them (button, Ctrl/Cmd+S, 2 s auto-save) with
- * the expected revision and reports conflicts, which this view lets the user resolve.
+ * the expected revision and reports conflicts, which this view lets the user resolve. Changes by
+ * others (realtime events) reload the record silently when there are no local edits; with local
+ * edits a banner offers to reload, and the edits are never replaced without the user's choice.
  */
 @Component({
   selector: 'ag-record-document',
@@ -66,7 +83,10 @@ type Collection = components['schemas']['CollectionDto'];
     RawViewComponent,
     RecordTabsComponent,
   ],
-  providers: [RecordSaveService, provideIcons({ lucideCircleAlert })],
+  providers: [
+    RecordSaveService,
+    provideIcons({ lucideCircleAlert, lucideInfo, lucideTriangleAlert }),
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:keydown)': 'onKeydown($event)',
@@ -163,6 +183,55 @@ type Collection = components['schemas']['CollectionDto'];
                 Neu laden
               </button>
             }
+          </div>
+        }
+        @if (remoteBanner(); as change) {
+          <div hlmAlert class="mt-3" role="status" data-testid="remote-change">
+            <ng-icon name="lucideTriangleAlert" />
+            <p hlmAlertTitle data-testid="remote-change-text">
+              {{ members.nameOf(change.actorId) }} hat diesen Eintrag
+              {{ change.kind === 'archived' ? 'archiviert' : 'geändert' }}.
+            </p>
+            <div hlmAlertDescription>
+              <p>
+                @if (change.kind === 'archived') {
+                  Du kannst weiter bearbeiten, gespeichert werden kann erst nach dem
+                  Wiederherstellen.
+                } @else if (localEdits()) {
+                  Deine ungespeicherten Änderungen sind noch da. Beim Speichern kannst du
+                  entscheiden, welche Fassung gilt.
+                } @else {
+                  Neu laden, um die aktuelle Fassung zu sehen.
+                }
+              </p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  hlmBtn
+                  variant="outline"
+                  size="sm"
+                  data-testid="remote-reload"
+                  (click)="reloadRemote()"
+                >
+                  {{ localEdits() ? 'Neu laden (eigene Änderungen verwerfen)' : 'Neu laden' }}
+                </button>
+                <button
+                  type="button"
+                  hlmBtn
+                  variant="ghost"
+                  size="sm"
+                  data-testid="remote-dismiss"
+                  (click)="dismissRemote()"
+                >
+                  Weiter bearbeiten
+                </button>
+              </div>
+            </div>
+          </div>
+        } @else if (remoteHint(); as actorId) {
+          <div hlmAlert class="mt-3" role="status" data-testid="remote-hint">
+            <ng-icon name="lucideInfo" />
+            <p hlmAlertDescription>Aktualisiert von {{ members.nameOf(actorId) }}</p>
           </div>
         }
         @if (readonly() && record.archivedAt) {
@@ -290,6 +359,10 @@ export class RecordDocumentComponent {
   private readonly context = inject(WorkspaceContext);
   private readonly workspaces = inject(WorkspacesStore);
   private readonly tree = inject(WorkspaceTreeStore);
+  private readonly realtime = inject(RealtimeService);
+  private readonly host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;
+  /** The running archive or restore of this view; remote checks wait for it. */
+  private archiveRun: Promise<void> | null = null;
 
   /** Route parameter `:recordId`. */
   readonly recordId = input.required<string>();
@@ -314,6 +387,34 @@ export class RecordDocumentComponent {
    * serialization of an unchanged body must not count as an edit.
    */
   private baseline: string | null = null;
+
+  /** Open banner about a change by someone else; `null` after reload or "Weiter bearbeiten". */
+  private readonly remoteChange = signal<RemoteChange | null>(null);
+  /** Actor of the last silent reload, shown for {@link REMOTE_HINT_MS}. */
+  protected readonly remoteHint = signal<string | null>(null);
+  private hintTimer: ReturnType<typeof setTimeout> | null = null;
+  /** A remote check is running; `again` asks for one more after it (events kept coming). */
+  private checking = false;
+  private checkAgain = false;
+  private lastRemoteActor: string | null = null;
+
+  /** Unsaved edits, including invalid text the editors keep to themselves. */
+  protected readonly localEdits = computed(
+    () => this.saver.isDirty() || this.propertyEditors().some((e) => e.invalid()),
+  );
+
+  /** The banner, as long as the view has not caught up with the change (reload, overwrite). */
+  protected readonly remoteBanner = computed(() => {
+    const change = this.remoteChange();
+    const record = this.saver.record();
+    if (!change || !record) {
+      return null;
+    }
+    if (change.kind === 'archived') {
+      return record.archivedAt ? null : change;
+    }
+    return Number(record.revision) < change.revision ? change : null;
+  });
 
   /** Stable id of the record's collection: the resource below must not reload on every save. */
   private readonly collectionId = computed(() => this.saver.record()?.collectionId ?? null);
@@ -379,6 +480,7 @@ export class RecordDocumentComponent {
 
   constructor() {
     this.saver.beforeSave = () => this.pullPending();
+    this.saver.hasLocalInput = () => this.hasLocalInput();
 
     effect(() => {
       const slug = this.context.slug();
@@ -391,6 +493,121 @@ export class RecordDocumentComponent {
       this.saver.loadCount();
       this.baseline = null;
     });
+    effect(() => {
+      this.recordId();
+      untracked(() => {
+        this.remoteChange.set(null);
+        this.hideHint();
+      });
+    });
+
+    this.realtime.activity.pipe(takeUntilDestroyed()).subscribe((event) => this.onActivity(event));
+    this.realtime.resync.pipe(takeUntilDestroyed()).subscribe(() => void this.checkRemote(null));
+    inject(DestroyRef).onDestroy(() => this.hideHint());
+  }
+
+  private onActivity(event: ActivityEvent): void {
+    if (
+      event.targetType === 'record' &&
+      event.targetId === this.recordId() &&
+      this.realtime.slug === this.context.slug()
+    ) {
+      void this.checkRemote(event.actorId);
+    }
+  }
+
+  /**
+   * Input a silent reload would destroy although it is not in the saver's edits: invalid text
+   * (JSON, number, date) the editors keep to themselves, the open "discard and leave?" question,
+   * and focus in title, properties or body — re-creating the editors would take the cursor away
+   * mid-sentence, so a focused editor gets the banner instead.
+   */
+  private hasLocalInput(): boolean {
+    if (this.readonly()) {
+      return false;
+    }
+    if (this.leaveRequest() !== null || this.propertyEditors().some((e) => e.invalid())) {
+      return true;
+    }
+    const active = this.host.ownerDocument.activeElement;
+    return (
+      !!active &&
+      this.host.contains(active) &&
+      !!active.closest(
+        '[data-testid="record-title"], [data-testid="properties-panel"], [data-testid="record-body"]',
+      )
+    );
+  }
+
+  /** Asks the server whether the record changed and reacts (see `RecordSaveService.checkRemote`). */
+  private async checkRemote(actorId: string | null): Promise<void> {
+    if (actorId) {
+      this.lastRemoteActor = actorId;
+    }
+    if (this.checking) {
+      this.checkAgain = true;
+      return;
+    }
+    this.checking = true;
+    try {
+      do {
+        this.checkAgain = false;
+        while (this.archiveRun) {
+          await this.archiveRun; // the event of an own archive must not read as someone else's
+        }
+        const result = await this.saver.checkRemote();
+        if (result.kind === 'unchanged' || result.kind === 'failed') {
+          continue;
+        }
+        const actor = this.actorOf(result.record);
+        if (result.kind === 'reloaded') {
+          this.remoteChange.set(null);
+          this.showHint(actor);
+        } else {
+          this.hideHint();
+          this.remoteChange.set({
+            kind: result.kind,
+            actorId: actor,
+            revision: Number(result.record.revision),
+          });
+        }
+      } while (this.checkAgain);
+    } finally {
+      this.checking = false;
+      this.lastRemoteActor = null;
+    }
+  }
+
+  private actorOf(record: RecordDto): string {
+    return this.lastRemoteActor ?? record.updatedBy;
+  }
+
+  /** "Neu laden" (and with local edits: discard them). */
+  protected async reloadRemote(): Promise<void> {
+    this.remoteChange.set(null);
+    await this.saver.reload();
+  }
+
+  /** "Weiter bearbeiten": keeps the edits; saving later shows the conflict dialog. */
+  protected dismissRemote(): void {
+    this.remoteChange.set(null);
+  }
+
+  private showHint(actorId: string): void {
+    this.hideHint();
+    this.remoteHint.set(actorId);
+    this.hintTimer = setTimeout(() => {
+      this.hintTimer = null;
+      this.remoteHint.set(null);
+    }, REMOTE_HINT_MS);
+  }
+
+  private hideHint(): void {
+    if (this.hintTimer !== null) {
+      clearTimeout(this.hintTimer);
+      this.hintTimer = null;
+    }
+    this.remoteHint.set(null);
   }
 
   /**
@@ -531,6 +748,18 @@ export class RecordDocumentComponent {
   }
 
   protected async toggleArchived(): Promise<void> {
+    const run = this.runArchiveToggle();
+    this.archiveRun = run;
+    try {
+      await run;
+    } finally {
+      if (this.archiveRun === run) {
+        this.archiveRun = null;
+      }
+    }
+  }
+
+  private async runArchiveToggle(): Promise<void> {
     const slug = this.context.slug();
     const record = this.saver.record();
     if (!slug || !record) {
