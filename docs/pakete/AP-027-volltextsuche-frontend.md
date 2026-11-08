@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | Liste mit Paginierung: `src/frontend/src/app/features/activity/activity-feed.component.ts`; Datenzugriff: `core/api/api-client.ts` mit `httpResource`; Shell und Tastenkürzel: `features/workspace-shell/` (Cmd+B für die Sidebar); UI-Bausteine: `docs/02-ARCHITEKTUR.md` §6 |
@@ -26,6 +26,14 @@ Menschen suchen aus jeder Seite eines Workspaces heraus und springen direkt zum 
 **Ausdrücklich nicht drin:**
 - Backend, Command-Palette mit Aktionen, Live-Vorschläge beim Tippen (eigenes Paket, falls gewünscht), Live-Aktualisierung der Ergebnisse.
 
+## Fachlicher Kontext
+
+- Vertrag aus AP-026 (committet `923b736`, siehe OpenAPI `GET /api/v1/w/{slug}/search`): Antwort `{ items, nextCursor }`, `nextCursor` fehlt auf der letzten Seite (null-Felder werden weggelassen). Treffer: `recordId`, `title`, `collectionId?`, `spaceId`, `snippet`, `rank`, `updatedAt`, `archived`.
+- `snippet` ist **reiner Text** und kann `<`, `>` und Markup aus dem Inhalt enthalten; nur `⟦` (U+27E6) und `⟧` (U+27E7) stammen vom Server. Snippets entstehen aus den ersten 20.000 Zeichen; ein Treffer weiter hinten hat ein Snippet ohne Marker, ein reiner Titeltreffer ebenfalls.
+- `archived: true` auch dann, wenn Collection oder Space archiviert ist; ohne `includeArchived` erscheinen solche Records nicht.
+- Syntax für den Leer-Hinweis: Wörter, `"Phrase"`, `-Wort`, `or`; das letzte Wort wird ab 2 Zeichen als Präfix gesucht.
+- Fehler: 400 `validation_failed` mit `errors[{ field: "q", code: "empty_query" | "too_long" | "invalid_value" }]`.
+
 ## Akzeptanzkriterien
 
 1. `Cmd/Ctrl+K` fokussiert das Suchfeld; Enter navigiert mit `q` in der URL.
@@ -48,3 +56,11 @@ Menschen suchen aus jeder Seite eines Workspaces heraus und springen direkt zum 
 | Datum | Ereignis |
 |---|---|
 | 2026-11-07 | angelegt |
+| 2026-11-08 | Vertrag aus AP-026 im Paket ergänzt, an implementer-sonnet übergeben (parallel zu AP-028) |
+| 2026-11-08 | Bericht: 809 Tests grün; Suchfeld in der Kopfzeile (`role="search"`, Strg/Cmd+K, ignoriert `defaultPrevented`), eigenes Feld auf der Ergebnisseite für Fehler am Feld, URL als einziger Zustand, `splitSnippet` robust gegen kaputte Marker, Seitengröße 20; Zurück-Test über `navigateByUrl` statt `Location.back()` |
+| 2026-11-08 | Review gestartet |
+| 2026-11-08 | Review: Freigabe mit Hinweisen – Select zeigt „Alle“ trotz aktivem Filter, wenn der Baum nach dem Rendern lädt (nicht zurücksetzbar); Leerzeichen um `<mark>`; Hinweise zu Keydown ohne `key`, Strg+K auf macOS, A11y-Live-Regionen, 404-Filter, archivierte Kontexte |
+| 2026-11-08 | Entscheidung: Suche aus der Kopfzeile setzt Filter zurück (neue Suche) |
+| 2026-11-08 | Nacharbeit an implementer-sonnet |
+| 2026-11-08 | Nacharbeit: `[selected]` je Option (Test mit spätem Baum, ohne Fix rot), Klartext ohne Whitespace, Keydown prüft Modifier zuerst und auf Apple nur Cmd, Seitenfeld mit Signal Forms (`maxLength` 200, Serverfehler als Validator), Live-Regionen, „Filter nicht gefunden“, archivierte Kontexte, Test für veraltete Antwort, Platzhalter-Seite entfernt; 820 Tests |
+| 2026-11-08 | abgeschlossen (Orchestrator hat build/test/lint/format auf dem Commit geprüft) |

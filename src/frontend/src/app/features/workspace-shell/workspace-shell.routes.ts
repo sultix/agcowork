@@ -1,10 +1,7 @@
 import { Routes } from '@angular/router';
 import { recordLeaveGuard } from '../records/record-leave.guard';
 
-const placeholder = () =>
-  import('../../shared/ui/placeholder-page.component').then((m) => m.PlaceholderPageComponent);
-
-/** Child routes of `/w/:workspaceSlug`. Placeholders until the features exist. */
+/** Child routes of `/w/:workspaceSlug`. */
 export const workspaceShellRoutes: Routes = [
   {
     path: '',
@@ -59,7 +56,11 @@ export const workspaceShellRoutes: Routes = [
             (m) => m.RecordHistoryComponent,
           ),
       },
-      { path: 'search', loadComponent: placeholder, data: { title: 'Suche' } },
+      {
+        path: 'search',
+        loadComponent: () =>
+          import('../search/search-page.component').then((m) => m.SearchPageComponent),
+      },
       {
         path: 'activity',
         loadComponent: () =>

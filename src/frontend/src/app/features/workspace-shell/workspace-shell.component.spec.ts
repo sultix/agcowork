@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
 import { HlmSidebarService } from '@spartan-ng/helm/sidebar';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
   API,
@@ -12,6 +12,7 @@ import {
   SPACE_ID,
   collection,
   expectRequest,
+  respond,
   pageProviders,
   serve,
   settle,
@@ -200,6 +201,124 @@ describe('WorkspaceShellComponent', () => {
     expect(root.querySelector('[data-sidebar="trigger"]')).not.toBeNull();
     expect(root.querySelector('[data-testid="theme-toggle"]')).not.toBeNull();
     expect(text('header-workspace')).toBe('demo');
+  });
+
+  describe('search field', () => {
+    async function open(): Promise<HTMLInputElement> {
+      await harness.navigateByUrl('/w/demo/search');
+      http.expectOne('/health').flush('Healthy');
+      await harness.fixture.whenStable();
+      return (harness.routeNativeElement as HTMLElement).querySelector<HTMLInputElement>(
+        '[data-testid="search-field"]',
+      )!;
+    }
+
+    function press(init: KeyboardEventInit): KeyboardEvent {
+      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      document.body.dispatchEvent(event);
+      return event;
+    }
+
+    function platform(name: string): void {
+      const spy = vi.spyOn(navigator, 'platform', 'get').mockReturnValue(name);
+      onTestFinished(() => spy.mockRestore());
+    }
+
+    it('keydown_CtrlKOnWindows_FocusesSearchFieldAndPreventsBrowserDefault', async () => {
+      platform('Win32');
+      const field = await open();
+
+      const event = press({ key: 'k', ctrlKey: true });
+
+      expect(document.activeElement).toBe(field);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('keydown_MetaKOnWindows_LeavesFocusAlone', async () => {
+      platform('Win32');
+      const field = await open();
+
+      press({ key: 'k', metaKey: true });
+
+      expect(document.activeElement).not.toBe(field);
+    });
+
+    it('keydown_MetaKOnMac_FocusesSearchField', async () => {
+      platform('MacIntel');
+      const field = await open();
+
+      press({ key: 'K', metaKey: true });
+
+      expect(document.activeElement).toBe(field);
+    });
+
+    it('keydown_CtrlKOnMac_LeavesTheBrowserShortcutAlone', async () => {
+      platform('MacIntel');
+      const field = await open();
+
+      const event = press({ key: 'k', ctrlKey: true });
+
+      expect(document.activeElement).not.toBe(field);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('keydown_CtrlShiftK_LeavesFocusAlone', async () => {
+      platform('Win32');
+      const field = await open();
+
+      press({ key: 'k', ctrlKey: true, shiftKey: true });
+
+      expect(document.activeElement).not.toBe(field);
+    });
+
+    it('keydown_WithoutKey_DoesNotThrow', async () => {
+      platform('Win32');
+      await open();
+      const event = new KeyboardEvent('keydown', { ctrlKey: true, bubbles: true });
+      Object.defineProperty(event, 'key', { value: undefined });
+
+      expect(() => document.body.dispatchEvent(event)).not.toThrow();
+    });
+
+    it('keydown_PlainKOrAlreadyHandled_LeavesFocusAlone', async () => {
+      platform('Win32');
+      const field = await open();
+
+      press({ key: 'k' });
+      const handled = new KeyboardEvent('keydown', {
+        key: 'k',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      handled.preventDefault();
+      document.body.dispatchEvent(handled);
+
+      expect(document.activeElement).not.toBe(field);
+    });
+
+    it('submit_Text_NavigatesToSearchWithQuery', async () => {
+      const field = await open();
+
+      field.value = '  release plan ';
+      field.form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await respond(http, 'GET', `${API}/search?q=release%20plan&limit=20`, {
+        items: [],
+        nextCursor: null,
+      });
+      await harness.fixture.whenStable();
+
+      expect(TestBed.inject(Router).url).toBe('/w/demo/search?q=release%20plan');
+    });
+
+    it('submit_Empty_NavigatesToSearchWithoutQuery', async () => {
+      const field = await open();
+
+      field.form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await harness.fixture.whenStable();
+
+      expect(TestBed.inject(Router).url).toBe('/w/demo/search');
+    });
   });
 });
 

@@ -1,5 +1,13 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  inject,
+  viewChild,
+} from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideActivity,
@@ -11,6 +19,7 @@ import {
   lucideWifiOff,
 } from '@ng-icons/lucide';
 import { HlmBreadcrumbImports } from '@spartan-ng/helm/breadcrumb';
+import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSeparator } from '@spartan-ng/helm/separator';
 import {
   HlmSidebarImports,
@@ -51,6 +60,11 @@ const REALTIME_LABELS: Record<RealtimeStatus, string | null> = {
   offline: 'Live-Aktualisierung getrennt (Klick zum erneuten Verbinden)',
 };
 
+/** Whether the shortcut modifier is Cmd (macOS, iOS) rather than Ctrl. */
+export function isApplePlatform(): boolean {
+  return /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+}
+
 interface NavItem {
   readonly path: string;
   readonly label: string;
@@ -71,6 +85,7 @@ interface NavItem {
     RouterLinkActive,
     NgIcon,
     HlmBreadcrumbImports,
+    HlmInput,
     HlmSeparator,
     HlmSidebarImports,
     HlmTooltip,
@@ -97,6 +112,7 @@ interface NavItem {
     provideHlmSidebarConfig({ sidebarKeyboardShortcut: '' }),
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown)': 'onKeydown($event)' },
   template: `
     <div hlmSidebarWrapper>
       <hlm-sidebar
@@ -159,7 +175,30 @@ interface NavItem {
               </li>
             </ol>
           </nav>
-          <div class="ml-auto flex items-center gap-1">
+          <form
+            class="relative ml-auto w-full max-w-64"
+            role="search"
+            data-testid="search-form-header"
+            (submit)="search($event, searchField.value)"
+          >
+            <ng-icon
+              name="lucideSearch"
+              class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <input
+              #searchField
+              hlmInput
+              type="search"
+              class="h-9 pl-8"
+              placeholder="Suchen (Strg/Cmd+K)"
+              aria-label="Im Workspace suchen"
+              aria-keyshortcuts="Control+K Meta+K"
+              autocomplete="off"
+              data-testid="search-field"
+            />
+          </form>
+          <div class="flex items-center gap-1">
             @if (realtimeText(); as label) {
               <button
                 type="button"
@@ -211,6 +250,8 @@ interface NavItem {
 })
 export class WorkspaceShellComponent {
   private readonly workspace = inject(WorkspaceContext);
+  private readonly router = inject(Router);
+  private readonly searchField = viewChild.required<ElementRef<HTMLInputElement>>('searchField');
   protected readonly health = inject(HealthService);
   protected readonly realtime = inject(RealtimeService);
 
@@ -243,6 +284,41 @@ export class WorkspaceShellComponent {
   });
   protected readonly statusDot = computed(() => STATUS_DOTS[this.health.status()]);
   protected readonly realtimeText = computed(() => REALTIME_LABELS[this.realtime.status()]);
+
+  /**
+   * Ctrl/Cmd+K focuses the search field from anywhere in the workspace. Events another handler
+   * already used (e.g. an editor) are left alone.
+   */
+  protected onKeydown(event: KeyboardEvent): void {
+    // Cmd+K on macOS, Ctrl+K elsewhere (on macOS Ctrl+K deletes to the end of the line).
+    const modifier = isApplePlatform()
+      ? event.metaKey && !event.ctrlKey
+      : event.ctrlKey && !event.metaKey;
+    if (
+      !modifier ||
+      event.defaultPrevented ||
+      event.altKey ||
+      event.shiftKey ||
+      typeof event.key !== 'string' ||
+      event.key.toLowerCase() !== 'k'
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const field = this.searchField().nativeElement;
+    field.focus();
+    field.select();
+  }
+
+  /** Enter in the search field: open the results page for the text (empty: the page's hint). */
+  protected search(event: Event, text: string): void {
+    event.preventDefault();
+    const slug = this.slug();
+    const q = text.trim();
+    if (slug) {
+      void this.router.navigate(['/w', slug, 'search'], { queryParams: q ? { q } : {} });
+    }
+  }
 
   constructor() {
     // One hub connection per tab while a workspace is open; the service follows the slug.

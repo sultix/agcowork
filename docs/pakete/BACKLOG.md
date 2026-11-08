@@ -29,8 +29,8 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-023](AP-023-haertung-frontend.md) | Härtung Frontend: Passwort-UI, Idempotency-Key, Activity-Titel, Health-Status, dompurify | Härtung | implementer-sonnet | AP-022 | abgeschlossen | 6e837db |
 | [AP-024](AP-024-realtime-backend.md) | Realtime Backend: commit-sichere Activity-Reihenfolge (`afterSeq`), SignalR-Hub, Dispatcher | 2 | implementer-opus | AP-022 | abgeschlossen | 6bd7d04 |
 | [AP-025](AP-025-realtime-frontend.md) | Realtime Frontend: SignalR-Client, Live-Feed, Views, Navigation, Dokument ohne Datenverlust | 2 | implementer-opus | AP-023, AP-024 | abgeschlossen | 0cbeecc |
-| [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | abgeschlossen | |
-| [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | angelegt | |
+| [AP-026](AP-026-volltextsuche-backend.md) | Volltextsuche Backend: tsvector, REST `/search`, MCP `search` | 2 | implementer-opus | AP-024 | abgeschlossen | 923b736 |
+| [AP-027](AP-027-volltextsuche-frontend.md) | Volltextsuche Frontend: Suchfeld, Ergebnisseite, Hervorhebung | 2 | implementer-sonnet | AP-025, AP-026 | abgeschlossen | |
 | [AP-028](AP-028-dispatcher-fehlerpfad-surrogate.md) | Backend-Kleinpaket: Dispatcher „lückenlos oder getrennt“, ungepaarte Surrogate → 400 | 2 | implementer-opus | AP-024, AP-025 | in Arbeit | |
 
 ## Zurückgestellte Review-Hinweise
