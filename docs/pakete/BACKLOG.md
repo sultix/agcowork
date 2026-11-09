@@ -46,7 +46,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-040](AP-040-galerie-und-liste.md) | Galerie- und Listen-View im Frontend (Cover ohne Bilder, Felder, Tastatur, live) | 2 | implementer-sonnet | AP-038, AP-039 | abgeschlossen | a779493 |
 | [AP-041](AP-041-vorlagen-verwaltung.md) | Vorlagen-Verwaltung im Frontend: Record-Vorlagen anlegen, bearbeiten, Standard, aus Record übernehmen | 2 | implementer-sonnet | AP-039, AP-040 | abgeschlossen | 05168ec |
 | [AP-042](AP-042-backend-folgepunkte.md) | Backend-Folgepunkte: Anlegen ohne Vorlage, Cover-Typen, Präzision entfernen, MCP-Titel escapen | 2 | implementer-sonnet | AP-041 | abgeschlossen | 5c7c87f |
-| [AP-043](AP-043-rate-limiting-anmeldung.md) | Rate-Limiting für Anmeldung und Passwortänderung | 2 | implementer-opus | AP-042 | in Arbeit | |
+| [AP-043](AP-043-rate-limiting-anmeldung.md) | Rate-Limiting für Anmeldung und Passwortänderung | 2 | implementer-opus | AP-042 | abgeschlossen | f24d34e |
 | [AP-044](AP-044-a11y-property-editoren.md) | Barrierefreiheit: Property-Editoren mit Label, Relations-Picker als Combobox | 2 | implementer-sonnet | AP-041 | abgeschlossen | 8287864 |
 | [AP-045](AP-045-frontend-folgepunkte.md) | Frontend-Folgepunkte: „Ohne Vorlage“, Titel-Vorschlag, Server-Meldungen an Feldern, Zitate im Mention-Port | 2 | implementer-sonnet | AP-042 | abgeschlossen | bfc3c4d |
 

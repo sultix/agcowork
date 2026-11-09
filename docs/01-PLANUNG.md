@@ -177,7 +177,7 @@ ein versehentlich falscher Lookup niemals „zufällig“ einen fremden Datensat
 - UI: Workspace-Wechsler, Space-Navigation, Tabellen-View, Dokument-View (Markdown-Editor), Raw-View, Aktivitätsfeed, Agent-/Key-Verwaltung, Workspace- und Mitglieder-Verwaltung.
 - Eingebaute Workspace-Vorlage „Software-Projekt“: Spaces, Sammlungen (Entscheidungen, Aufgaben, Analysen, Komponenten), Views und Record-Vorlagen. Neue Workspaces starten damit, „leer“ bleibt wählbar.
 
-### Phase 2 – Menschen-Komfort (ca. 3 Wochen) – **abgeschlossen** (2026-11-09): Härtung AP-022/023, SignalR-Live-Updates AP-024/025, Volltextsuche AP-026/027, AP-028, Kommentare und Erwähnungen AP-029–AP-032, Vertrag AP-033, Härtung AP-034/035, Row-Level-Security AP-036, Relationen und Schema-Editor AP-037–AP-039, Galerie/Liste AP-040, Vorlagen-Verwaltung AP-041; offene Kleinpakete im Backlog unter „Folgepunkte“
+### Phase 2 – Menschen-Komfort (ca. 3 Wochen) – **abgeschlossen** (2026-11-09): Härtung AP-022/023, SignalR-Live-Updates AP-024/025, Volltextsuche AP-026/027, AP-028, Kommentare und Erwähnungen AP-029–AP-032, Vertrag AP-033, Härtung AP-034/035, Row-Level-Security AP-036, Relationen und Schema-Editor AP-037–AP-039, Galerie/Liste AP-040, Vorlagen-Verwaltung AP-041; Folgepunkte AP-042–AP-045 (Anlegen ohne Vorlage, Cover-Typen, Präzision, MCP-Texte, Anmelde-Drosselung, Barrierefreiheit der Editoren, Feldfehler, Mention-Port); weitere Kleinpakete im Backlog unter „Folgepunkte“
 - Board-View (Gruppierung nach Status/Select, Drag&Drop), Karten-/Galerie-View, Listen-View.
 - Kommentare, Erwähnungen (@agent, @mensch).
 - SignalR-Live-Updates (Gruppen pro Workspace), Volltextsuche (tsvector), Beziehungen (Relation-Properties) mit UI.
