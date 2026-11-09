@@ -36,8 +36,8 @@ interface CreateModel {
 }
 
 /**
- * Modal for a new record: title plus template (asked only when the collection has more than
- * one). With `collectionId` the record joins that collection, without it becomes a free page of
+ * Modal for a new record: title plus template (asked whenever the collection has one;
+ * the API has no way to create without a template when a default exists). With `collectionId` the record joins that collection, without it becomes a free page of
  * `spaceId`. Emits the created record; the parent navigates.
  */
 @Component({
@@ -92,7 +92,7 @@ interface CreateModel {
               </div>
             </div>
 
-            @if (templates().length > 1) {
+            @if (templates().length > 0) {
               <div hlmField class="gap-2">
                 <label hlmFieldLabel for="record-template">Vorlage</label>
                 <select
@@ -216,7 +216,7 @@ export class RecordCreateDialogComponent {
               title: value.title.trim(),
               ...(collectionId ? { collectionId } : {}),
               ...(this.spaceId() ? { spaceId: this.spaceId() } : {}),
-              ...(this.templates().length > 1 && value.templateId
+              ...(this.templates().length > 0 && value.templateId
                 ? { templateId: value.templateId }
                 : {}),
             },

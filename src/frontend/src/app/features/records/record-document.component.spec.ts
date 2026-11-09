@@ -100,6 +100,7 @@ describe('RecordDocumentComponent', () => {
       scopes?: string[];
       record?: Partial<ReturnType<typeof recordDto>>;
       schema?: ReturnType<typeof propertyDefinition>[];
+      collectionArchived?: boolean;
       comments?: unknown;
       query?: string;
       providers?: Provider[];
@@ -152,7 +153,10 @@ describe('RecordDocumentComponent', () => {
         : ([
             [
               `${API}/collections/${COLLECTION_ID}`,
-              collection({ schema: [...collection().schema, ...(options.schema ?? [])] }),
+              collection({
+                schema: [...collection().schema, ...(options.schema ?? [])],
+                archivedAt: options.collectionArchived ? '2026-11-08T10:00:00Z' : null,
+              }),
             ],
           ] as const)),
       [`${API}/spaces`, [space()]],
@@ -233,6 +237,34 @@ describe('RecordDocumentComponent', () => {
       ).toEqual(['status', 'estimate']);
       expect(row('status').querySelector('select')!.value).toBe('todo');
       expect(text(root().querySelector('dt'))).toBe('Status');
+    });
+
+    it('render_SchemaScope_OffersSaveAsTemplateLinkingToTheTemplatesPage', async () => {
+      await render({ scopes: ['read', 'write', 'schema'] });
+
+      const link = q('save-as-template')!;
+      expect(text(link)).toBe('Als Vorlage speichern');
+      expect(link.getAttribute('href')).toBe(
+        `/w/demo/settings/collections/${COLLECTION_ID}/templates?fromRecord=${RECORD_ID}`,
+      );
+    });
+
+    it('render_WithoutSchemaScope_OffersNoSaveAsTemplate', async () => {
+      await render();
+
+      expect(q('save-as-template')).toBeNull();
+    });
+
+    it('render_ArchivedCollection_OffersNoSaveAsTemplate', async () => {
+      await render({ scopes: ['read', 'write', 'schema'], collectionArchived: true });
+
+      expect(q('save-as-template')).toBeNull();
+    });
+
+    it('render_FreePageWithSchemaScope_OffersNoSaveAsTemplate', async () => {
+      await render({ scopes: ['read', 'write', 'schema'], record: { collectionId: null } });
+
+      expect(q('save-as-template')).toBeNull();
     });
 
     it('render_FreePage_ShowsNoPropertiesPanel', async () => {

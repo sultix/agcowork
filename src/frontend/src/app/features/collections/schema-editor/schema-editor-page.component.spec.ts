@@ -212,6 +212,15 @@ describe('SchemaEditorPageComponent', () => {
       expect(q('readonly-notice')).toBeNull();
     });
 
+    it('render_Tabs_LinkToTemplates', async () => {
+      await render();
+
+      expect(q('settings-tab-schema')!.getAttribute('aria-current')).toBe('page');
+      expect(q('settings-tab-templates')!.getAttribute('href')).toBe(
+        `/w/demo/settings/collections/${COLLECTION_ID}/templates`,
+      );
+    });
+
     it('menu_Title_OffersNoRemoval', async () => {
       await render();
 

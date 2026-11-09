@@ -110,6 +110,24 @@ describe('RecordCreateDialogComponent', () => {
     await settle(fixture);
   });
 
+  it('submit_SingleTemplate_IsOfferedAndSent', async () => {
+    host.collectionId.set(COLLECTION_ID);
+    fixture.detectChanges();
+    (await expectRequest(http, 'GET', `${API}/collections/${COLLECTION_ID}/templates`)).flush([
+      template('t1', 'ADR', true),
+    ]);
+    await settle(fixture);
+
+    expect(q<HTMLSelectElement>('create-template')!.value).toBe('t1');
+    typeInto(q<HTMLInputElement>('create-title')!, 'Entscheidung');
+    q<HTMLButtonElement>('create-submit')!.click();
+    const post = await expectRequest(http, 'POST', `${API}/records`);
+
+    expect(post.request.body.templateId).toBe('t1');
+    post.flush(recordDto(), { status: 201, statusText: 'Created' });
+    await settle(fixture);
+  });
+
   it('submit_EmptyTitle_ShowsErrorAndSendsNothing', async () => {
     await settle(fixture);
 

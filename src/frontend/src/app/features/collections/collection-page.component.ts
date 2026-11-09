@@ -10,7 +10,12 @@ import {
 } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCircleAlert, lucidePlus, lucideSlidersHorizontal } from '@ng-icons/lucide';
+import {
+  lucideCircleAlert,
+  lucideFileText,
+  lucidePlus,
+  lucideSlidersHorizontal,
+} from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSkeleton } from '@spartan-ng/helm/skeleton';
@@ -45,7 +50,7 @@ import { WorkspacesStore } from '../workspaces/workspaces.store';
   ],
   providers: [
     CollectionStore,
-    provideIcons({ lucideCircleAlert, lucidePlus, lucideSlidersHorizontal }),
+    provideIcons({ lucideCircleAlert, lucideFileText, lucidePlus, lucideSlidersHorizontal }),
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -81,6 +86,15 @@ import { WorkspacesStore } from '../workspaces/workspaces.store';
               >
                 <ng-icon name="lucideSlidersHorizontal" />
                 Schema bearbeiten
+              </a>
+              <a
+                hlmBtn
+                variant="outline"
+                data-testid="templates-link"
+                [routerLink]="templatesLink()"
+              >
+                <ng-icon name="lucideFileText" />
+                Vorlagen
               </a>
             }
             @if (store.canWrite()) {
@@ -151,6 +165,16 @@ export class CollectionPageComponent {
     'collections',
     this.collectionId(),
     'schema',
+  ]);
+
+  /** Record templates are maintained with the same `schema` scope as the schema. */
+  protected readonly templatesLink = computed(() => [
+    '/w',
+    this.context.slug(),
+    'settings',
+    'collections',
+    this.collectionId(),
+    'templates',
   ]);
 
   protected readonly crumbs = computed<Crumb[]>(() => {

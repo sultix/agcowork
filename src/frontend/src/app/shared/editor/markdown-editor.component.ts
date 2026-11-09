@@ -127,7 +127,8 @@ export class MarkdownEditorComponent {
   protected readonly toolbar = TOOLBAR;
   protected readonly ready = signal(false);
   /** Set when the engine chunk fails to load (e.g. offline after a deploy) or the engine breaks. */
-  protected readonly loadFailed = signal(false);
+  private readonly loadFailedState = signal(false);
+  readonly loadFailed = this.loadFailedState.asReadonly();
   /**
    * The value is shown as plain text: it exceeds {@link MARKDOWN_EDITOR_LIMITS} or the engine
    * failed on it. Stays set for this instance (a new record view creates a new editor).
@@ -217,7 +218,7 @@ export class MarkdownEditorComponent {
       factory = await this.loadFactory();
     } catch (error) {
       if (!this.destroyed) {
-        this.loadFailed.set(true);
+        this.loadFailedState.set(true);
       }
       console.error('Failed to load editor engine', error);
       return;
@@ -323,7 +324,7 @@ export class MarkdownEditorComponent {
       // not console.error: the text is shown, nothing is broken for the user
       console.warn('Markdown editor failed on this text, showing it as plain text', error);
     } else {
-      this.loadFailed.set(true);
+      this.loadFailedState.set(true);
       console.error('Markdown editor failed', error);
     }
   }

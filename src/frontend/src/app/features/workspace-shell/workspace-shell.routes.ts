@@ -90,6 +90,14 @@ export const workspaceShellRoutes: Routes = [
             (m) => m.SchemaEditorPageComponent,
           ),
       },
+      {
+        path: 'settings/collections/:collectionId/templates',
+        canDeactivate: [recordLeaveGuard],
+        loadComponent: () =>
+          import('../collections/templates/templates-page.component').then(
+            (m) => m.TemplatesPageComponent,
+          ),
+      },
     ],
   },
 ];

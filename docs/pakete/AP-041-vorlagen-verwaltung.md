@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | Schema-Editor `src/frontend/src/app/features/collections/schema-editor/` (Seite, Store mit Live-Neuladen, Dialoge, Rechte, Fehler-Mapping, Bestätigung); Property-Editoren `shared/properties/property-editor.component.ts` (inkl. Relationen mit Picker und Chips); Markdown-Editor `shared/editor/markdown-editor.component.ts` (mit Schutz gegen präparierten Markdown aus AP-034); Anlage-Dialog `features/records/record-create-dialog.component.ts` (Vorlagen-Auswahl) |
@@ -54,3 +54,10 @@ Menschen mit `schema`-Recht pflegen die Record-Vorlagen einer Collection in der 
 | Datum | Ereignis |
 |---|---|
 | 2026-11-09 | angelegt |
+| 2026-11-09 | an implementer-sonnet übergeben |
+| 2026-11-09 | Bericht: 1279 Tests grün, neun Gegenproben; Seite „Vorlagen“ mit Tabs „Schema \| Vorlagen“, Editor-Dialog (Vorbelegung über Property-Editoren, Body mit Textarea-Fallback, nur Änderungen im PATCH), „Als Vorlage speichern“ als Link mit `?fromRecord`; Hinweis: `template-draft.ts` nach einer ungesicherten Mutation von Hand zurückgesetzt → im Review besonders geprüft |
+| 2026-11-09 | Review gestartet |
+| 2026-11-09 | Review: Freigabe mit Hinweisen – `template-draft.ts` ohne Befund; wichtig: `title` nicht vorbelegbar obwohl erlaubt, Anlage-Dialog zeigt bei genau einer Nicht-Standard-Vorlage keine Auswahl, kein Test für Relation-Vorbelegung; Hinweise: Vergleichsbasis nach Schemaänderung, falscher Hinweis auf fremde Änderung, Verwerfen ohne Rückfrage, Editor-Ladefehler, Body-Limit, archivierte Collection, Tests, A11y |
+| 2026-11-09 | Nacharbeit an implementer-sonnet (W1–W3, Hinweise; Anlage-Dialog in den Scope aufgenommen) |
+| 2026-11-09 | Nacharbeit: `title` vorbelegbar, Anlage-Dialog zeigt Auswahl ab einer Vorlage und sendet `templateId` (kein „Ohne Vorlage“: Backend wendet sonst die Standardvorlage an), Relation-Test, Basis und Vergleich aufs aktuelle Schema gefiltert, Rückfrage beim Verwerfen (Dialog, Wegnavigieren, `beforeunload`), Textarea bei Editor-Ladefehler, Body-Limit 200 000 im Client, Archivprüfung, `fromRecord`-404-Test, `aria-labelledby`; 1294 Tests, zwölf Gegenproben |
+| 2026-11-09 | abgeschlossen (Orchestrator hat build/test/lint/format im Worktree geprüft) |

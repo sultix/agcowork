@@ -196,6 +196,22 @@ describe('CollectionPageComponent', () => {
     expect(q('schema-edit-link')).toBeNull();
   });
 
+  it('render_SchemaScope_LinksToTemplates', async () => {
+    await render({ scopes: ['read', 'write', 'schema'] });
+
+    const link = q('templates-link')!;
+    expect(text(link)).toBe('Vorlagen');
+    expect(link.getAttribute('href')).toBe(
+      `/w/demo/settings/collections/${COLLECTION_ID}/templates`,
+    );
+  });
+
+  it('render_WithoutSchemaScope_HidesTemplatesLink', async () => {
+    await render({ scopes: ['read', 'write'] });
+
+    expect(q('templates-link')).toBeNull();
+  });
+
   it('render_Viewer_HidesNewRecordButtonAndViewActions', async () => {
     await render({ scopes: ['read'] });
 
@@ -214,10 +230,10 @@ describe('CollectionPageComponent', () => {
       await settle(harness.fixture);
     }
 
-    it('create_SingleTemplate_PostsTitleWithoutTemplateChoiceAndOpensRecord', async () => {
+    it('create_SingleTemplate_ShowsItAndPostsItsIdAndOpensRecord', async () => {
       await render();
       await openDialog(TEMPLATES.slice(0, 1));
-      expect(q('create-template')).toBeNull();
+      expect((q('create-template') as HTMLSelectElement).value).toBe(TEMPLATES[0].id);
 
       typeInto(q('create-title') as HTMLInputElement, 'Neue Aufgabe');
       (q('create-submit') as HTMLButtonElement).click();
@@ -226,6 +242,7 @@ describe('CollectionPageComponent', () => {
         title: 'Neue Aufgabe',
         collectionId: COLLECTION_ID,
         spaceId: SPACE_ID,
+        templateId: TEMPLATES[0].id,
       });
       post.flush(recordDto({ id: 'new', title: 'Neue Aufgabe' }), {
         status: 201,

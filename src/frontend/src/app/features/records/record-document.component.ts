@@ -183,6 +183,17 @@ interface RemoteChange {
                 {{ record.archivedAt ? 'Wiederherstellen' : 'Archivieren' }}
               </button>
             }
+            @if (canSaveAsTemplate() && record.collectionId; as collectionId) {
+              <a
+                hlmBtn
+                variant="outline"
+                data-testid="save-as-template"
+                [routerLink]="templatesLink(collectionId)"
+                [queryParams]="{ fromRecord: record.id }"
+              >
+                Als Vorlage speichern
+              </a>
+            }
             <button
               type="button"
               hlmBtn
@@ -519,6 +530,17 @@ export class RecordDocumentComponent {
     const ws = this.workspaces.find(this.context.slug());
     return !!ws && !ws.archivedAt && ws.scopes.includes('write');
   });
+  /** Taking a record over as a template needs `schema` (templates are schema), on an active workspace. */
+  protected readonly canSaveAsTemplate = computed(() => {
+    const ws = this.workspaces.find(this.context.slug());
+    const collection = this.collection.hasValue() ? this.collection.value() : undefined;
+    return !!ws && !ws.archivedAt && ws.scopes.includes('schema') && !collection?.archivedAt;
+  });
+
+  protected templatesLink(collectionId: string): string[] {
+    return ['/w', this.context.slug() ?? '', 'settings', 'collections', collectionId, 'templates'];
+  }
+
   protected readonly readonly = computed(
     () => !this.canWrite() || !!this.saver.record()?.archivedAt,
   );

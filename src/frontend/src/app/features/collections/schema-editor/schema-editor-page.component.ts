@@ -31,6 +31,7 @@ import { BadgeComponent } from '../../../shared/ui/badge.component';
 import { BreadcrumbsComponent, Crumb } from '../../../shared/ui/breadcrumbs.component';
 import { ConfirmDialogComponent } from '../../../shared/ui/confirm-dialog.component';
 import { WorkspaceTreeStore } from '../../spaces/workspace-tree.store';
+import { CollectionSettingsNavComponent } from '../collection-settings-nav.component';
 import { PropertyDialogComponent } from './property-dialog.component';
 import { AffectedCount, TITLE_KEY, describeLoss, isComputed } from './schema-draft';
 import { SCHEMA_VERSION_CONFLICT, describeSchemaError } from './schema-errors';
@@ -67,6 +68,7 @@ interface Removal {
     HlmTableImports,
     BadgeComponent,
     BreadcrumbsComponent,
+    CollectionSettingsNavComponent,
     ConfirmDialogComponent,
     PropertyDialogComponent,
   ],
@@ -109,6 +111,7 @@ interface Removal {
             </button>
           }
         </div>
+        <ag-collection-settings-nav [collectionId]="collectionId()" active="schema" />
 
         @if (store.readOnlyReason(); as reason) {
           <div hlmAlert role="status" data-testid="readonly-notice">
