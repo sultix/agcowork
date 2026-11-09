@@ -5,7 +5,7 @@
 | Status | angelegt |
 | Phase | 2 |
 | Implementierer | implementer-sonnet |
-| Referenzbeispiel | Anlage-Dialog `src/frontend/src/app/features/records/record-create-dialog.component.ts` (Vorlagenauswahl aus AP-041); Feldfehler `core/api/field-errors.ts`, `features/collections/schema-editor/schema-errors.ts`, `features/collections/templates/template-errors.ts`; Server-Parser als Vorlage für den Port: `src/backend/Agcowork.Application/Comments/CommentMarkdown.cs` (Zitate, `MaxQuoteDepth = 32`, Stapel statt Rekursion); Port `features/comments/comment-mentions.ts` |
+| Referenzbeispiel | Anlage-Dialog `src/frontend/src/app/features/records/record-create-dialog.component.ts` (Vorlagenauswahl aus AP-041); Feldfehler `core/api/field-errors.ts`, `features/collections/schema-editor/schema-errors.ts`, `features/collections/templates/template-errors.ts`; Server-Parser als Vorlage für den Port: `src/backend/Agcowork.Domain/Comments/CommentMarkdown.cs` (Zitate, `MaxQuoteDepth = 32`, Stapel statt Rekursion); Port `features/comments/comment-mentions.ts` |
 | Abhängig von | AP-042 (Vertrag `skipTemplate`), AP-044 nur für disjunkte Dateien (parallel möglich) |
 | Betroffene Pfade | `features/records/record-create-dialog.component.*`, `core/api/field-errors.ts` (+ Spec), `features/collections/schema-editor/schema-errors.ts`, `features/collections/templates/template-errors.ts`, `features/comments/comment-mentions.*`, generierte API-Typen (`npm run` Generator aus OpenAPI). **Nicht:** `shared/properties/` (AP-044), Backend |
 | Architektur-Bezug | `02-ARCHITEKTUR.md` §6 |
