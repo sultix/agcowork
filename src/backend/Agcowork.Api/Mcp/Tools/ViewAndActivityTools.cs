@@ -1,3 +1,4 @@
+using Agcowork.Application.Common;
 using System.ComponentModel;
 using System.Text.Json;
 using Agcowork.Application.Activity;
@@ -16,7 +17,7 @@ internal static class ViewAndActivityTools
         "Creates a view of a collection for humans in the web app (agents read data with records_query). 'type' allowed: {{viewTypes}}. "
         + "A board needs 'groupBy': the key of a select or status property (its columns). "
         + "'sorts': [ { \"prop\", \"dir\": \"asc\"|\"desc\" } ]; 'visibleProperties': keys shown (empty = all); 'cardCoverProperty': "
-        + "gallery cover; 'isDefault': true makes it the default view. All keys must exist in the schema (collection_describe). "
+        + "gallery cover (select, status, multi_select, checkbox, text, url, email, number or date property); 'isDefault': true makes it the default view. All keys must exist in the schema (collection_describe). "
         + "Invalid input comes back as errors[] with 'allowed'. Requires write. {{filterDsl}}")]
     public static async Task<CallToolResult> Create(
         CreateView useCase,
@@ -28,7 +29,7 @@ internal static class ViewAndActivityTools
         [Description("Sort criteria: [ { \"prop\": \"<key>\", \"dir\": \"asc\" | \"desc\" } ].")] IReadOnlyList<ViewSortInput>? sorts = null,
         [Description("board: key of a select/status property; required for boards.")] string? groupBy = null,
         [Description("Keys of the properties shown; omit for all.")] IReadOnlyList<string>? visibleProperties = null,
-        [Description("gallery: key of the property used as card cover.")] string? cardCoverProperty = null,
+        [Description("gallery: key of the property used as card cover; allowed types: select, status, multi_select, checkbox, text, url, email, number, date.")] string? cardCoverProperty = null,
         [Description("Make this the collection's default view. Default false.")] bool? isDefault = null,
         CancellationToken cancellationToken = default)
     {
@@ -40,7 +41,7 @@ internal static class ViewAndActivityTools
         var result = await useCase.HandleAsync(
             new CreateViewRequest(collectionId, name, type, node, sorts, groupBy, visibleProperties, cardCoverProperty, isDefault ?? false),
             cancellationToken);
-        return output.From(result, view => output.SummaryWithJson($"Created view {view.Name} ({view.Type}, viewId {view.Id}).", view));
+        return output.From(result, view => output.SummaryWithJson($"Created view {QuotedString.Of(view.Name)} ({view.Type}, viewId {view.Id}).", view));
     }
 
     [McpServerTool(Name = "activity_recent", ReadOnly = true, Idempotent = true, OpenWorld = false)]

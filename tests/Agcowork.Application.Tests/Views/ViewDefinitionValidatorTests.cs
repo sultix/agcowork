@@ -212,6 +212,56 @@ public sealed class ViewDefinitionValidatorTests
             errors.Items.Select(e => (e.Field, e.Code)));
     }
 
+    [Theory]
+    [InlineData(PropertyType.Json)]
+    [InlineData(PropertyType.Markdown)]
+    [InlineData(PropertyType.Relation)]
+    [InlineData(PropertyType.Actor)]
+    [InlineData(PropertyType.CreatedAt)]
+    public void Validate_CoverOfTypeTheUiCannotShow_InvalidTypeWithAllowedKeys(PropertyType type)
+    {
+        var schema = new List<PropertyDefinition>(Schema) { new() { Key = "other", Name = "Other", Type = type } };
+        var errors = new FieldErrors();
+
+        ViewDefinitionValidator.Validate(errors, schema, new ViewDefinitionInput("gallery", null, null, null, null, "other"));
+
+        var error = Assert.Single(errors.Items);
+        Assert.Equal(("cardCoverProperty", "invalid_type"), (error.Field, error.Code));
+        Assert.Equal(["status", "priority", "due"], error.Allowed);
+    }
+
+    [Fact]
+    public void Validate_TitleAsCover_InvalidType_TitleNotInAllowed()
+    {
+        var errors = new FieldErrors();
+
+        ViewDefinitionValidator.Validate(errors, Schema, new ViewDefinitionInput("gallery", null, null, null, null, "title"));
+
+        var error = Assert.Single(errors.Items);
+        Assert.Equal(("cardCoverProperty", "invalid_type"), (error.Field, error.Code));
+        Assert.DoesNotContain("title", error.Allowed!);
+    }
+
+    [Theory]
+    [InlineData(PropertyType.Select)]
+    [InlineData(PropertyType.Status)]
+    [InlineData(PropertyType.MultiSelect)]
+    [InlineData(PropertyType.Checkbox)]
+    [InlineData(PropertyType.Text)]
+    [InlineData(PropertyType.Url)]
+    [InlineData(PropertyType.Email)]
+    [InlineData(PropertyType.Number)]
+    [InlineData(PropertyType.Date)]
+    public void Validate_CoverOfSupportedType_NoError(PropertyType type)
+    {
+        var schema = new List<PropertyDefinition> { new() { Key = "cover", Name = "Cover", Type = type } };
+        var errors = new FieldErrors();
+
+        ViewDefinitionValidator.Validate(errors, schema, new ViewDefinitionInput("gallery", null, null, null, null, "cover"));
+
+        Assert.False(errors.Any);
+    }
+
     [Fact]
     public void RequireGroupBy_BoardWithoutGroupBy_AllowedListsGroupableKeys()
     {

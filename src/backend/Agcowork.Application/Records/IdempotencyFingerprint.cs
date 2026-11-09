@@ -14,7 +14,7 @@ namespace Agcowork.Application.Records;
 /// <remarks>
 /// What counts (decided in AP-035, documented for agents in the descriptions of <c>record_create</c> and <c>comment_add</c>):
 /// <list type="bullet">
-/// <item><c>record_create</c>: collectionId, spaceId, title, properties, body, templateId, parentRecordId.
+/// <item><c>record_create</c>: collectionId, spaceId, title, properties, body, templateId, parentRecordId, skipTemplate (when true).
 /// <c>comment_add</c>: recordId, parentCommentId, markdown.</item>
 /// <item>Omitted and null are the same; for ids that is the only form anyway. <c>properties: null</c> equals <c>{}</c>; a
 /// property sent as <c>null</c> is a value (it removes a template preset) and differs from an omitted one.</item>
@@ -50,6 +50,12 @@ public static class IdempotencyFingerprint
         hash.Text(request.Body);
         hash.Id(request.TemplateId);
         hash.Id(request.ParentRecordId);
+        if (request.SkipTemplate)
+        {
+            // Only written when set, so hashes of keys stored before AP-042 (always false) stay valid.
+            hash.Text("skipTemplate");
+        }
+
         return hash.Finish();
     }
 

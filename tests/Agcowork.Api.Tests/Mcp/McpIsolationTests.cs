@@ -34,7 +34,7 @@ public sealed class McpIsolationTests(AgcoworkApiFactory factory)
             "collection_create" => new { spaceId = space.Id, name = "", description = "" },
             "collection_update_schema" => new { collectionId = collection.Id },
             "records_list" => new { collectionId = collection.Id },
-            "record_create" => new { collectionId = collection.Id },
+            "record_create" => new { collectionId = collection.Id, skipTemplate = true },
             "record_get" or "history_get" => new { recordId = record.Id },
             "record_update" => new { recordId = record.Id, title = "" },
             "record_append" => new { recordId = record.Id, markdown = "" },

@@ -20,7 +20,7 @@ namespace Agcowork.Application.Collections;
 /// <param name="Remove">Keys of properties to remove (not <c>title</c>). Requires <paramref name="ConfirmRemoval"/>.</param>
 /// <param name="ConfirmRemoval">
 /// Must be true for changes that lose stored values: removing properties, removing option values, lowering
-/// <c>precision</c>, markdown → text.
+/// <c>precision</c> below the decimal places of stored values, markdown → text.
 /// </param>
 /// <param name="ExpectedSchemaVersion">If set, the change is applied only when the schema is still at this version (409 otherwise).</param>
 public sealed record UpdateSchemaRequest(
@@ -43,6 +43,7 @@ public sealed record UpdateSchemaRequest(
 /// <param name="ClearDefault">true removes the default.</param>
 /// <param name="Unit">number: new unit; an empty string clears it.</param>
 /// <param name="Precision">number: new maximum decimal places.</param>
+/// <param name="ClearPrecision">number: true removes the precision limit (like clearDefault); send it instead of precision, not together with it.</param>
 /// <param name="Multiple">relation: true allows several references (cannot be undone).</param>
 /// <param name="TargetCollectionId">relation: cannot change; listed so a change attempt is reported instead of ignored.</param>
 public sealed record PropertyChangeInput(
@@ -58,7 +59,8 @@ public sealed record PropertyChangeInput(
     string? Unit = null,
     int? Precision = null,
     bool? Multiple = null,
-    Guid? TargetCollectionId = null);
+    Guid? TargetCollectionId = null,
+    bool? ClearPrecision = null);
 
 /// <summary>
 /// Changes the schema of a collection (additive changes preferred) and increments its version. Requires
@@ -136,6 +138,8 @@ public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, I
             losses.AddRange(Losses(current.Find(key)!, after));
         }
 
+        losses.AddRange(await PrecisionLossesAsync(collection.Id, current, changed, cancellationToken).ConfigureAwait(false));
+
         var added = CheckAdds(errors, current, parsedAdds, removed);
         if (losses.Count > 0 && !request.ConfirmRemoval)
         {
@@ -211,6 +215,11 @@ public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, I
             }
 
             errors.Required($"update[{i}].key", change.Key);
+            if (change.ClearPrecision == true && change.Precision is not null)
+            {
+                errors.Add($"update[{i}].clearPrecision", ErrorCodes.Conflict, "'clearPrecision: true' removes the precision limit and cannot be combined with 'precision'. Send only one of them.");
+            }
+
             if (change.NewKey is not null && !string.Equals(change.NewKey, change.Key, StringComparison.Ordinal))
             {
                 errors.Add(
@@ -252,16 +261,65 @@ public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, I
             yield return $"'{before.Key}': option values {string.Join(", ", lost.Select(v => $"'{v}'"))} removed";
         }
 
-        if (after.Type == PropertyType.Number && after.Precision is { } precision && (before.Precision is null || precision < before.Precision))
-        {
-            yield return $"'{before.Key}': precision lowered to {precision} decimal places";
-        }
-
         if (before.Type == PropertyType.Markdown && after.Type == PropertyType.Text)
         {
             yield return $"'{before.Key}': markdown → text (max. {PropertyTypeRegistry.TextMaxLength} characters, formatting becomes plain text)";
         }
     }
+
+    /// <summary>
+    /// Lowered (or first set) precisions that would round stored values: only numbers with more decimal places than the new precision
+    /// count, in records and in template presets. Reads the collection's records under the exclusive collection lock, like the hook that rounds them.
+    /// </summary>
+    private async Task<List<string>> PrecisionLossesAsync(
+        Guid collectionId,
+        IReadOnlyList<PropertyDefinition> current,
+        Dictionary<string, PropertyDefinition> changed,
+        CancellationToken cancellationToken)
+    {
+        var lowered = changed
+            .Where(c => c.Value.Type == PropertyType.Number && c.Value.Precision is not null
+                && current.Find(c.Key) is { } before && (before.Precision is null || c.Value.Precision < before.Precision))
+            .ToDictionary(c => c.Key, c => c.Value.Precision!.Value, StringComparer.Ordinal);
+        var losses = new List<string>();
+        if (lowered.Count == 0)
+        {
+            return losses;
+        }
+
+        var stored = await db.Records.AsNoTracking()
+            .Where(r => r.CollectionId == collectionId)
+            .Select(r => r.Properties)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        // Template presets are stored values too: the hook rounds them, so they count like record values.
+        var templates = await db.Templates.AsNoTracking()
+            .Where(t => t.CollectionId == collectionId)
+            .OrderBy(t => t.Name)
+            .Select(t => new { t.Name, t.PropertiesPreset })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var (key, precision) in lowered.OrderBy(l => l.Key, StringComparer.Ordinal))
+        {
+            var records = stored.Count(properties => NeedsRounding(properties, key, precision));
+            var verb = current.Find(key)!.Precision is null ? "set to" : "lowered to";
+            if (records > 0)
+            {
+                losses.Add($"'{key}': precision {verb} {precision} decimal places, {records} record{(records == 1 ? " has a value" : "s have values")} with more decimal places that would be rounded");
+            }
+
+            foreach (var template in templates.Where(t => NeedsRounding(t.PropertiesPreset, key, precision)))
+            {
+                losses.Add($"template '{template.Name}': preset '{key}' would be rounded to {precision} decimal places");
+            }
+        }
+
+        return losses;
+    }
+
+    private static bool NeedsRounding(IReadOnlyDictionary<string, JsonElement> values, string key, int precision) =>
+        values.TryGetValue(key, out var value) && value.ValueKind == JsonValueKind.Number
+        && value.TryGetDecimal(out var number) && decimal.Round(number, precision) != number;
 
     private static Dictionary<string, PropertyDefinition> ApplyUpdates(
         FieldErrors errors,
@@ -334,7 +392,7 @@ public sealed class UpdateSchema(IAgcoworkDbContext db, ITenantContext tenant, I
             Multiple = change.Multiple ?? before.Multiple,
             Default = defaultValue,
             Unit = change.Unit is null ? before.Unit : SchemaInput.Optional(change.Unit),
-            Precision = change.Precision ?? before.Precision,
+            Precision = change.ClearPrecision == true ? null : change.Precision ?? before.Precision,
         };
 
         SchemaInput.AddViolations(errors, field, CollectionSchema.ValidateChange(before, after));

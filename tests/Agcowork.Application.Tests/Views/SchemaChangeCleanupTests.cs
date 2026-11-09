@@ -73,6 +73,51 @@ public sealed class SchemaChangeCleanupTests(PostgresFixture postgres) : ViewTes
     }
 
     [Fact]
+    public async Task UpdateSchema_CoverPropertyChangesToTypeWithoutCover_CoverIsRemoved_OtherCoversStay()
+    {
+        var (seed, tenant, collection) = await ArrangeAsync();
+        var markdownCover = await UpdateViewCoverAsync(seed, tenant, collection.Id, "Galerie A", "summary");
+        var selectCover = await UpdateViewCoverAsync(seed, tenant, collection.Id, "Galerie B", "priority");
+
+        var result = await UpdateSchemaAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("summary", Type: "markdown")]));
+
+        Assert.True(result.IsSuccess, result.Error?.ToString());
+        var views = await ListAsync(tenant, collection.Id);
+        Assert.Null(views.Single(v => v.Id == markdownCover).CardCoverProperty);
+        Assert.Equal("priority", views.Single(v => v.Id == selectCover).CardCoverProperty);
+        var changed = await Db.ActivityEvents.AsNoTracking().SingleAsync(e => e.Type == ActivityTypes.CollectionSchemaChanged, Ct);
+        Assert.Equal(1, changed.Diff["affectedViews"]!.GetValue<int>());
+    }
+
+    private async Task<Guid> UpdateViewCoverAsync(Agcowork.Application.Tests.Tenancy.TenancySeed seed, TenantContext tenant, Guid collectionId, string name, string cover)
+    {
+        var view = await NewViewAsync(seed, tenant, collectionId, name, "gallery");
+        Db.ChangeTracker.Clear();
+        var updated = await UpdateView(tenant).HandleAsync(new UpdateViewRequest(view.Id, CardCoverProperty: cover), Ct);
+        Assert.True(updated.IsSuccess, updated.Error?.ToString());
+        return view.Id;
+    }
+
+    [Fact]
+    public async Task UpdateView_CoverOnMarkdownProperty_Rejected_ClearWithEmptyStringStillWorks()
+    {
+        var (seed, tenant, collection) = await ArrangeAsync();
+        Assert.True((await new UpdateSchema(Db, tenant, [], Activity).HandleAsync(new UpdateSchemaRequest(collection.Id, Add: [new("notes", "Notes", "markdown")]), Ct)).IsSuccess);
+        var view = await NewViewAsync(seed, tenant, collection.Id, "Galerie", "gallery");
+        Db.ChangeTracker.Clear();
+
+        var rejected = await UpdateView(tenant).HandleAsync(new UpdateViewRequest(view.Id, CardCoverProperty: "notes"), Ct);
+        var created = await CreateView(seed, tenant).HandleAsync(new CreateViewRequest(collection.Id, "Zweite", "gallery", CardCoverProperty: "notes"), Ct);
+        var cleared = await UpdateView(tenant).HandleAsync(new UpdateViewRequest(view.Id, CardCoverProperty: ""), Ct);
+
+        var error = Assert.Single(Assert.IsType<ValidationError>(rejected.Error).Errors);
+        Assert.Equal(("cardCoverProperty", "invalid_type"), (error.Field, error.Code));
+        Assert.Contains("summary", error.Allowed!);
+        Assert.Equal("cardCoverProperty", Assert.Single(Assert.IsType<ValidationError>(created.Error).Errors).Field);
+        Assert.True(cleared.IsSuccess);
+    }
+
+    [Fact]
     public async Task UpdateSchema_SelectBecomesMultiSelect_BoardGroupingIsCleared()
     {
         var (seed, tenant, collection) = await ArrangeAsync();

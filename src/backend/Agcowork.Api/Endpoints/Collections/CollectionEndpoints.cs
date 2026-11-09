@@ -67,11 +67,11 @@ internal static class CollectionEndpoints
             .WithSummary("Change the schema of a collection")
             .WithDescription(
                 "Applies 'add' (new property definitions, appended), 'update' (by 'key'; only the given fields change; 'options' replaces "
-                + "the list; 'clearDefault' removes the default) and 'remove' (keys) together, or nothing. Prefer additive changes. Keys are "
+                + "the list; 'clearDefault' removes the default, 'clearPrecision' the precision limit) and 'remove' (keys) together, or nothing. Prefer additive changes. Keys are "
                 + "immutable (400 'key_immutable': add a new property instead); types change only text ↔ markdown and select → "
                 + "multi_select (400 'type_change_not_allowed' with 'allowed'). Changes that lose stored values need 'confirmRemoval': "
                 + "true, otherwise 400 'removal_not_confirmed' naming what would be lost: removing properties, removing option values, "
-                + "lowering 'precision', markdown → text. Template presets are adjusted. Increments 'schemaVersion' (entries without an "
+                + "lowering 'precision' below the decimal places of stored values, markdown → text. Template presets are adjusted. Increments 'schemaVersion' (entries without an "
                 + "actual change do not); send 'expectedSchemaVersion' to get 409 'schema_version_conflict' instead of overwriting a "
                 + "concurrent change. Requires schema.")
             .ProducesProblem(StatusCodes.Status400BadRequest)

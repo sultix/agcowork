@@ -11,8 +11,8 @@ namespace Agcowork.Application.Collections.Templates;
 /// <summary>
 /// Keeps template presets in line with a changed schema: drops removed keys, wraps values of select → multi_select and of a
 /// relation becoming <c>multiple</c> (single id → array with that id, like the record values), drops removed option values
-/// from multi_select presets and drops every remaining value the new schema rejects (removed option, lowered precision,
-/// markdown → text over length).
+/// from multi_select presets and rounds numbers to a lowered precision (like record values) and drops every remaining value the new schema
+/// rejects (removed option, markdown → text over length).
 /// </summary>
 public sealed class TemplatePresetSchemaHook(IAgcoworkDbContext db) : ISchemaChangedHook
 {
@@ -60,6 +60,16 @@ public sealed class TemplatePresetSchemaHook(IAgcoworkDbContext db) : ISchemaCha
             value = JsonSerializer.SerializeToElement(value.EnumerateArray()
                 .Where(item => item.ValueKind != JsonValueKind.String || !lost.Contains(item.GetString()!, StringComparer.Ordinal))
                 .ToList());
+        }
+
+        // Lowered precision rounds like the record values (midpoint away from zero) instead of dropping the preset.
+        if (property is { Type: PropertyType.Number, Precision: { } precision } && value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var number))
+        {
+            var rounded = decimal.Round(number, precision, MidpointRounding.AwayFromZero);
+            if (rounded != number)
+            {
+                value = JsonSerializer.SerializeToElement(rounded);
+            }
         }
 
         var errors = new FieldErrors();

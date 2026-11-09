@@ -25,6 +25,15 @@ public sealed class IdempotencyFingerprintTests
     }
 
     [Fact]
+    public void Of_Record_SkipTemplate_CountsOnlyWhenSet()
+    {
+        var request = new CreateRecordRequest(Collection, Title: "T");
+
+        Assert.NotEqual(IdempotencyFingerprint.Of(request), IdempotencyFingerprint.Of(request with { SkipTemplate = true }));
+        Assert.Equal(IdempotencyFingerprint.Of(request), IdempotencyFingerprint.Of(request with { SkipTemplate = false }));
+    }
+
+    [Fact]
     public void Of_Record_KeyOrderAndFormatting_DoNotCount_NestedObjectsIncluded()
     {
         var first = new CreateRecordRequest(Collection, Properties: Props("""{ "a": 1, "j": { "x": [1, { "p": true, "q": null }], "y": "s" } }"""));

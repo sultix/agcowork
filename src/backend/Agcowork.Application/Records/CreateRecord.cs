@@ -25,6 +25,10 @@ namespace Agcowork.Application.Records;
 /// <param name="Body">Markdown body, max. 2 MiB. Omitted: the template's body.</param>
 /// <param name="TemplateId">Template of the collection to start from; omitted: the collection's default template, if any.</param>
 /// <param name="ParentRecordId">Parent page in the same workspace, for nested pages.</param>
+/// <param name="SkipTemplate">
+/// <c>true</c>: no template preset values or body, even if the collection has a default template; schema defaults still apply. Not combinable with <paramref name="TemplateId"/>
+/// (400 <c>conflict</c> on <c>skipTemplate</c>). Ignored for free pages, which have no templates.
+/// </param>
 /// <param name="IdempotencyKey">
 /// From the <c>Idempotency-Key</c> header: the same key by the same actor within 24 h with the same request returns the first
 /// result; with a different request (see <see cref="IdempotencyFingerprint"/>) it is 409 <c>idempotency_key_reused</c>.
@@ -37,7 +41,8 @@ public sealed record CreateRecordRequest(
     string? Body = null,
     Guid? TemplateId = null,
     Guid? ParentRecordId = null,
-    string? IdempotencyKey = null);
+    string? IdempotencyKey = null,
+    bool SkipTemplate = false);
 
 /// <summary>
 /// Creates a record in a collection, or a free page in a space. Requires <c>write</c>. The template (named or the
@@ -102,6 +107,11 @@ public sealed class CreateRecord(
             errors.Add("collectionId", ErrorCodes.Required, "Send 'collectionId' for a record of a collection, or 'spaceId' for a free page of a space.");
         }
 
+        if (request.SkipTemplate && request.TemplateId is not null)
+        {
+            errors.Add("skipTemplate", ErrorCodes.Conflict, "'skipTemplate: true' starts without any template and cannot be combined with 'templateId'. Send only one of them.");
+        }
+
         var sent = RecordInput.Copy(request.Properties);
         var title = RecordInput.TakeTitle(errors, request.Title, sent);
         RecordInput.Body(errors, "body", request.Body);
@@ -148,7 +158,7 @@ public sealed class CreateRecord(
             return SpaceConflicts.Archived("spaceId");
         }
 
-        var (template, templateError) = await LoadTemplateAsync(collection, request.TemplateId, cancellationToken).ConfigureAwait(false);
+        var (template, templateError) = await LoadTemplateAsync(collection, request.TemplateId, request.SkipTemplate, cancellationToken).ConfigureAwait(false);
         if (templateError is not null)
         {
             return templateError;
@@ -255,13 +265,18 @@ public sealed class CreateRecord(
         return RecordMapper.ToDto(record, schema, includeBody: false);
     }
 
-    private async Task<(Template? Template, Error? Error)> LoadTemplateAsync(Collection? collection, Guid? templateId, CancellationToken cancellationToken)
+    private async Task<(Template? Template, Error? Error)> LoadTemplateAsync(Collection? collection, Guid? templateId, bool skipTemplate, CancellationToken cancellationToken)
     {
         if (collection is null)
         {
             return templateId is null
                 ? (null, null)
                 : (null, new FieldError("templateId", ErrorCodes.NotAllowed, "Free pages have no templates; templates belong to collections.").ToValidationError());
+        }
+
+        if (skipTemplate)
+        {
+            return (null, null);
         }
 
         var templates = db.Templates.AsNoTracking().Where(t => t.CollectionId == collection.Id);

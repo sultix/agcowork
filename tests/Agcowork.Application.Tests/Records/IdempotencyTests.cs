@@ -99,6 +99,7 @@ public sealed class IdempotencyTests(PostgresFixture postgres) : RecordTestBase(
             request with { Body = null },
             request with { SpaceId = a.SpaceId },
             request with { TemplateId = template.Id },
+            request with { SkipTemplate = true },
             request with { ParentRecordId = parent.Id },
             request with { CollectionId = null, SpaceId = a.SpaceId },
         ];

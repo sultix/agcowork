@@ -1,3 +1,4 @@
+using Agcowork.Application.Common;
 using System.ComponentModel;
 using Agcowork.Application.Spaces;
 using Agcowork.Application.Workspaces;
@@ -61,6 +62,6 @@ internal static class WorkspaceTools
         CancellationToken cancellationToken = default)
     {
         var result = await useCase.HandleAsync(new CreateSpaceRequest(name, description, icon, sortOrder), cancellationToken);
-        return output.From(result, space => output.SummaryWithJson($"Created space {space.Name} (spaceId {space.Id}).", space));
+        return output.From(result, space => output.SummaryWithJson($"Created space {QuotedString.Of(space.Name)} (spaceId {space.Id}).", space));
     }
 }

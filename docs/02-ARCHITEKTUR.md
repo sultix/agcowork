@@ -110,7 +110,7 @@ erDiagram
 ### Schema-Regeln (aus AP-006)
 
 - Keys `^[a-z][a-z0-9_]{0,62}\z`, unveränderlich; reserviert: `id`, `collection`, `space`, `revision`, `body`; `title` ist immer vorhanden und vom Typ text.
-- Erlaubte Typänderungen: text ↔ markdown, select → multi_select; Relation-Ziel unveränderlich, `multiple` nur false → true. **Destruktive Änderungen** (Feld entfernen, Option-Werte entfernen, `precision` senken, markdown → text) nur mit `confirmRemoval: true`; Entfernen + Neuanlegen desselben Keys im selben Request ist verboten.
+- Erlaubte Typänderungen: text ↔ markdown, select → multi_select; Relation-Ziel unveränderlich, `multiple` nur false → true. **Destruktive Änderungen** (Feld entfernen, Option-Werte entfernen, `precision` senken bzw. erstmals setzen, wenn gespeicherte Record-Werte oder Vorlagen-Vorbelegungen mehr Nachkommastellen haben – Meldung mit Anzahl –, markdown → text) nur mit `confirmRemoval: true`; `clearPrecision: true` entfernt die Präzision (AP-042); Entfernen + Neuanlegen desselben Keys im selben Request ist verboten.
 - Erweiterungspunkte: `ICollectionCreatedHook` (Standard-Views) und `ISchemaChangedHook` (Templates, Record-Werte, Views bereinigen) laufen vor `SaveChanges` in derselben Unit of Work; `UpdateSchema` öffnet dafür eine Transaktion, damit auch `ExecuteUpdate`-Bereinigungen (Record-Werte) atomar mit der Schemaänderung sind. Workspace-Vorlagen müssen Collections über `CreateCollection` anlegen, damit die Hooks laufen.
 - Scopes: Lesen `read`; Space anlegen/ändern und Collection anlegen `write`; Schema, Collection-Metadaten, Archivieren, Vorlagen pflegen `schema`.
 - relation, actor und berechnete Typen haben keinen Default; Status-Optionen brauchen eine Gruppe; Option-Farben aus fester Palette.

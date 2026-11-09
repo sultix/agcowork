@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using System.Text.Encodings.Web;
+using Agcowork.Application.Common;
 using System.Text.Json;
 
 namespace Agcowork.Application.Comments;
@@ -13,12 +13,6 @@ namespace Agcowork.Application.Comments;
 public static class CommentText
 {
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
-
-    // Escapes quotes, backslashes and control characters only; umlauts and emoji stay readable.
-    private static readonly JsonSerializerOptions QuotedText = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-
-    /// <summary><paramref name="value"/> as a JSON string literal: one line, quotes escaped.</summary>
-    public static string Quote(string value) => JsonSerializer.Serialize(value, QuotedText);
 
     /// <summary>The record's Markdown followed by a separator and a <c># Comments</c> section.</summary>
     public static string AppendTo(string recordMarkdown, CommentThreadsDto threads)
@@ -56,7 +50,7 @@ public static class CommentText
     {
         ArgumentNullException.ThrowIfNull(comment);
         var text = new StringBuilder();
-        text.Append(Invariant, $"{indent}- comment {comment.Id} by {Quote(comment.AuthorName)} ({Wire(comment.AuthorKind)}, actor {comment.AuthorId}) at {comment.CreatedAt:O}");
+        text.Append(Invariant, $"{indent}- comment {comment.Id} by {QuotedString.Of(comment.AuthorName)} ({Wire(comment.AuthorKind)}, actor {comment.AuthorId}) at {comment.CreatedAt:O}");
         if (comment.EditedAt is not null)
         {
             text.Append(", edited");

@@ -52,6 +52,49 @@ public sealed class CreateRecordTests(PostgresFixture postgres) : RecordTestBase
     }
 
     [Fact]
+    public async Task Create_SkipTemplate_StartsEmptyDespiteDefaultTemplate()
+    {
+        var a = await ArrangeAsync();
+        await CreateTemplateAsync(a, """{ "status": "doing", "estimate": 1, "title": "Vorlagentitel" }""", "## Kontext\n", isDefault: true);
+
+        var skipped = await TryCreateAsync(a, new CreateRecordRequest(a.Collection.Id, Title: "Leer", SkipTemplate: true));
+        var withDefault = await TryCreateAsync(a, new CreateRecordRequest(a.Collection.Id, Title: "Mit"));
+        var titleless = await TryCreateAsync(a, new CreateRecordRequest(a.Collection.Id, SkipTemplate: true));
+
+        Assert.True(skipped.IsSuccess, Describe(skipped.Error));
+        Assert.Equal("todo", skipped.Value.Properties["status"].GetString());
+        Assert.False(skipped.Value.Properties.ContainsKey("estimate"));
+        Assert.Equal(string.Empty, (await Db.Records.AsNoTracking().SingleAsync(r => r.Id == skipped.Value.Id, Ct)).Body);
+        Assert.Equal("doing", withDefault.Value.Properties["status"].GetString());
+        Assert.Equal("## Kontext\n", (await Db.Records.AsNoTracking().SingleAsync(r => r.Id == withDefault.Value.Id, Ct)).Body);
+        // Without the template there is no title to fall back to.
+        Assert.Equal(ErrorCodes.Required, Field(Invalid(titleless), "title").Code);
+    }
+
+    [Fact]
+    public async Task Create_SkipTemplateWithTemplateId_ConflictOnSkipTemplate_NothingStored()
+    {
+        var a = await ArrangeAsync();
+        var template = await CreateTemplateAsync(a, """{ "status": "doing" }""");
+
+        var result = await TryCreateAsync(a, new CreateRecordRequest(a.Collection.Id, Title: "X", TemplateId: template.Id, SkipTemplate: true));
+
+        Assert.Equal(ErrorCodes.Conflict, Field(Invalid(result), "skipTemplate").Code);
+        Assert.Equal(0, await Db.Records.CountAsync(r => r.CollectionId == a.Collection.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Create_SkipTemplateOnFreePage_IsIgnored()
+    {
+        var a = await ArrangeAsync();
+
+        var result = await TryCreateAsync(a, new CreateRecordRequest(SpaceId: a.SpaceId, Title: "Seite", SkipTemplate: true));
+
+        Assert.True(result.IsSuccess, Describe(result.Error));
+        Assert.Null(result.Value.CollectionId);
+    }
+
+    [Fact]
     public async Task Create_NamedTemplateAndSentBody_BodyWins_TemplateOfOtherCollectionNotFound()
     {
         var a = await ArrangeAsync();

@@ -33,7 +33,7 @@ internal static class ViewEndpoints
                 + "property. 'filter' uses the filter DSL: { \"and\": [ … ] }, { \"or\": [ … ] } and { \"not\": { … } } around conditions { \"prop\", \"op\", \"value\" }; "
                 + "the operators depend on the property type and option values must exist (the rules of POST /collections/{id}/query, which lists the "
                 + "operator matrix; 'in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). Run a view with POST /views/{id}/query. "
-                + "'sorts': [ { \"prop\", \"dir\": \"asc\"|\"desc\" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover. "
+                + "'sorts': [ { \"prop\", \"dir\": \"asc\"|\"desc\" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover (select, status, multi_select, checkbox, text, url, email, number or date property; else 400 with 'allowed'). "
                 + "All property keys must exist in the collection schema. 'isDefault': true makes it the default view. Invalid input: 400 with "
                 + "'errors[]' and 'allowed' values. Requires write.")
             .ProducesProblem(StatusCodes.Status400BadRequest)

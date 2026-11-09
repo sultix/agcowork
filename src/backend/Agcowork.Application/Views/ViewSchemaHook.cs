@@ -11,7 +11,7 @@ namespace Agcowork.Application.Views;
 
 /// <summary>
 /// Keeps views in line with a changed schema: removed properties disappear from visible properties, sorts, filter conditions
-/// (emptied groups vanish) and the cover; a lost <c>groupBy</c> becomes null (the view keeps its type, boards report
+/// (emptied groups vanish) and the cover; a cover whose property changed to a type that cannot be a cover (text → markdown) is removed; a lost <c>groupBy</c> becomes null (the view keeps its type, boards report
 /// <c>needsAttention</c>). A <c>groupBy</c> whose property is no longer select/status is treated the same way; sorts on a property
 /// that can no longer be sorted (select → multi_select) are removed.
 /// <para>
@@ -38,9 +38,12 @@ public sealed class ViewSchemaHook(IAgcoworkDbContext db) : ISchemaChangedHook
         var cannotSort = change.TypeChanges.Keys
             .Where(key => change.After.Find(key) is { } property && !OperatorMatrix.IsSortable(OperatorMatrix.ValueTypeOf(property.Type)))
             .ToHashSet(StringComparer.Ordinal);
+        var cannotCover = change.TypeChanges.Keys
+            .Where(key => change.After.Find(key) is { } property && !ViewDefinitionValidator.CoverTypes.Contains(property.Type))
+            .ToHashSet(StringComparer.Ordinal);
         var views = await db.Views.Where(v => v.CollectionId == collection.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var affected = views.Count(view =>
-            view.RemoveReferences(change.RemovedKeys.Contains, cannotGroup.Contains, cannotSort.Contains)
+            view.RemoveReferences(change.RemovedKeys.Contains, cannotGroup.Contains, cannotSort.Contains, cannotCover.Contains)
             | view.RewriteConditions(condition => AdjustCondition(change, condition)));
         if (affected > 0)
         {

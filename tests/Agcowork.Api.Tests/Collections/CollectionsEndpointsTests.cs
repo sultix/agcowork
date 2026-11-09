@@ -173,6 +173,7 @@ public sealed class CollectionsEndpointsTests(AgcoworkApiFactory factory)
 
         using var lowerPrecision = await owner.Client.PatchAsJsonAsync(path, new { add = new[] { new { key = "hours", name = "Hours", type = "number" } } }, Ct);
         Assert.Equal(HttpStatusCode.OK, lowerPrecision.StatusCode);
+        await Records.RecordsApi.CreateAsync(owner.Client, workspace.Slug, new { collectionId = collection.Id, title = "Mit Nachkommastellen", properties = new { hours = 2.5 } });
         using var unconfirmedPrecision = await owner.Client.PatchAsJsonAsync(path, new { update = new[] { new { key = "hours", precision = 0 } } }, Ct);
         problem = await ProblemAssert.IsProblemAsync(unconfirmedPrecision, HttpStatusCode.BadRequest, "validation_failed");
         Assert.Contains("precision", ProblemAssert.Field(problem, "confirmRemoval").GetProperty("message").GetString(), StringComparison.Ordinal);

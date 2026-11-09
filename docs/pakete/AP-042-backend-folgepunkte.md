@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | Optionale Felder im Anlegen: `src/backend/Agcowork.Application/Records/CreateRecord.cs` (`TemplateId`, `LoadTemplateAsync`), REST `Agcowork.Api/Endpoints/Records/RecordEndpoints.cs`, MCP `Agcowork.Api/Mcp/` (`record_create`); View-Validierung `Agcowork.Application/Views/ViewDefinitionValidator.cs` (Fehler mit `allowed`, z. B. bei `groupBy`); Schema-Änderung `Agcowork.Application/Collections/UpdateSchema.cs` (Verlust-Erkennung ~247–260, Übernahme ~337); Escaping `Agcowork.Api/Mcp/McpText.cs` (Activity-Zeilen) |
@@ -55,3 +55,11 @@ Menschen und Agenten können einen Record ausdrücklich **ohne** Vorlage anlegen
 | Datum | Ereignis |
 |---|---|
 | 2026-11-09 | angelegt |
+| 2026-11-09 | an implementer-sonnet übergeben (parallel zu AP-044, disjunkte Dateien) |
+| 2026-11-09 | Orchestrator: `skipTemplate` erschien im OpenAPI mit `default: false` (Frontend-Generator → Pflichtfeld) → zurück an den Implementierer; jetzt `bool?` ohne Default, Vertragstest |
+| 2026-11-09 | Bericht: 1472 Tests grün; `skipTemplate` (REST/MCP, Konflikt mit `templateId` → 400 `conflict`, im Idempotenz-Hash nur bei true), Cover-Typen mit `allowed` und Hook bei Typwechsel, `clearPrecision` (Muster `ClearDefault`), Verlust nur bei Werten mit mehr Nachkommastellen (mit Anzahl), `McpText.Quote` für Titel/Namen (`**Titel**` → `"Titel"`); Auffälligkeit: Emoji in `Quote` als `\uD83D…` |
+| 2026-11-09 | Review gestartet |
+| 2026-11-09 | Review: Freigabe mit Hinweisen – Rundung/Tenancy von `PrecisionLossesAsync` und Fingerprint geprüft; wichtig: Senken der Präzision verwirft Vorlagen-Presets ohne Bestätigung, `title` als Cover erlaubt (UI kann ihn nicht darstellen); Hinweise: Emoji-Escaping (eingebaute Encoder escapen außerhalb der BMP immer), Beschreibungen in MCP-Texten unescaped, Texte zu `skipTemplate`, Performance (später), einmal nicht zuordenbarer Testfehler; Abweichung AK3: Typwechsel auf json gibt es nicht, Hook über text → markdown getestet |
+| 2026-11-09 | Nacharbeit an implementer-sonnet (W1 Presets zählen und runden, W2 `title` ausschließen, eigene Quote-Funktion, Beschreibungen, Texte) |
+| 2026-11-09 | Nacharbeit: Vorlagen-Presets zählen bei Präzisionsverlust mit und werden gerundet statt gelöscht, `title` kein Cover, zentrale `QuotedString.Of` (Emoji lesbar, ersetzt Duplikate in `McpText`/`CommentText`), Beschreibungen in MCP-Texten einzeilig mit `Description:`-Präfix, Texte zu `skipTemplate`, „precision set to“ beim ersten Setzen; 1481 Tests zweimal grün |
+| 2026-11-09 | abgeschlossen (Orchestrator hat build/test im Worktree geprüft, 1481 grün, 0 Warnungen) |

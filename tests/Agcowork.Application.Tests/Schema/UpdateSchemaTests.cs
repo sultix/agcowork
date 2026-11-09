@@ -311,19 +311,35 @@ public sealed class UpdateSchemaTests(PostgresFixture postgres) : SchemaTestBase
     }
 
     [Fact]
-    public async Task UpdateSchema_LowerPrecision_NeedsConfirmation_ThenInvalidPresetDropped()
+    public async Task UpdateSchema_LowerPrecision_PresetWithMoreDecimals_NeedsConfirmation_ThenPresetRounded()
     {
         var (seed, tenant, collection) = await ArrangeAsync();
         var template = await CreateTemplateAsync(seed, tenant, collection.Id, """{ "estimate": 2.5 }""");
+        var fits = await UpdateAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("estimate", Precision: 2)]));
 
         var unconfirmed = await UpdateAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("estimate", Precision: 0)]));
         var confirmed = await UpdateAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("estimate", Precision: 0)], ConfirmRemoval: true));
         var raise = await UpdateAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("estimate", Precision: 2)]));
 
-        Assert.Contains("precision", Field(Invalid(unconfirmed), "confirmRemoval").Message, StringComparison.Ordinal);
+        Assert.True(fits.IsSuccess);
+        var message = Field(Invalid(unconfirmed), "confirmRemoval").Message;
+        Assert.Contains("template 'T", message, StringComparison.Ordinal);
+        Assert.Contains("preset 'estimate' would be rounded to 0 decimal places", message, StringComparison.Ordinal);
         Assert.True(confirmed.IsSuccess);
-        Assert.Empty(await PresetAsync(template));
+        Assert.Equal(3m, (await PresetAsync(template))["estimate"].GetDecimal());
         Assert.True(raise.IsSuccess);
+    }
+
+    [Fact]
+    public async Task UpdateSchema_LowerPrecision_PresetFits_NoConfirmationNeeded_PresetKept()
+    {
+        var (seed, tenant, collection) = await ArrangeAsync();
+        var template = await CreateTemplateAsync(seed, tenant, collection.Id, """{ "estimate": 2 }""");
+
+        var result = await UpdateAsync(tenant, new UpdateSchemaRequest(collection.Id, Update: [new("estimate", Precision: 0)]));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2m, (await PresetAsync(template))["estimate"].GetDecimal());
     }
 
     [Fact]

@@ -2183,7 +2183,7 @@
           "Collections"
         ],
         "summary": "Change the schema of a collection",
-        "description": "Applies 'add' (new property definitions, appended), 'update' (by 'key'; only the given fields change; 'options' replaces the list; 'clearDefault' removes the default) and 'remove' (keys) together, or nothing. Prefer additive changes. Keys are immutable (400 'key_immutable': add a new property instead); types change only text ↔ markdown and select → multi_select (400 'type_change_not_allowed' with 'allowed'). Changes that lose stored values need 'confirmRemoval': true, otherwise 400 'removal_not_confirmed' naming what would be lost: removing properties, removing option values, lowering 'precision', markdown → text. Template presets are adjusted. Increments 'schemaVersion' (entries without an actual change do not); send 'expectedSchemaVersion' to get 409 'schema_version_conflict' instead of overwriting a concurrent change. Requires schema.",
+        "description": "Applies 'add' (new property definitions, appended), 'update' (by 'key'; only the given fields change; 'options' replaces the list; 'clearDefault' removes the default, 'clearPrecision' the precision limit) and 'remove' (keys) together, or nothing. Prefer additive changes. Keys are immutable (400 'key_immutable': add a new property instead); types change only text ↔ markdown and select → multi_select (400 'type_change_not_allowed' with 'allowed'). Changes that lose stored values need 'confirmRemoval': true, otherwise 400 'removal_not_confirmed' naming what would be lost: removing properties, removing option values, lowering 'precision' below the decimal places of stored values, markdown → text. Template presets are adjusted. Increments 'schemaVersion' (entries without an actual change do not); send 'expectedSchemaVersion' to get 409 'schema_version_conflict' instead of overwriting a concurrent change. Requires schema.",
         "operationId": "UpdateCollectionSchema",
         "parameters": [
           {
@@ -2850,7 +2850,7 @@
           "Views"
         ],
         "summary": "Create a view",
-        "description": "Creates a view. Required: 'name' (unique in the collection, max. 100 characters) and 'type' (table, board, gallery, list, document, raw; timeline and calendar are not available yet). A board also needs 'groupBy': the key of a select or status property. 'filter' uses the filter DSL: { \"and\": [ … ] }, { \"or\": [ … ] } and { \"not\": { … } } around conditions { \"prop\", \"op\", \"value\" }; the operators depend on the property type and option values must exist (the rules of POST /collections/{id}/query, which lists the operator matrix; 'in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). Run a view with POST /views/{id}/query. 'sorts': [ { \"prop\", \"dir\": \"asc\"|\"desc\" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover. All property keys must exist in the collection schema. 'isDefault': true makes it the default view. Invalid input: 400 with 'errors[]' and 'allowed' values. Requires write.",
+        "description": "Creates a view. Required: 'name' (unique in the collection, max. 100 characters) and 'type' (table, board, gallery, list, document, raw; timeline and calendar are not available yet). A board also needs 'groupBy': the key of a select or status property. 'filter' uses the filter DSL: { \"and\": [ … ] }, { \"or\": [ … ] } and { \"not\": { … } } around conditions { \"prop\", \"op\", \"value\" }; the operators depend on the property type and option values must exist (the rules of POST /collections/{id}/query, which lists the operator matrix; 'in'/'nin' take a list, 'is_empty'/'is_not_empty' no value). Run a view with POST /views/{id}/query. 'sorts': [ { \"prop\", \"dir\": \"asc\"|\"desc\" } ]. 'visibleProperties': property keys shown (empty = all). 'cardCoverProperty': gallery cover (select, status, multi_select, checkbox, text, url, email, number or date property; else 400 with 'allowed'). All property keys must exist in the collection schema. 'isDefault': true makes it the default view. Invalid input: 400 with 'errors[]' and 'allowed' values. Requires write.",
         "operationId": "CreateView",
         "parameters": [
           {
@@ -3372,7 +3372,7 @@
           "Records"
         ],
         "summary": "Create a record",
-        "description": "Creates a record in a collection ('collectionId') or a free page in a space ('spaceId'). 'title' is required (max. 500 characters). 'properties' holds values by key as described by GET /collections/{id}/describe (JSON Schema); omitted properties get their default; relation values must be ids of records of the target collection, actor values ids of members. 'body' is Markdown (max. 2 MiB). The collection's default template (or 'templateId') provides preset values and the body when none is sent; sent values win. 'parentRecordId' nests the record below another one. Send an 'Idempotency-Key' header (e.g. a UUID) to make retries safe: the same key by the same actor within 24 h with the same request returns the first record instead of creating another; the same key with a different request (other collectionId, spaceId, title, properties, body, templateId or parentRecordId; key order in JSON does not count) is 409 'idempotency_key_reused'. Use a new key for every new record. The response has no body; read it with GET ?includeBody=true. Requires write. Invalid values: 400 with 'errors[]' on 'properties.<key>' (e.g. 'unknown_property' or 'not_in_options' with 'allowed'); archived collection or space: 409.",
+        "description": "Creates a record in a collection ('collectionId') or a free page in a space ('spaceId'). 'title' is required (max. 500 characters). 'properties' holds values by key as described by GET /collections/{id}/describe (JSON Schema); omitted properties get their default; relation values must be ids of records of the target collection, actor values ids of members. 'body' is Markdown (max. 2 MiB). The collection's default template (or 'templateId') provides preset values and the body when none is sent; sent values win. 'skipTemplate: true' applies no template preset values or body, even if the collection has a default template (schema defaults still apply) (not together with 'templateId': 400 'conflict' on 'skipTemplate'). 'parentRecordId' nests the record below another one. Send an 'Idempotency-Key' header (e.g. a UUID) to make retries safe: the same key by the same actor within 24 h with the same request returns the first record instead of creating another; the same key with a different request (other collectionId, spaceId, title, properties, body, templateId, skipTemplate or parentRecordId; key order in JSON does not count) is 409 'idempotency_key_reused'. Use a new key for every new record. The response has no body; read it with GET ?includeBody=true. Requires write. Invalid values: 400 with 'errors[]' on 'properties.<key>' (e.g. 'unknown_property' or 'not_in_options' with 'allowed'); archived collection or space: 409.",
         "operationId": "CreateRecord",
         "parameters": [
           {
@@ -6509,6 +6509,13 @@
             ],
             "description": "Parent record for nesting.",
             "format": "uuid"
+          },
+          "skipTemplate": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "true: no template preset values or body, even if the collection has a default template; schema defaults still apply. Not combinable with templateId."
           }
         },
         "description": "Body of `POST /records`; the idempotency key comes as header."
@@ -7297,6 +7304,13 @@
             ],
             "description": "relation: cannot change; listed so a change attempt is reported instead of ignored.",
             "format": "uuid"
+          },
+          "clearPrecision": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "number: true removes the precision limit (like clearDefault); send it instead of precision, not together with it."
           }
         },
         "description": "Partial change of one existing property. Null leaves a field unchanged."

@@ -37,6 +37,23 @@ public sealed class RecordsIsolationTests(AgcoworkApiFactory factory)
     }
 
     [Fact]
+    public async Task CreateRecord_SkipTemplate_Isolated_ForeignCollectionNotFound_BetaUntouched()
+    {
+        var (t, _, alphaCollection, _) = await AlphaAsync();
+        await t.AssertIsolatedAsync(HttpMethod.Post, "/records", new { collectionId = alphaCollection.Id, title = "X", skipTemplate = true }, homeStatus: HttpStatusCode.Created);
+        var (_, betaCollection) = await RecordsApi.SeedCollectionAsync(t.BetaOwner.Client, t.Beta.Slug);
+
+        using var response = await t.AlphaOwner.Client.PostAsJsonAsync(
+            TenancyFixture.Path(t.Alpha.Slug, "/records"), new { collectionId = betaCollection.Id, title = "Gekapert", skipTemplate = true }, Ct);
+
+        var problem = await ProblemAssert.IsProblemAsync(response, HttpStatusCode.BadRequest, "validation_failed");
+        Assert.Equal("not_found", ProblemAssert.Field(problem, "collectionId").GetProperty("code").GetString());
+        var betaRecords = await t.BetaOwner.Client.GetFromJsonAsync<Agcowork.Application.Common.Paging.Page<RecordDto>>(
+            TenancyFixture.Path(t.Beta.Slug, $"/records?collectionId={betaCollection.Id}"), AgcoworkApiFactory.Json, Ct);
+        Assert.Empty(betaRecords!.Items);
+    }
+
+    [Fact]
     public async Task GetRecord_Isolated()
     {
         var (t, _, _, r) = await AlphaAsync();

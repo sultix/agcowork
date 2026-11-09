@@ -45,10 +45,12 @@ internal static class RecordEndpoints
                 + "characters). 'properties' holds values by key as described by GET /collections/{id}/describe (JSON Schema); omitted "
                 + "properties get their default; relation values must be ids of records of the target collection, actor values ids of "
                 + "members. 'body' is Markdown (max. 2 MiB). The collection's default template (or 'templateId') provides preset "
-                + "values and the body when none is sent; sent values win. 'parentRecordId' nests the record below another one. "
+                + "values and the body when none is sent; sent values win. 'skipTemplate: true' applies no template preset values or body, even if the collection has a "
+                + "default template (schema defaults still apply) (not together with 'templateId': 400 'conflict' on 'skipTemplate'). "
+                + "'parentRecordId' nests the record below another one. "
                 + "Send an 'Idempotency-Key' header (e.g. a UUID) to make retries safe: the same key by the same actor within 24 h "
                 + "with the same request returns the first record instead of creating another; the same key with a different request "
-                + "(other collectionId, spaceId, title, properties, body, templateId or parentRecordId; key order in JSON does not "
+                + "(other collectionId, spaceId, title, properties, body, templateId, skipTemplate or parentRecordId; key order in JSON does not "
                 + "count) is 409 'idempotency_key_reused'. Use a new key for every new record. The response has no body; read it with "
                 + "GET ?includeBody=true. "
                 + "Requires write. Invalid values: 400 with 'errors[]' on 'properties.<key>' (e.g. 'unknown_property' or "
@@ -193,7 +195,7 @@ internal static class RecordEndpoints
         CancellationToken cancellationToken)
     {
         var result = await useCase.HandleAsync(
-            new CreateRecordRequest(body.CollectionId, body.SpaceId, body.Title, body.Properties, body.Body, body.TemplateId, body.ParentRecordId, idempotencyKey),
+            new CreateRecordRequest(body.CollectionId, body.SpaceId, body.Title, body.Properties, body.Body, body.TemplateId, body.ParentRecordId, idempotencyKey, body.SkipTemplate ?? false),
             cancellationToken);
         return result.IsSuccess
             ? TypedResults.Created($"{ApiV1.Prefix}/w/{tenant.Slug}/records/{result.Value.Id}", result.Value)
@@ -324,6 +326,7 @@ internal static class RecordEndpoints
 /// <param name="Body">Markdown body, max. 2 MiB.</param>
 /// <param name="TemplateId">Template of the collection; default: the collection's default template.</param>
 /// <param name="ParentRecordId">Parent record for nesting.</param>
+/// <param name="SkipTemplate">true: no template preset values or body, even if the collection has a default template; schema defaults still apply. Not combinable with templateId.</param>
 internal sealed record CreateRecordBody(
     Guid? CollectionId = null,
     Guid? SpaceId = null,
@@ -331,7 +334,8 @@ internal sealed record CreateRecordBody(
     IReadOnlyDictionary<string, JsonElement>? Properties = null,
     string? Body = null,
     Guid? TemplateId = null,
-    Guid? ParentRecordId = null);
+    Guid? ParentRecordId = null,
+    bool? SkipTemplate = null);
 
 /// <summary>Body of <c>PATCH /records/{recordId}</c>; null leaves a field unchanged.</summary>
 /// <param name="Title">New title.</param>

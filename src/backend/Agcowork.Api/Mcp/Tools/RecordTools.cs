@@ -1,3 +1,4 @@
+using Agcowork.Application.Common;
 using System.ComponentModel;
 using System.Text.Json;
 using Agcowork.Application.Comments;
@@ -133,7 +134,7 @@ internal static class RecordTools
         var result = await getRecord.HandleAsync(
             new GetRecordRequest(recordId, includeBody ?? true, includeHistory ?? 0, includeComments ?? false, expandRelations ?? false, includeBacklinks ?? false),
             cancellationToken);
-        return output.From(result, record => output.SummaryWithJson($"Record {record.Title} (id {record.Id}, revision {record.Revision}).", record));
+        return output.From(result, record => output.SummaryWithJson($"Record {QuotedString.Of(record.Title)} (id {record.Id}, revision {record.Revision}).", record));
     }
 
     [McpServerTool(Name = "record_create", Destructive = false, Idempotent = false, OpenWorld = false)]
@@ -141,7 +142,7 @@ internal static class RecordTools
         "Creates a record in a collection (collectionId) or a free page in a space (spaceId). Call collection_describe first: "
         + "'properties' must follow its schema (keys, types, allowed option values); omitted properties get their default. The "
         + "collection's default template (or 'templateId') fills preset values and the body when you send none, e.g. the ADR "
-        + "structure of 'Entscheidungen'; values you send win. 'body' is Markdown. Send 'idempotencyKey' (e.g. a UUID) so a retry "
+        + "structure of 'Entscheidungen'; values you send win. Send skipTemplate=true for no template values or body despite a default template (schema defaults still apply). 'body' is Markdown. Send 'idempotencyKey' (e.g. a UUID) so a retry "
         + "within 24 h returns the first record instead of creating a duplicate; a retry must repeat the call unchanged, the same "
         + "key with other arguments is 'idempotency_key_reused' (use a new key for every new record). Invalid values come back as errors[] on "
         + "'properties.<key>' (e.g. 'unknown_property' or 'not_in_options' with 'allowed'). Returns the record with 'body': null; read "
@@ -157,10 +158,11 @@ internal static class RecordTools
         [Description("Template of the collection (templateId from collection_describe); default: the collection's default template.")] Guid? templateId = null,
         [Description("Parent record for nested pages.")] Guid? parentRecordId = null,
         [Description("Makes retries safe: the same key by you within 24 h with the same arguments returns the first record; with other arguments it is 'idempotency_key_reused'. 1-255 characters, e.g. a UUID.")] string? idempotencyKey = null,
+        [Description("true: no template preset values or body, even if the collection has a default template; schema defaults still apply. Not together with templateId. Default false.")] bool? skipTemplate = null,
         CancellationToken cancellationToken = default)
     {
         var result = await useCase.HandleAsync(
-            new CreateRecordRequest(collectionId, spaceId, title, properties, body, templateId, parentRecordId, idempotencyKey), cancellationToken);
+            new CreateRecordRequest(collectionId, spaceId, title, properties, body, templateId, parentRecordId, idempotencyKey, skipTemplate ?? false), cancellationToken);
         return result.IsSuccess
             ? output.Success(result.Value, McpText.RecordChanged("Created", result.Value))
             : output.Failure(RenameField(result.Error, IdempotencyKeyRestField, "idempotencyKey"));

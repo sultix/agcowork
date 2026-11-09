@@ -1,3 +1,4 @@
+using Agcowork.Application.Common;
 using System.ComponentModel;
 using Agcowork.Application.Identity.Actors;
 using Agcowork.Application.Tenancy;
@@ -43,7 +44,7 @@ internal static class InstanceTools
         return output.From(result, workspaces => output.SummaryWithJson(
             workspaces.Count == 0
                 ? "You are not a member of any workspace."
-                : string.Join("\n", workspaces.Select(w => $"- {w.Name} (slug {w.Slug}, id {w.Id}, role {w.Role.ToString().ToLowerInvariant()}){(w.ArchivedAt is null ? string.Empty : ", archived")}")),
+                : string.Join("\n", workspaces.Select(w => $"- {QuotedString.Of(w.Name)} (slug {w.Slug}, id {w.Id}, role {w.Role.ToString().ToLowerInvariant()}){(w.ArchivedAt is null ? string.Empty : ", archived")}")),
             workspaces));
     }
 
@@ -74,7 +75,7 @@ internal static class InstanceTools
             (services, ct) => services.GetRequiredService<CreateWorkspace>().HandleAsync(new CreateWorkspaceRequest(slug, name, description, templateId), ct),
             cancellationToken);
         return output.From(result, workspace => output.SummaryWithJson(
-            $"Created workspace {workspace.Name} (slug {workspace.Slug}, id {workspace.Id}); you are its owner. MCP endpoint: /w/{workspace.Slug}/mcp.", workspace));
+            $"Created workspace {QuotedString.Of(workspace.Name)} (slug {workspace.Slug}, id {workspace.Id}); you are its owner. MCP endpoint: /w/{workspace.Slug}/mcp.", workspace));
     }
 
     [McpServerTool(Name = "workspace_add_member", Destructive = false, Idempotent = false, OpenWorld = false)]

@@ -31,6 +31,13 @@ public static class ViewDefinitionValidator
     public const int MaxConditions = QueryParser.MaxConditions;
     public const int MaxSorts = QueryParser.MaxSorts;
 
+    /// <summary>Property types the UI can show as a card cover (gallery); other types are rejected and lose a cover on a type change. The title property is never a cover (it is no entry of a record's properties).</summary>
+    public static IReadOnlySet<PropertyType> CoverTypes { get; } = new HashSet<PropertyType>
+    {
+        PropertyType.Select, PropertyType.Status, PropertyType.MultiSelect, PropertyType.Checkbox, PropertyType.Text,
+        PropertyType.Url, PropertyType.Email, PropertyType.Number, PropertyType.Date,
+    };
+
     /// <summary>Checks every non-null part; returns the parsed type when <c>Type</c> is set and valid.</summary>
     public static ViewType? Validate(FieldErrors errors, IReadOnlyList<PropertyDefinition> schema, ViewDefinitionInput input)
     {
@@ -79,7 +86,15 @@ public static class ViewDefinitionValidator
 
         if (!string.IsNullOrWhiteSpace(input.CardCoverProperty))
         {
-            keys.Exists("cardCoverProperty", input.CardCoverProperty.Trim());
+            var cover = input.CardCoverProperty.Trim();
+            if (keys.Exists("cardCoverProperty", cover))
+            {
+                var coverable = schema.Where(p => p.Key != CollectionSchema.TitleKey && CoverTypes.Contains(p.Type)).Select(p => p.Key).ToList();
+                if (!coverable.Contains(cover, StringComparer.Ordinal))
+                {
+                    errors.Add("cardCoverProperty", ErrorCodes.InvalidType, $"'{cover}' cannot be a card cover: only select, status, multi_select, checkbox, text, url, email, number and date properties can (not the title).", coverable);
+                }
+            }
         }
 
         return type;

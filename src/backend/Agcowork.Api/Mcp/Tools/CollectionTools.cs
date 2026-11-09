@@ -1,3 +1,4 @@
+using Agcowork.Application.Common;
 using System.ComponentModel;
 using Agcowork.Application.Collections;
 using Agcowork.Application.Schema;
@@ -62,7 +63,7 @@ internal static class CollectionTools
         CancellationToken cancellationToken = default)
     {
         var result = await useCase.HandleAsync(new CreateCollectionRequest(spaceId, name, description, schema), cancellationToken);
-        return output.From(result, collection => output.SummaryWithJson($"Created collection {collection.Name} (collectionId {collection.Id}, schemaVersion {collection.SchemaVersion}).", collection));
+        return output.From(result, collection => output.SummaryWithJson($"Created collection {QuotedString.Of(collection.Name)} (collectionId {collection.Id}, schemaVersion {collection.SchemaVersion}).", collection));
     }
 
     [McpServerTool(Name = "collection_update_schema", Destructive = true, Idempotent = false, OpenWorld = false)]
@@ -71,7 +72,7 @@ internal static class CollectionTools
         + "change; 'options' replaces the whole list; 'clearDefault' removes the default) and 'remove' (keys), applied together or "
         + "not at all. Prefer additive changes. Keys are immutable ('key_immutable': add a new property instead); types change only "
         + "text <-> markdown and select -> multi_select ('type_change_not_allowed' with 'allowed'). Changes that lose stored values "
-        + "(removing properties or option values, lowering precision, markdown -> text) need confirmRemoval: true, otherwise "
+        + "(removing properties or option values, lowering precision below the decimal places of stored values, markdown -> text) need confirmRemoval: true, otherwise "
         + "'removal_not_confirmed' names what would be lost. Send 'expectedSchemaVersion' (from collection_describe) to get "
         + "'schema_version_conflict' instead of overwriting a concurrent change. " + PropertyDefinitionHelp + " Requires schema.")]
     public static async Task<CallToolResult> UpdateSchema(
@@ -79,7 +80,7 @@ internal static class CollectionTools
         McpOutput output,
         [Description("Collection to change.")] Guid collectionId,
         [Description("New property definitions, appended in this order. Keys must not exist yet.")] IReadOnlyList<PropertyDefinitionInput>? add = null,
-        [Description("Changes to existing properties: { 'key', and only the fields to change: 'name', 'type', 'description', 'required', 'options', 'default', 'clearDefault', 'unit', 'precision', 'multiple' }.")] IReadOnlyList<PropertyChangeInput>? update = null,
+        [Description("Changes to existing properties: { 'key', and only the fields to change: 'name', 'type', 'description', 'required', 'options', 'default', 'clearDefault', 'unit', 'precision', 'clearPrecision' (true removes the precision limit), 'multiple' }.")] IReadOnlyList<PropertyChangeInput>? update = null,
         [Description("Keys of properties to remove (not 'title'). Needs confirmRemoval: true.")] IReadOnlyList<string>? remove = null,
         [Description("Must be true for changes that lose stored values.")] bool? confirmRemoval = null,
         [Description("Apply only if the schema is still at this version (schemaVersion from collection_describe).")] int? expectedSchemaVersion = null,

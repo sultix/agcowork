@@ -1,10 +1,10 @@
 using System.Globalization;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using Agcowork.Application.Activity;
 using Agcowork.Application.Collections;
 using Agcowork.Application.Comments;
+using Agcowork.Application.Common;
 using Agcowork.Application.Common.Paging;
 using Agcowork.Application.Records;
 using Agcowork.Application.Search;
@@ -18,9 +18,6 @@ internal static class McpText
 {
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
 
-    // Escapes quotes, backslashes and control characters only; umlauts and emoji stay readable.
-    private static readonly JsonSerializerOptions QuotedText = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-
     /// <summary>
     /// The workspace overview as Markdown: one section per space, one line per collection; with <paramref name="members"/> a
     /// members section with the actor ids to mention, and the hint to the inbox (AP-029).
@@ -32,10 +29,10 @@ internal static class McpText
         if (includeWorkspace)
         {
             var w = overview.Workspace;
-            text.Append(Invariant, $"# Workspace {OneLine(w.Name)} (slug {w.Slug}, id {w.Id})\n");
+            text.Append(Invariant, $"# Workspace {QuotedString.Of(w.Name)} (slug {w.Slug}, id {w.Id})\n");
             if (!string.IsNullOrWhiteSpace(w.Description))
             {
-                text.Append(Invariant, $"{w.Description}\n");
+                text.Append(Invariant, $"Description: {OneLine(w.Description)}\n");
             }
 
             text.Append(Invariant, $"Your role: {w.Role.ToString().ToLowerInvariant()}; scopes: {string.Join(", ", w.Scopes)}");
@@ -48,15 +45,15 @@ internal static class McpText
 
         foreach (var space in overview.Spaces)
         {
-            text.Append(Invariant, $"\n## {(space.Icon is null ? string.Empty : OneLine(space.Icon) + " ")}{OneLine(space.Name)} (spaceId {space.Id})\n");
+            text.Append(Invariant, $"\n## {(space.Icon is null ? string.Empty : OneLine(space.Icon) + " ")}{QuotedString.Of(space.Name)} (spaceId {space.Id})\n");
             if (!string.IsNullOrWhiteSpace(space.Description))
             {
-                text.Append(Invariant, $"{space.Description}\n");
+                text.Append(Invariant, $"Description: {OneLine(space.Description)}\n");
             }
 
             foreach (var collection in space.Collections)
             {
-                text.Append(Invariant, $"- **{OneLine(collection.Name)}** (collectionId {collection.Id}, {collection.RecordCount} records): {OneLine(collection.Description)}\n");
+                text.Append(Invariant, $"- {QuotedString.Of(collection.Name)} (collectionId {collection.Id}, {collection.RecordCount} records): {OneLine(collection.Description)}\n");
             }
 
             if (space.Collections.Count == 0)
@@ -75,14 +72,17 @@ internal static class McpText
             text.Append("\n## Members\nMention one in a comment with [@Name](actor:<actorId>). mentions_list shows where others mentioned you: the open questions to you.\n");
             foreach (var member in members)
             {
-                text.Append(Invariant, $"- {CommentText.Quote(member.Name)} ({CommentText.Wire(member.Kind)}, {CommentText.Wire(member.Role)}, actorId {member.ActorId})\n");
+                text.Append(Invariant, $"- {QuotedString.Of(member.Name)} ({CommentText.Wire(member.Kind)}, {CommentText.Wire(member.Role)}, actorId {member.ActorId})\n");
             }
         }
 
         return text.ToString();
     }
 
-    /// <summary>Free text (names, descriptions) on one line, so it cannot break headings, list items or fake sections.</summary>
+    /// <summary>
+    /// Free text (descriptions, text values) on one line, so it cannot break headings, list items or fake sections. Descriptions on
+    /// their own line carry the prefix "Description: ", so even a text that starts with <c>#</c>, <c>-</c> or <c>&gt;</c> is no structure.
+    /// </summary>
     private static string OneLine(string value) => value.ReplaceLineEndings(" ");
 
     /// <summary>Confirmation of a comment write: what happened, plus the comment.</summary>
@@ -104,9 +104,9 @@ internal static class McpText
         text.Append(page.NextCursor is null ? "; no further pages.\n" : $"; more with cursor \"{page.NextCursor}\".\n");
         foreach (var m in page.Items)
         {
-            var title = JsonSerializer.Serialize(m.RecordTitle, QuotedText);
+            var title = QuotedString.Of(m.RecordTitle);
             var thread = m.ParentCommentId is { } root ? $"reply in thread {root}" : "thread root";
-            text.Append(Invariant, $"\n- {(m.ReadAt is null ? "UNREAD" : "read")} mention {m.Id} by {CommentText.Quote(m.ByActorName)} (actor {m.ByActorId}) at {m.CreatedAt:O} ");
+            text.Append(Invariant, $"\n- {(m.ReadAt is null ? "UNREAD" : "read")} mention {m.Id} by {QuotedString.Of(m.ByActorName)} (actor {m.ByActorId}) at {m.CreatedAt:O} ");
             text.Append(Invariant, $"in comment {m.CommentId} ({thread}) on record {title} ({m.RecordId})\n");
             if (m.Excerpt.Length > 0)
             {
@@ -142,7 +142,7 @@ internal static class McpText
     {
         ArgumentNullException.ThrowIfNull(record);
         var text = new StringBuilder();
-        text.Append(Invariant, $"- **{record.Title}** (id {record.Id}, revision {record.Revision}");
+        text.Append(Invariant, $"- {QuotedString.Of(record.Title)} (id {record.Id}, revision {record.Revision}");
         if (record.ArchivedAt is not null)
         {
             text.Append(", archived");
@@ -178,14 +178,15 @@ internal static class McpText
         ArgumentNullException.ThrowIfNull(views);
         var c = description.Collection;
         var text = new StringBuilder();
-        text.Append(Invariant, $"# Collection {c.Name} (collectionId {c.Id}, space {description.Space.Name}, schemaVersion {c.SchemaVersion}, {description.Statistics.RecordCount} records)\n");
-        text.Append(Invariant, $"{c.Description}\n\n## Properties\n");
+        text.Append(Invariant, $"# Collection {QuotedString.Of(c.Name)} (collectionId {c.Id}, space {QuotedString.Of(description.Space.Name)}, schemaVersion {c.SchemaVersion}, {description.Statistics.RecordCount} records)\n");
+        text.Append(string.IsNullOrWhiteSpace(c.Description) ? string.Empty : $"Description: {OneLine(c.Description)}\n");
+        text.Append("\n## Properties\n");
         foreach (var p in c.Schema)
         {
             text.Append(Invariant, $"- `{p.Key}` ({JsonNamingPolicy.SnakeCaseLower.ConvertName(p.Type.ToString())}{(p.Required ? ", required" : string.Empty)}{(p.ReadOnly ? ", read-only" : string.Empty)})");
             if (!string.IsNullOrWhiteSpace(p.Description))
             {
-                text.Append(Invariant, $": {p.Description}");
+                text.Append(Invariant, $": {OneLine(p.Description)}");
             }
 
             if (p.Options is { Count: > 0 } options)
@@ -209,13 +210,13 @@ internal static class McpText
 
         foreach (var t in description.Templates)
         {
-            text.Append(Invariant, $"- {t.Name} (templateId {t.Id}{(t.IsDefault ? ", default: used by record_create unless templateId is sent" : string.Empty)}){(string.IsNullOrWhiteSpace(t.Description) ? string.Empty : ": " + t.Description)}\n");
+            text.Append(Invariant, $"- {QuotedString.Of(t.Name)} (templateId {t.Id}{(t.IsDefault ? ", default: used by record_create unless templateId or skipTemplate=true is sent" : string.Empty)}){(string.IsNullOrWhiteSpace(t.Description) ? string.Empty : ": " + OneLine(t.Description))}\n");
         }
 
         text.Append("\n## Views\n");
         foreach (var v in views)
         {
-            text.Append(Invariant, $"- {v.Name} ({v.Type}, viewId {v.Id}{(v.IsDefault ? ", default" : string.Empty)})\n");
+            text.Append(Invariant, $"- {QuotedString.Of(v.Name)} ({v.Type}, viewId {v.Id}{(v.IsDefault ? ", default" : string.Empty)})\n");
         }
 
         text.Append(Invariant, $"\n## Example properties\n```json\n{description.Example.ToJsonString(json)}\n```\n");
@@ -232,7 +233,7 @@ internal static class McpText
         text.Append(page.NextCursor is null ? "; no further hits.\n" : $"; more with cursor \"{page.NextCursor}\".\n");
         foreach (var hit in page.Items)
         {
-            text.Append(Invariant, $"\n- **{hit.Title}** (recordId {hit.RecordId}, ");
+            text.Append(Invariant, $"\n- {QuotedString.Of(hit.Title)} (recordId {hit.RecordId}, ");
             text.Append(hit.CollectionId is { } collectionId ? $"collectionId {collectionId}" : $"free page in spaceId {hit.SpaceId}");
             text.Append(Invariant, $", rank {hit.Rank:0.###}{(hit.Archived ? ", archived" : string.Empty)})\n");
             if (hit.Snippet.Length > 0)
@@ -252,7 +253,7 @@ internal static class McpText
         text.Append(Invariant, $"{revisions.Count} revision(s), newest first{(nextCursor is null ? string.Empty : $"; more with cursor \"{nextCursor}\"")}.\n");
         foreach (var r in revisions)
         {
-            text.Append(Invariant, $"- #{r.No} {JsonNamingPolicy.SnakeCaseLower.ConvertName(r.Kind.ToString())} by actor {r.ActorId} at {r.At:O}{(r.Reason is null ? string.Empty : $": {r.Reason}")}\n");
+            text.Append(Invariant, $"- #{r.No} {JsonNamingPolicy.SnakeCaseLower.ConvertName(r.Kind.ToString())} by actor {r.ActorId} at {r.At:O}{(r.Reason is null ? string.Empty : $": {QuotedString.Of(r.Reason)}")}\n");
         }
 
         return text.ToString();
@@ -277,7 +278,7 @@ internal static class McpText
         foreach (var e in events)
         {
             // Titles are user and agent input: JSON-quoted, so quotes and line breaks cannot break the one-line format.
-            var title = e.TargetTitle is null ? string.Empty : " " + JsonSerializer.Serialize(e.TargetTitle, QuotedText);
+            var title = e.TargetTitle is null ? string.Empty : " " + QuotedString.Of(e.TargetTitle);
             text.Append(Invariant, $"- seq {e.Seq} {e.At:O} {e.Type} {e.TargetType}{title} {e.TargetId} by actor {e.ActorId}\n");
         }
 
@@ -286,7 +287,7 @@ internal static class McpText
 
     private static string Value(JsonElement value) => value.ValueKind switch
     {
-        JsonValueKind.String => value.GetString() ?? string.Empty,
+        JsonValueKind.String => OneLine(value.GetString() ?? string.Empty),
         JsonValueKind.Array => "[" + string.Join(", ", value.EnumerateArray().Select(Value)) + "]",
         _ => value.GetRawText(),
     };

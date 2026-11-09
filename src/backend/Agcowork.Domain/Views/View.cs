@@ -165,11 +165,12 @@ public sealed class View : ITenantEntity
     /// <param name="isGone">true for keys that must no longer be referenced.</param>
     /// <param name="isInvalidGroupBy">true when a kept key can no longer group (type changed away from select/status).</param>
     /// <param name="isUnsortable">true when a kept key can no longer be sorted (e.g. select → multi_select): its sorts go.</param>
+    /// <param name="isInvalidCover">true when a kept key can no longer be a cover (type changed to one the UI cannot show): the cover goes.</param>
     /// <remarks>
     /// Removing a condition below <c>not</c> makes the filter narrower, not wider: <c>not (a or b)</c> without <c>a</c> is <c>not b</c>,
     /// which excludes more records. A view never shows records it would not have shown under its stated intent on the remaining keys.
     /// </remarks>
-    public bool RemoveReferences(Func<string, bool> isGone, Func<string, bool>? isInvalidGroupBy = null, Func<string, bool>? isUnsortable = null)
+    public bool RemoveReferences(Func<string, bool> isGone, Func<string, bool>? isInvalidGroupBy = null, Func<string, bool>? isUnsortable = null, Func<string, bool>? isInvalidCover = null)
     {
         ArgumentNullException.ThrowIfNull(isGone);
         var changed = false;
@@ -197,7 +198,7 @@ public sealed class View : ITenantEntity
             changed = true;
         }
 
-        if (CardCoverProperty is { } cover && isGone(cover))
+        if (CardCoverProperty is { } cover && (isGone(cover) || isInvalidCover?.Invoke(cover) == true))
         {
             CardCoverProperty = null;
             changed = true;
