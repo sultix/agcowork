@@ -58,6 +58,8 @@ interface Model {
   isDefault: boolean;
 }
 
+let nextDialogId = 0;
+
 /**
  * Modal for one record template: with `original` it edits that template (`PATCH`, only the
  * changed fields), without it creates a new one (`POST`), optionally from a `seed` (a record
@@ -208,17 +210,11 @@ interface Model {
                 Records, die ohne Titel angelegt werden (z. B. von Agenten).
               </p>
               @for (definition of definitions(); track definition.key) {
-                <div
-                  class="grid gap-1"
-                  role="group"
-                  data-testid="preset-row"
-                  [attr.data-key]="definition.key"
-                  [attr.aria-labelledby]="'preset-label-' + definition.key"
-                >
+                <div class="grid gap-1" data-testid="preset-row" [attr.data-key]="definition.key">
                   <div class="flex items-center justify-between gap-2">
                     <span
                       class="text-sm font-medium"
-                      [id]="'preset-label-' + definition.key"
+                      [id]="labelId(definition.key)"
                       [attr.title]="definition.description"
                       >{{ definition.name }}</span
                     >
@@ -240,6 +236,7 @@ interface Model {
                     [definition]="definition"
                     [value]="preset()[definition.key]"
                     [chipLinks]="false"
+                    [labelledBy]="labelId(definition.key)"
                     [errors]="presetErrors()[definition.key] ?? []"
                     (valueChange)="setValue(definition.key, $event)"
                   />
@@ -324,6 +321,13 @@ interface Model {
   `,
 })
 export class TemplateDialogComponent {
+  private readonly uid = `ag-template-dialog-${nextDialogId++}`;
+
+  /** Id of the visible name of a property; unique per dialog instance. */
+  protected labelId(key: string): string {
+    return `${this.uid}-label-${key}`;
+  }
+
   private readonly store = inject(TemplatesStore);
   private readonly limits = inject(MARKDOWN_EDITOR_LIMITS);
 

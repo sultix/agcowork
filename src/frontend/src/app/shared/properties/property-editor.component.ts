@@ -37,6 +37,8 @@ function toLocalInput(value: PropertyValue): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+let nextId = 0;
+
 function sameJson(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
@@ -68,6 +70,10 @@ function sameJson(a: unknown, b: unknown): boolean {
       @case ('markdown') {
         <ag-markdown-editor
           class="block rounded-md border border-border"
+          role="group"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [attr.aria-describedby]="describedByIds()"
           [value]="text()"
           [readonly]="locked()"
           (valueChange)="emitText($event)"
@@ -90,7 +96,9 @@ function sameJson(a: unknown, b: unknown): boolean {
           type="number"
           hlmInput
           data-testid="editor-input"
-          [attr.aria-label]="definition().name"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [aria-describedby]="describedByIds()"
           [attr.step]="step()"
           [value]="text()"
           [readOnly]="locked()"
@@ -102,7 +110,9 @@ function sameJson(a: unknown, b: unknown): boolean {
           type="checkbox"
           class="size-4 accent-primary"
           data-testid="editor-input"
-          [attr.aria-label]="definition().name"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [attr.aria-describedby]="describedByIds()"
           [checked]="value() === true"
           [disabled]="locked()"
           (change)="valueChange.emit($any($event.target).checked)"
@@ -115,7 +125,14 @@ function sameJson(a: unknown, b: unknown): boolean {
         <ng-container [ngTemplateOutlet]="single" />
       }
       @case ('multi_select') {
-        <div class="flex flex-wrap gap-2" data-testid="editor-multi">
+        <div
+          class="flex flex-wrap gap-2"
+          role="group"
+          data-testid="editor-multi"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [attr.aria-describedby]="describedByIds()"
+        >
           @for (option of definition().options ?? []; track option.value) {
             <label hlmLabel class="gap-1.5 font-normal">
               <input
@@ -138,7 +155,9 @@ function sameJson(a: unknown, b: unknown): boolean {
           hlmInput
           class="w-auto"
           data-testid="editor-input"
-          [attr.aria-label]="definition().name"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [aria-describedby]="describedByIds()"
           [value]="text().slice(0, 10)"
           [readOnly]="locked()"
           (input)="onDate($event)"
@@ -150,7 +169,9 @@ function sameJson(a: unknown, b: unknown): boolean {
           hlmInput
           class="w-auto"
           data-testid="editor-input"
-          [attr.aria-label]="definition().name"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [aria-describedby]="describedByIds()"
           [value]="localDateTime()"
           [readOnly]="locked()"
           (input)="onDateTime($event)"
@@ -161,7 +182,9 @@ function sameJson(a: unknown, b: unknown): boolean {
           type="url"
           hlmInput
           data-testid="editor-input"
-          [attr.aria-label]="definition().name"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [aria-describedby]="describedByIds()"
           [value]="text()"
           [readOnly]="locked()"
           (input)="emitText($any($event.target).value)"
@@ -172,7 +195,9 @@ function sameJson(a: unknown, b: unknown): boolean {
           type="email"
           hlmInput
           data-testid="editor-input"
-          [attr.aria-label]="definition().name"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [aria-describedby]="describedByIds()"
           [value]="text()"
           [readOnly]="locked()"
           (input)="emitText($any($event.target).value)"
@@ -184,6 +209,8 @@ function sameJson(a: unknown, b: unknown): boolean {
           [value]="value()"
           [readonly]="locked()"
           [chipLinks]="chipLinks()"
+          [labelledBy]="labelledBy()"
+          [describedBy]="describedByIds()"
           (valueChange)="valueChange.emit($event)"
         />
       }
@@ -192,6 +219,8 @@ function sameJson(a: unknown, b: unknown): boolean {
           [value]="value()"
           [readonly]="locked()"
           [label]="definition().name"
+          [labelledBy]="labelledBy()"
+          [describedBy]="describedByIds()"
           (valueChange)="valueChange.emit($event)"
         />
       }
@@ -199,6 +228,10 @@ function sameJson(a: unknown, b: unknown): boolean {
         <ag-raw-view
           class="block"
           language="json"
+          role="group"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [attr.aria-describedby]="describedByIds()"
           [value]="jsonText()"
           [readonly]="locked()"
           (valueChange)="onJson($event)"
@@ -225,7 +258,9 @@ function sameJson(a: unknown, b: unknown): boolean {
           type="text"
           hlmInput
           data-testid="editor-input"
-          [attr.aria-label]="definition().name"
+          [attr.aria-label]="labelledBy() ? null : definition().name"
+          [attr.aria-labelledby]="labelledBy()"
+          [aria-describedby]="describedByIds()"
           [value]="text()"
           [readOnly]="locked()"
           (input)="emitText($any($event.target).value)"
@@ -237,7 +272,9 @@ function sameJson(a: unknown, b: unknown): boolean {
       <select
         hlmInput
         data-testid="editor-select"
-        [attr.aria-label]="definition().name"
+        [attr.aria-label]="labelledBy() ? null : definition().name"
+        [attr.aria-labelledby]="labelledBy()"
+        [aria-describedby]="describedByIds()"
         [disabled]="locked()"
         (change)="emitText($any($event.target).value)"
       >
@@ -251,7 +288,7 @@ function sameJson(a: unknown, b: unknown): boolean {
     </ng-template>
 
     @if (errors().length > 0) {
-      <div data-testid="editor-errors" role="alert">
+      <div data-testid="editor-errors" role="alert" [id]="errorsId">
         @for (message of errors(); track $index) {
           <p class="mt-1 text-sm text-destructive">{{ message }}</p>
         }
@@ -275,7 +312,25 @@ export class PropertyEditorComponent {
   /** Validation messages for this property (from the API's `errors[]`). */
   readonly errors = input<readonly string[]>([]);
 
+  /**
+   * Id of the visible element that names this property (a `<label>`, `<dt>`, …). Becomes the
+   * controls' `aria-labelledby`; without it the property name is the `aria-label`.
+   */
+  readonly labelledBy = input<string | null>(null);
+  /** Id(s) of visible help text for this property (`aria-describedby`). */
+  readonly describedBy = input<string | null>(null);
+
   readonly valueChange = output<PropertyValue>();
+
+  /** Unique per instance, so the same property may be on screen twice (document + dialog). */
+  protected readonly errorsId = `ag-property-errors-${nextId++}`;
+  /** Help text plus, while there are any, the validation messages. */
+  protected readonly describedByIds = computed(() => {
+    const ids = [this.describedBy(), this.errors().length > 0 ? this.errorsId : null].filter(
+      (id) => !!id,
+    );
+    return ids.length > 0 ? ids.join(' ') : null;
+  });
 
   protected readonly locked = computed(
     () =>

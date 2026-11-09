@@ -21,6 +21,7 @@ import {
   recordDto,
   respondPost,
 } from '../../core/testing/test-utils';
+import { accessibleName } from './accessible-name.testing';
 import { FakeCodeEditor, provideFakeCodeEditor } from '../raw-view/fake-code-editor';
 import { PropertyEditorComponent } from './property-editor.component';
 import { PropertyDefinition, PropertyType } from './property-types';
@@ -33,11 +34,14 @@ import {
 @Component({
   imports: [PropertyEditorComponent],
   template: `
+    <span id="visible-label">Sichtbarer Name</span>
     <ag-property-editor
       [definition]="definition()"
       [value]="value()"
       [readonly]="readonly()"
       [errors]="errors()"
+      [labelledBy]="labelledBy()"
+      [describedBy]="describedBy()"
       (valueChange)="changes.push($event)"
     />
   `,
@@ -47,6 +51,8 @@ class HostComponent {
   readonly value = signal<unknown>(null);
   readonly readonly = signal(false);
   readonly errors = signal<string[]>([]);
+  readonly labelledBy = signal<string | null>(null);
+  readonly describedBy = signal<string | null>(null);
   readonly changes: unknown[] = [];
 }
 
@@ -116,6 +122,73 @@ describe('PropertyEditorComponent', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
+
+  describe('accessible name', () => {
+    const SINGLE = { options: OPTIONS };
+    const RELATION = { targetCollectionId: COLLECTION_ID };
+    // [type, extra definition, selector of the labelled control]
+    const cases: [PropertyType, Partial<PropertyDefinition>, string][] = [
+      ['text', {}, 'input[type="text"]'],
+      ['number', {}, 'input[type="number"]'],
+      ['checkbox', {}, 'input[type="checkbox"]'],
+      ['select', SINGLE, 'select[data-testid="editor-select"]'],
+      ['status', SINGLE, 'select[data-testid="editor-select"]'],
+      ['multi_select', SINGLE, '[data-testid="editor-multi"]'],
+      ['date', {}, 'input[type="date"]'],
+      ['datetime', {}, 'input[type="datetime-local"]'],
+      ['url', {}, 'input[type="url"]'],
+      ['email', {}, 'input[type="email"]'],
+      ['actor', {}, 'select[data-testid="actor-select"]'],
+      ['relation', RELATION, '[data-testid="relation-search"]'],
+      ['markdown', {}, 'ag-markdown-editor'],
+      ['json', {}, 'ag-raw-view'],
+    ];
+
+    it.each(cases)('name_%s_IsThePropertyName', async (propertyType, extra, selector) => {
+      await render(propertyType, null, extra);
+
+      expect(accessibleName(q(selector)!)).toBe('Feld');
+    });
+
+    it.each(cases)('name_%s_FollowsTheVisibleLabel', async (propertyType, extra, selector) => {
+      host.labelledBy.set('visible-label');
+      await render(propertyType, null, extra);
+
+      const control = q(selector)!;
+      expect(control.getAttribute('aria-labelledby')).toBe('visible-label');
+      expect(control.hasAttribute('aria-label')).toBe(false);
+      expect(accessibleName(control)).toBe('Sichtbarer Name');
+    });
+
+    it('describedBy_HelpTextAndErrors_AreBothReferenced', async () => {
+      host.describedBy.set('help-text');
+      host.errors.set(['Pflichtfeld.']);
+      await render('text');
+
+      const ids = q('input')!.getAttribute('aria-describedby')!.split(' ');
+      expect(ids[0]).toBe('help-text');
+      expect(ids).toHaveLength(2);
+      expect(el().querySelector(`#${ids[1]}`)!.textContent).toContain('Pflichtfeld.');
+    });
+
+    it('describedBy_NoHelpNoErrors_IsAbsent', async () => {
+      await render('text');
+
+      expect(q('input')!.hasAttribute('aria-describedby')).toBe(false);
+    });
+
+    it('ids_TwoEditorsOfTheSameProperty_DoNotShareThem', async () => {
+      host.errors.set(['Pflichtfeld.']);
+      await render('text');
+      const other = TestBed.createComponent(HostComponent);
+      other.componentInstance.errors.set(['Pflichtfeld.']);
+      other.detectChanges();
+
+      const idOf = (root: Element) => root.querySelector('input')!.getAttribute('aria-describedby');
+      expect(idOf(el())).not.toBe(idOf(other.nativeElement));
+      expect(el().querySelector(`#${idOf(el())}`)!.textContent).toContain('Pflichtfeld.');
+    });
+  });
 
   describe('typed value', () => {
     // [type, definition, value shown, text typed into the control, expected valueChange]
@@ -334,7 +407,7 @@ describe('PropertyEditorComponent', () => {
       await settleAll();
       q('[data-testid="relation-suggestion"]')!.click();
       expect(q('[data-testid="relation-remove"]')!.getAttribute('aria-label')).toBe(
-        'Entfernen: Doku',
+        'Doku entfernen',
       );
       q('[data-testid="relation-remove"]')!.click();
 
@@ -355,6 +428,189 @@ describe('PropertyEditorComponent', () => {
 
       expect(q('[data-testid="relation-chip"]')!.textContent).toContain('Login bauen');
       http.expectNone(LOOKUP_URL);
+    });
+
+    describe('keyboard', () => {
+      const search = () => q<HTMLInputElement>('[data-testid="relation-search"]')!;
+      const options = () => Array.from(el().querySelectorAll<HTMLElement>('[role="option"]'));
+      const key = (name: string) => {
+        const event = new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true });
+        search().dispatchEvent(event);
+        fixture.detectChanges();
+        return event;
+      };
+
+      async function openList(): Promise<void> {
+        await render('relation', null, target);
+        await settleAll();
+        type(search(), 'log');
+        await respondPost(
+          http,
+          QUERY_URL,
+          queryPage([
+            recordDto({ id: RECORD_ID, title: 'Login bauen' }),
+            recordDto({ id: R2, title: 'Logout bauen' }),
+            recordDto({ id: R3, title: 'Logbuch' }),
+          ]),
+        );
+        await settleAll();
+      }
+
+      it('combobox_Typing_ExposesComboboxAndListboxSemantics', async () => {
+        await render('relation', null, target);
+        await settleAll();
+        expect(search().getAttribute('role')).toBe('combobox');
+        expect(search().getAttribute('aria-autocomplete')).toBe('list');
+        expect(search().getAttribute('aria-expanded')).toBe('false');
+
+        type(search(), 'log');
+        await respondPost(
+          http,
+          QUERY_URL,
+          queryPage([recordDto({ id: RECORD_ID, title: 'Login bauen' })]),
+        );
+        await settleAll();
+
+        const listbox = q('[role="listbox"]')!;
+        expect(search().getAttribute('aria-expanded')).toBe('true');
+        expect(search().getAttribute('aria-controls')).toBe(listbox.id);
+        expect(options().map((o) => o.textContent!.trim())).toEqual(['Login bauen']);
+        expect(options()[0].getAttribute('aria-selected')).toBe('true');
+      });
+
+      it('arrowKeys_List_MoveTheActiveOptionAndWrap', async () => {
+        await openList();
+        const active = () => search().getAttribute('aria-activedescendant');
+        expect(active()).toBe(options()[0].id);
+
+        expect(key('ArrowDown').defaultPrevented).toBe(true);
+        expect(active()).toBe(options()[1].id);
+        expect(options().map((o) => o.getAttribute('aria-selected'))).toEqual([
+          'false',
+          'true',
+          'false',
+        ]);
+        key('ArrowDown');
+        key('ArrowDown');
+        expect(active()).toBe(options()[0].id);
+        key('ArrowUp');
+        expect(active()).toBe(options()[2].id);
+      });
+
+      it('enter_ActiveOption_SelectsItAndClosesTheList', async () => {
+        await openList();
+        key('ArrowDown');
+
+        const event = key('Enter');
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(host.changes).toEqual([R2]);
+        expect(q('[role="listbox"]')).toBeNull();
+        expect(search().value).toBe('');
+      });
+
+      it('escape_OpenList_ClosesItAndStopsThePropagation', async () => {
+        await openList();
+        const outer = vi.fn();
+        el().addEventListener('keydown', outer);
+
+        key('Escape');
+
+        expect(outer).not.toHaveBeenCalled();
+        expect(q('[role="listbox"]')).toBeNull();
+        expect(search().getAttribute('aria-expanded')).toBe('false');
+        expect(search().value).toBe('log');
+        expect(host.changes).toEqual([]);
+
+        outer.mockClear();
+        key('Escape'); // nothing open any more: the Escape belongs to the surroundings
+        expect(outer).toHaveBeenCalledTimes(1);
+      });
+
+      it('keydown_ImeComposing_IsLeftToTheInputMethod', async () => {
+        await openList();
+        for (const name of ['ArrowDown', 'Enter', 'Escape']) {
+          const event = new KeyboardEvent('keydown', {
+            key: name,
+            isComposing: true,
+            bubbles: true,
+            cancelable: true,
+          });
+          search().dispatchEvent(event);
+          expect(event.defaultPrevented, name).toBe(false);
+        }
+        fixture.detectChanges();
+
+        expect(host.changes).toEqual([]);
+        expect(options()).toHaveLength(3);
+        expect(search().getAttribute('aria-activedescendant')).toBe(options()[0].id);
+      });
+
+      it.each(['ArrowDown', 'ArrowUp'])('%s_AfterEscape_ReopensTheList', async (name) => {
+        await openList();
+        key('Escape');
+        expect(q('[role="listbox"]')).toBeNull();
+
+        const event = key(name);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(options()).toHaveLength(3);
+        expect(search().getAttribute('aria-expanded')).toBe('true');
+      });
+
+      it('blur_OpenList_ClosesItAndArrowDownReopensIt', async () => {
+        await openList();
+
+        search().dispatchEvent(new FocusEvent('blur'));
+        fixture.detectChanges();
+        expect(q('[role="listbox"]')).toBeNull();
+        expect(search().getAttribute('aria-expanded')).toBe('false');
+
+        key('ArrowDown');
+        expect(options()).toHaveLength(3);
+      });
+
+      it('mousedown_Option_KeepsTheFocusSoTheClickStillSelects', async () => {
+        await openList();
+        const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+
+        options()[1].dispatchEvent(down);
+        options()[1].click();
+
+        expect(down.defaultPrevented).toBe(true);
+        expect(host.changes).toEqual([R2]);
+      });
+
+      it('escape_ThenTyping_OpensTheListAgain', async () => {
+        await openList();
+        key('Escape');
+
+        type(search(), 'logo');
+        await respondPost(
+          http,
+          QUERY_URL,
+          queryPage([recordDto({ id: R2, title: 'Logout bauen' })]),
+        );
+        await settleAll();
+
+        expect(options()).toHaveLength(1);
+      });
+
+      it('status_SearchingAndNoHits_AreAnnouncedInALiveRegion', async () => {
+        await render('relation', null, target);
+        await settleAll();
+        type(search(), 'xyz');
+        fixture.detectChanges();
+        const status = q('[role="status"]')!;
+        expect(status.textContent).toContain('Sucht');
+
+        await respondPost(http, QUERY_URL, queryPage([]));
+        await settleAll();
+
+        expect(status.textContent).toContain('Keine Treffer.');
+        expect(q('[role="listbox"]')).toBeNull();
+        expect(search().getAttribute('aria-expanded')).toBe('false');
+      });
     });
 
     it('render_Readonly_ShowsChipsWithoutSearch', async () => {

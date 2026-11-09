@@ -1,3 +1,4 @@
+import { accessibleName } from '../../shared/properties/accessible-name.testing';
 import { Component, ErrorHandler, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
@@ -237,6 +238,34 @@ describe('RecordDocumentComponent', () => {
       ).toEqual(['status', 'estimate']);
       expect(row('status').querySelector('select')!.value).toBe('todo');
       expect(text(root().querySelector('dt'))).toBe('Status');
+    });
+
+    it('render_PropertyEditors_AreNamedByTheVisibleLabelInTheDefinitionList', async () => {
+      await render();
+
+      for (const [key, selector, name] of [
+        ['status', 'select', 'Status'],
+        ['estimate', 'input', 'Schätzung'],
+      ]) {
+        const control = row(key).querySelector<HTMLElement>(selector)!;
+        const label = root().querySelector<HTMLElement>(
+          `#${control.getAttribute('aria-labelledby')}`,
+        );
+        expect(label?.tagName, key).toBe('DT');
+        expect(text(label), key).toBe(name);
+        expect(control.hasAttribute('aria-label'), key).toBe(false);
+      }
+    });
+
+    it('render_RequiredProperty_NameLeavesOutTheAsterisk', async () => {
+      await render({
+        schema: [
+          propertyDefinition({ key: 'owner', name: 'Zuständig', type: 'text', required: true }),
+        ],
+      });
+
+      expect(text(row('owner').previousElementSibling)).toContain('*');
+      expect(accessibleName(row('owner').querySelector('input')!)).toBe('Zuständig');
     });
 
     it('render_SchemaScope_OffersSaveAsTemplateLinkingToTheTemplatesPage', async () => {

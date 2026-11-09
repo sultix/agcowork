@@ -158,7 +158,7 @@ describe('RelationChipsComponent', () => {
     await answer([item(A, 'Login bauen')]);
 
     const button = root().querySelector<HTMLElement>('[data-testid="relation-remove"]')!;
-    expect(button.getAttribute('aria-label')).toBe('Entfernen: Login bauen');
+    expect(button.getAttribute('aria-label')).toBe('Login bauen entfernen');
     button.click();
     expect(host.removed).toEqual([A]);
   });

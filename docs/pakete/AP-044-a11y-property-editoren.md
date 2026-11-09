@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | Combobox/Listbox mit Pfeiltasten und `aria-activedescendant`: `src/frontend/src/app/features/comments/mention-picker.ts` (und seine Verwendung im Kommentar-Editor); Editoren `shared/properties/property-editor.component.ts`, `actor-editor.component.ts`, `relation-editor.component.ts` |
@@ -51,3 +51,10 @@ Screenreader nennen bei jedem Property-Editor den Namen der Property („Status,
 | Datum | Ereignis |
 |---|---|
 | 2026-11-09 | angelegt |
+| 2026-11-09 | an implementer-sonnet übergeben (parallel zu AP-042, disjunkte Dateien) |
+| 2026-11-09 | Bericht: 1335 Tests grün (ohne `pretest`, da Backend-OpenAPI `skipTemplate` vorübergehend als Pflichtfeld führte); `labelledBy`/`describedBy` an allen Editoren, Relations-Picker als Combobox/Listbox mit Pfeiltasten, Escape schließt nur die Liste, Live-Region; Abweichung: `hlm-input.ts` gibt `aria-describedby` der Host-Directive frei; offen: Standardwert-Editor im Schema-Dialog ohne Label-ID |
+| 2026-11-09 | Review gestartet |
+| 2026-11-09 | Review: Freigabe mit Hinweisen – wichtig: lokaler Patch an `hlm-input.ts` undokumentiert (Orchestrator trägt ihn in `02-ARCHITEKTUR.md` §6 ein; Patch behebt nebenbei verlorene `aria-describedby` in Login und Suche); Hinweise: IME-Schutz, Pfeiltaste öffnet Liste nicht wieder, Liste bleibt bei Blur offen, doppelte Namensansage im Vorlagen-Dialog, Test-Helfer ohne `aria-hidden`, Live-Region, Markdown/JSON nur Gruppenname |
+| 2026-11-09 | Nacharbeit an implementer-sonnet (IME, Pfeiltaste/Blur, doppelte Ansage, Helfer) |
+| 2026-11-09 | Nacharbeit: IME-Schutz, Pfeiltasten öffnen die Liste wieder, Blur schließt sie, keine doppelte Namensansage im Vorlagen-Dialog, Test-Helfer filtert `aria-hidden`; 1342 Tests, sechs Gegenproben |
+| 2026-11-09 | abgeschlossen (Orchestrator hat build/test/lint/format im Worktree geprüft) |

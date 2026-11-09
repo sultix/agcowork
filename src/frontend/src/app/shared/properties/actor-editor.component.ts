@@ -12,7 +12,9 @@ import { PropertyValue, asText } from './property-types';
     <select
       hlmInput
       data-testid="actor-select"
-      [attr.aria-label]="label()"
+      [attr.aria-label]="labelledBy() ? null : label()"
+      [attr.aria-labelledby]="labelledBy()"
+      [aria-describedby]="describedBy()"
       [disabled]="readonly()"
       (change)="onChange($any($event.target).value)"
     >
@@ -29,6 +31,9 @@ export class ActorEditorComponent {
   readonly value = input<PropertyValue>(null);
   readonly readonly = input(false);
   readonly label = input('Actor');
+  /** Id of the visible label element; replaces {@link label} as the accessible name. */
+  readonly labelledBy = input<string | null>(null);
+  readonly describedBy = input<string | null>(null);
   readonly valueChange = output<string | null>();
 
   protected readonly current = computed(() => asText(this.value()));

@@ -119,7 +119,7 @@ export type ChipNavigation = 'link' | 'cell' | 'none';
             size="icon-xs"
             class="size-4 shrink-0 rounded-full hover:text-destructive"
             data-testid="relation-remove"
-            [attr.aria-label]="'Entfernen: ' + chip.label"
+            [attr.aria-label]="chip.label + ' entfernen'"
             (click)="remove.emit(chip.id)"
           >
             <ng-icon name="lucideX" />

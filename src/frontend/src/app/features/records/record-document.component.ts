@@ -69,6 +69,8 @@ interface RemoteChange {
   readonly revision: number;
 }
 
+let nextDocumentId = 0;
+
 /**
  * `/w/:slug/records/:recordId`: a record as a document. Title, property panel and Markdown body
  * are edited in place; `RecordSaveService` saves them (button, Ctrl/Cmd+S, 2 s auto-save) with
@@ -302,7 +304,11 @@ interface RemoteChange {
                 data-testid="properties-panel"
               >
                 @for (def of visibleDefinitions(); track def.key) {
-                  <dt class="pt-1 text-sm text-muted-foreground" [attr.title]="def.description">
+                  <dt
+                    class="pt-1 text-sm text-muted-foreground"
+                    [id]="labelId(def.key)"
+                    [attr.title]="def.description"
+                  >
                     {{ def.name }}
                     @if (def.required) {
                       <span aria-hidden="true"> *</span>
@@ -311,6 +317,7 @@ interface RemoteChange {
                   <dd class="min-w-0" data-testid="property-row" [attr.data-key]="def.key">
                     <ag-property-editor
                       [definition]="def"
+                      [labelledBy]="labelId(def.key)"
                       [value]="saver.properties()[def.key]"
                       [readonly]="readonly()"
                       [errors]="saver.fieldErrors()[def.key] ?? []"
@@ -432,6 +439,13 @@ interface RemoteChange {
   `,
 })
 export class RecordDocumentComponent {
+  private readonly uid = `ag-record-document-${nextDocumentId++}`;
+
+  /** Id of the visible name of a property; unique per document instance. */
+  protected labelId(key: string): string {
+    return `${this.uid}-label-${key}`;
+  }
+
   protected readonly saver = inject(RecordSaveService);
   protected readonly members = inject(MembersStore);
   private readonly api = inject(ApiClient);

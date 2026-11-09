@@ -626,6 +626,9 @@ Der Generator trägt den Alias in `tsconfig.json` ein (entfernt dabei die Kopfko
 `tailwind-merge` mit den Helm-Klassen zusammengeführt), Aktualisierung über die Migrations-Generatoren
 der CLI.
 
+**Bewusste lokale Abweichungen vom Helm-Template** (bei jeder CLI-Migration prüfen und wieder einspielen):
+- `shared/ui/helm/input/src/lib/hlm-input.ts`: die Host-Directive `BrnFieldControlDescribedBy` gibt ihr Input `aria-describedby` frei (`inputs: ['aria-describedby']`). Ohne das überschreibt ihr Host-Binding jedes gesetzte `aria-describedby` mit den Feld-IDs bzw. `null`; Property-Editoren (Hilfetext, Fehler-IDs) und statische Verweise in Login und Suche kämen nicht an. Die Directive führt manuelle und Feld-IDs selbst zusammen. Abgesichert durch `property-editor.spec.ts` (`describedBy_HelpTextAndErrors_AreBothReferenced`, `ids_TwoEditorsOfTheSameProperty_DoNotShareThem`); ein überschriebenes Template kompiliert weiter, nur diese Tests fallen (AP-044).
+
 **Eigene Wrapper in `shared/ui`** (Inputs/Outputs stabil): `ag-badge` (Tone `neutral | accent | success |
 danger` → Helm-Badge `secondary | default | Erfolgsfarben | destructive`), `ag-confirm-dialog` (Helm
 Alert-Dialog), `ag-session-menu` (Dropdown mit Avatar), `ag-theme-toggle` (System/Hell/Dunkel),

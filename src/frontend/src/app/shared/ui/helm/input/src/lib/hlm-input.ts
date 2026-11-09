@@ -8,7 +8,9 @@ import { classes } from '@spartan-ng/helm/utils';
   exportAs: 'hlmInput',
   hostDirectives: [
     { directive: BrnInput, inputs: ['id', 'forceInvalid'] },
-    BrnFieldControlDescribedBy,
+    // `aria-describedby` is exposed so templates can add help text; a plain attribute binding
+    // would be overwritten by this directive's own host binding.
+    { directive: BrnFieldControlDescribedBy, inputs: ['aria-describedby'] },
   ],
   host: { 'data-slot': 'input' },
 })

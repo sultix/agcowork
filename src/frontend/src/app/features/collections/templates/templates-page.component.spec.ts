@@ -430,6 +430,92 @@ describe('TemplatesPageComponent', () => {
       await reload([template(), BUG]);
     });
 
+    it('create_PresetEditors_AreNamedByTheVisibleLabelOfTheirProperty', async () => {
+      await render();
+      await openCreate();
+
+      for (const [key, selector, name] of [
+        ['status', 'select', 'Status'],
+        ['estimate', 'input', 'Schätzung'],
+        ['title', 'input', 'Titel'],
+      ]) {
+        const control = presetRow(key).querySelector<HTMLElement>(
+          `ag-property-editor ${selector}`,
+        )!;
+        const label = presetRow(key).querySelector<HTMLElement>(
+          `#${control.getAttribute('aria-labelledby')}`,
+        );
+        expect(label?.textContent?.trim(), key).toBe(name);
+        expect(control.hasAttribute('aria-label'), key).toBe(false);
+      }
+    });
+
+    it('create_PresetRow_DoesNotAnnounceThePropertyNameTwice', async () => {
+      await render();
+      await openCreate();
+
+      const names = Array.from(
+        presetRow('status').querySelectorAll<HTMLElement>('[aria-labelledby]'),
+      ).map((e) => e.getAttribute('aria-labelledby'));
+      expect(presetRow('status').hasAttribute('role')).toBe(false);
+      expect(presetRow('status').hasAttribute('aria-labelledby')).toBe(false);
+      expect(names).toHaveLength(1);
+    });
+
+    it('create_OpenedTwice_GivesEveryDialogItsOwnLabelIds', async () => {
+      await render();
+      const labelId = () =>
+        presetRow('status').querySelector('select')!.getAttribute('aria-labelledby');
+      await openCreate();
+      const first = labelId();
+      q('template-cancel')!.click();
+      await stable();
+      await openCreate();
+
+      expect(first).toBeTruthy();
+      expect(labelId()).not.toBe(first);
+      expect(document.getElementById(labelId()!)?.textContent?.trim()).toBe('Status');
+    });
+
+    it('create_EscapeInRelationPicker_ClosesTheListButNotTheDialog', async () => {
+      const RELATION = propertyDefinition({
+        key: 'affects',
+        name: 'Betrifft',
+        type: 'relation',
+        targetCollectionId: OTHER_COLLECTION_ID,
+        multiple: true,
+      });
+      await render({ collection: collection({ schema: [...SCHEMA, RELATION] }) });
+      await openCreate();
+      await set(input('template-name'), 'Entwurf'); // a changed draft would ask before closing
+
+      const search = presetRow('affects').querySelector<HTMLInputElement>(
+        '[data-testid="relation-search"]',
+      )!;
+      expect(search.getAttribute('role')).toBe('combobox');
+      expect(
+        document.getElementById(search.getAttribute('aria-labelledby')!)?.textContent?.trim(),
+      ).toBe('Betrifft');
+      await set(search, 'login');
+      await new Promise((resolve) => setTimeout(resolve, 20)); // search debounce
+      await respondPost(
+        http,
+        `${API}/collections/${OTHER_COLLECTION_ID}/query`,
+        queryPage([recordDto({ id: 'r-1', title: 'Login bauen' })]),
+      );
+      await stable();
+      expect(presetRow('affects').querySelector('[role="option"]')).not.toBeNull();
+
+      search.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      );
+      await stable();
+
+      expect(presetRow('affects').querySelector('[role="listbox"]')).toBeNull();
+      expect(q('template-dialog')).not.toBeNull();
+      expect(q('confirm-dialog')).toBeNull();
+    });
+
     it('create_WithoutName_ShowsFieldErrorAndSendsNothing', async () => {
       await render();
       await openCreate();
