@@ -60,3 +60,4 @@ Menschen können im Dialog „Neuer Record“ ausdrücklich ohne Vorlage starten
 | 2026-11-09 | Nacharbeit an implementer-sonnet (Allowlist für Hinweise, Whitespace, Kürzung, Tests, Text) |
 | 2026-11-09 | Nacharbeit: Hinweis nur noch für Allowlist (`too_long`, `too_short`, `out_of_range`, `invalid_format`, `not_allowed`, `removal_not_confirmed`), ein Mechanismus, `conflict` neutral, Feldname-Präfix entfernt; .NET-Whitespace im Mention-Port; surrogat-sichere Kürzung; Tests Laderennen/Nicht-String-Titel; Text für `idempotency_key_reused`; 1376 Tests; wartet auf AP-042-Commit (`schema.d.ts`) |
 | 2026-11-09 | abgeschlossen (Orchestrator hat build/test/lint/format im Worktree gegen den AP-042-Commit geprüft, `schema.d.ts` daraus neu erzeugt) |
+| 2026-11-09 | Rauchtest: Anlage-Dialog zeigt „Ohne Vorlage“, wählt die Standardvorlage vor und setzt deren Titel als Vorschlag; „Ohne Vorlage“ leert den Vorschlag, neuer Record ohne Vorbelegung und Body |

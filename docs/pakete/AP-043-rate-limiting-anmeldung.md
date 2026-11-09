@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | in Arbeit |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Auth-Pipeline `src/backend/Agcowork.Api/Auth/`, Endpunkte `Agcowork.Api/Endpoints/Identity/` (`POST /auth/login`, `PATCH /me/password` in `MeEndpoints.cs`), strukturierte Fehler wie in den übrigen Endpunkten; Frontend `src/frontend/src/app/features/auth/login.component.ts`, `change-password.component.ts` |
@@ -59,3 +59,4 @@ Wer ein Passwort raten will – über den Login oder mit einem gestohlenen Cooki
 | Datum | Ereignis |
 |---|---|
 | 2026-11-09 | angelegt |
+| 2026-11-09 | an implementer-opus übergeben (AP-045 liegt uncommittet im Frontend, berührt `features/auth/` nicht) |

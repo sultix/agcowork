@@ -58,3 +58,4 @@ Screenreader nennen bei jedem Property-Editor den Namen der Property („Status,
 | 2026-11-09 | Nacharbeit an implementer-sonnet (IME, Pfeiltaste/Blur, doppelte Ansage, Helfer) |
 | 2026-11-09 | Nacharbeit: IME-Schutz, Pfeiltasten öffnen die Liste wieder, Blur schließt sie, keine doppelte Namensansage im Vorlagen-Dialog, Test-Helfer filtert `aria-hidden`; 1342 Tests, sechs Gegenproben |
 | 2026-11-09 | abgeschlossen (Orchestrator hat build/test/lint/format im Worktree geprüft) |
+| 2026-11-09 | Rauchtest: alle Editoren im Dokument tragen den Property-Namen; Relations-Picker per Tastatur (Pfeiltasten, Escape schließt nur die Liste, Pfeiltaste öffnet sie wieder, Enter wählt, Chip „… entfernen“) |

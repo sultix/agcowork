@@ -45,10 +45,10 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-039](AP-039-schema-editor.md) | Schema-Editor im Frontend: Properties aller Typen inkl. Relationen anlegen, ändern, entfernen | 2 | implementer-opus | – | abgeschlossen | ba449a7 |
 | [AP-040](AP-040-galerie-und-liste.md) | Galerie- und Listen-View im Frontend (Cover ohne Bilder, Felder, Tastatur, live) | 2 | implementer-sonnet | AP-038, AP-039 | abgeschlossen | a779493 |
 | [AP-041](AP-041-vorlagen-verwaltung.md) | Vorlagen-Verwaltung im Frontend: Record-Vorlagen anlegen, bearbeiten, Standard, aus Record übernehmen | 2 | implementer-sonnet | AP-039, AP-040 | abgeschlossen | 05168ec |
-| [AP-042](AP-042-backend-folgepunkte.md) | Backend-Folgepunkte: Anlegen ohne Vorlage, Cover-Typen, Präzision entfernen, MCP-Titel escapen | 2 | implementer-sonnet | AP-041 | in Arbeit | |
-| [AP-043](AP-043-rate-limiting-anmeldung.md) | Rate-Limiting für Anmeldung und Passwortänderung | 2 | implementer-opus | AP-042 | angelegt | |
-| [AP-044](AP-044-a11y-property-editoren.md) | Barrierefreiheit: Property-Editoren mit Label, Relations-Picker als Combobox | 2 | implementer-sonnet | AP-041 | in Arbeit | |
-| [AP-045](AP-045-frontend-folgepunkte.md) | Frontend-Folgepunkte: „Ohne Vorlage“, Titel-Vorschlag, Server-Meldungen an Feldern, Zitate im Mention-Port | 2 | implementer-sonnet | AP-042 | angelegt | |
+| [AP-042](AP-042-backend-folgepunkte.md) | Backend-Folgepunkte: Anlegen ohne Vorlage, Cover-Typen, Präzision entfernen, MCP-Titel escapen | 2 | implementer-sonnet | AP-041 | abgeschlossen | 5c7c87f |
+| [AP-043](AP-043-rate-limiting-anmeldung.md) | Rate-Limiting für Anmeldung und Passwortänderung | 2 | implementer-opus | AP-042 | in Arbeit | |
+| [AP-044](AP-044-a11y-property-editoren.md) | Barrierefreiheit: Property-Editoren mit Label, Relations-Picker als Combobox | 2 | implementer-sonnet | AP-041 | abgeschlossen | 8287864 |
+| [AP-045](AP-045-frontend-folgepunkte.md) | Frontend-Folgepunkte: „Ohne Vorlage“, Titel-Vorschlag, Server-Meldungen an Feldern, Zitate im Mention-Port | 2 | implementer-sonnet | AP-042 | abgeschlossen | bfc3c4d |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -105,6 +105,10 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | Rauchtest 2026-11-08 | Relations-Picker: Treffer sind Buttons ohne Pfeiltasten/`aria-activedescendant` (nur Tab erreichbar), anders als die `@`-Auswahl in Kommentaren | → AP-044 |
 | AP-041 Bericht | Anlage-Dialog kann bei vorhandener Standardvorlage nicht „ohne Vorlage“ anlegen (Backend wendet bei fehlender `templateId` die Standardvorlage an); Titel-Vorbelegung der Vorlage erscheint im Dialog nicht als Vorschlag | → AP-042 (`skipTemplate`), AP-045 (Option und Titel-Vorschlag) |
 | Rauchtest 2026-11-09 | Auswahl-Editoren (select/status/actor) im Vorlagen-Dialog haben als zugänglichen Namen nur den gewählten Wert („–“); das sichtbare Label ist nicht verknüpft | → AP-044 |
+| AP-044 Review | Markdown- und JSON-Editor: Name nur an der umgebenden Gruppe, nicht am contenteditable/Monaco selbst; Live-Region im Relations-Picker sagt „Sucht …“ bei jedem Tippen an | A11y-Nachzug in den Editor-Komponenten (Milkdown `aria-labelledby` am contenteditable, Monaco `ariaLabel`); Live-Region beobachten |
+| AP-042 Review | `PrecisionLossesAsync` lädt alle `properties` der Collection unter der exklusiven Collection-Sperre, auch bei unbestätigten Requests | Bei großen Collections auf SQL-Zählung per jsonb umstellen |
+| AP-045 Review | Server liest Zitate in Listen (`- > ```…`) als Text und zählt die Erwähnung, micromark rendert Code: Posteingangs-Eintrag ohne Chip (Port übernimmt das treu) | beobachten; bei Bedarf Listen-Container im Server-`BlockScanner` |
+| Rauchtest 2026-11-09 | `removal_not_confirmed` beim Präzisionsverlust beginnt immer mit „This change loses stored values on records“, auch wenn nur Vorlagen-Vorbelegungen betroffen sind | Kleinigkeit: Meldung neutral formulieren („stored values“) beim nächsten Schema-Paket |
 | AP-040 Review | Backend prüft bei `cardCoverProperty` nur den Key, nicht den Typ (Agenten können relation/json/markdown setzen) | → AP-042 |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
