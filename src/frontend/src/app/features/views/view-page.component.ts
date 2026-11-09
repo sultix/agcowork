@@ -17,6 +17,7 @@ import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
+import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { FilterBuilderComponent } from '../../shared/filter/filter-builder.component';
@@ -24,7 +25,10 @@ import { FilterNode, SortSpec, countConditions } from '../../shared/filter/filte
 import { SortChipsComponent } from '../../shared/filter/sort-chips.component';
 import { describeError } from '../../shared/ui/api-error-text';
 import { BoardViewComponent } from './board-view.component';
+import { isCoverType } from './card-view';
 import { CollectionStore, VIEW_TYPE_LABELS, ViewDto } from './collection.store';
+import { GalleryViewComponent } from './gallery-view.component';
+import { ListViewComponent } from './list-view.component';
 import { TableViewComponent } from './table-view.component';
 import {
   ViewWorkingState,
@@ -40,7 +44,7 @@ import {
 
 /**
  * `/w/:slug/collections/:collectionId/views/:viewId`: one view of the collection with its filter
- * bar (filter builder, sort chips, columns) and the table or board. Changes to filter, sorting and
+ * bar (filter builder, sort chips, columns) and the table, board, gallery or list. Changes to filter, sorting and
  * columns stay in the session until "View speichern" (`write` only) stores them in the view.
  * Is the shown view deleted elsewhere (live or after a resync), the page switches to the default
  * view and says so.
@@ -50,11 +54,14 @@ import {
   imports: [
     BoardViewComponent,
     FilterBuilderComponent,
+    GalleryViewComponent,
     HlmAlertImports,
     HlmBadge,
     HlmButton,
     HlmCheckbox,
+    HlmInput,
     HlmLabel,
+    ListViewComponent,
     NgIcon,
     RouterLink,
     SortChipsComponent,
@@ -90,7 +97,7 @@ import {
               <span hlmBadge class="h-4 min-w-4 px-1">{{ conditionCount() }}</span>
             }
           </button>
-          @if (isTable()) {
+          @if (hasColumns()) {
             <button
               type="button"
               hlmBtn
@@ -100,7 +107,7 @@ import {
               [attr.aria-expanded]="columnsOpen()"
               (click)="columnsOpen.set(!columnsOpen())"
             >
-              Spalten
+              {{ isCards() ? 'Felder' : 'Spalten' }}
             </button>
           }
           <ag-sort-chips
@@ -150,12 +157,14 @@ import {
             (filterChange)="setFilter($event)"
           />
         }
-        @if (columnsOpen() && isTable()) {
+        @if (columnsOpen() && hasColumns()) {
           <fieldset
             class="mt-2 flex flex-wrap gap-3 rounded-xl border bg-card p-3 text-sm text-card-foreground"
             data-testid="columns-panel"
           >
-            <legend class="px-1 text-muted-foreground">Sichtbare Spalten</legend>
+            <legend class="px-1 text-muted-foreground">
+              {{ isCards() ? 'Sichtbare Felder' : 'Sichtbare Spalten' }}
+            </legend>
             @for (definition of columnChoices(); track definition.key) {
               <label hlmLabel class="gap-1.5 font-normal" [for]="'column-' + definition.key">
                 <hlm-checkbox
@@ -165,6 +174,30 @@ import {
                   (checkedChange)="toggleColumn(definition.key)"
                 />
                 {{ definition.name }}
+              </label>
+            }
+            @if (view.type === 'gallery') {
+              <label hlmLabel class="ml-auto flex-col items-start gap-1.5 font-normal">
+                Cover
+                <select
+                  hlmInput
+                  class="w-auto"
+                  data-testid="cover-select"
+                  [disabled]="!store.canWrite()"
+                  (change)="setCover($any($event.target))"
+                >
+                  <option value="" [selected]="!view.cardCoverProperty">Kein Cover</option>
+                  @if (unsupportedCover(); as unsupported) {
+                    <option value="" disabled selected data-testid="cover-unsupported">
+                      Cover-Feld vom Typ {{ unsupported.type }} wird nicht unterstützt
+                    </option>
+                  }
+                  @for (choice of coverChoices(); track choice.key) {
+                    <option [value]="choice.key" [selected]="choice.key === view.cardCoverProperty">
+                      {{ choice.name }}
+                    </option>
+                  }
+                </select>
               </label>
             }
           </fieldset>
@@ -181,6 +214,10 @@ import {
               [canWrite]="store.canWrite()"
               (groupByChange)="setGroupBy($event)"
             />
+          } @else if (view.type === 'gallery') {
+            <ag-gallery-view [view]="view" [state]="state" [schema]="store.schema()" />
+          } @else if (view.type === 'list') {
+            <ag-list-view [view]="view" [state]="state" [schema]="store.schema()" />
           } @else {
             <ag-table-view
               [view]="view"
@@ -249,14 +286,28 @@ export class ViewPageComponent {
     return !!view && !!state && isModified(state, view);
   });
   protected readonly conditionCount = computed(() => countConditions(this.state()?.filter ?? null));
-  protected readonly isTable = computed(() => this.view()?.type !== 'board');
+  /** Views that show columns/fields of their own (everything but the board). */
+  protected readonly hasColumns = computed(() => this.view()?.type !== 'board');
+  protected readonly isCards = computed(() => {
+    const type = this.view()?.type;
+    return type === 'gallery' || type === 'list';
+  });
+  /** The stored cover property when its type has no cover display. */
+  protected readonly unsupportedCover = computed(() => {
+    const key = this.view()?.cardCoverProperty;
+    const definition = key ? this.store.schema().find((d) => d.key === key) : undefined;
+    return definition && !isCoverType(definition) ? definition : null;
+  });
+  protected readonly coverChoices = computed(() =>
+    columnDefinitions(this.store.schema()).filter(isCoverType),
+  );
   protected readonly columnChoices = computed(() => columnDefinitions(this.store.schema()));
   protected readonly visibleKeys = computed(() =>
     tableColumns(this.store.schema(), this.state()?.visible ?? []).map((c) => c.key),
   );
   protected readonly typeHint = computed(() => {
     const type = this.view()?.type;
-    return type && type !== 'table' && type !== 'board'
+    return type && !['table', 'board', 'gallery', 'list'].includes(type)
       ? `Die Darstellung „${VIEW_TYPE_LABELS[type] ?? type}“ gibt es noch nicht; die View wird als Tabelle gezeigt.`
       : null;
   });
@@ -376,6 +427,22 @@ export class ViewPageComponent {
     try {
       await this.store.update(view.id, { groupBy: key });
     } catch (error) {
+      this.saveError.set(describeError(error));
+    }
+  }
+
+  /** Cover property of a gallery (`''`: none); stored at once like the grouping of a board. */
+  protected async setCover(select: HTMLSelectElement): Promise<void> {
+    const view = this.view();
+    const key = select.value;
+    if (!view || !this.store.canWrite() || key === (view.cardCoverProperty ?? '')) {
+      return;
+    }
+    this.saveError.set(null);
+    try {
+      await this.store.update(view.id, { cardCoverProperty: key });
+    } catch (error) {
+      select.value = view.cardCoverProperty ?? ''; // show what is stored, not the failed choice
       this.saveError.set(describeError(error));
     }
   }

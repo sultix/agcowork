@@ -43,7 +43,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-037](AP-037-relationen-backend.md) | Relationen Backend: Titel-Lookup, Rückverweise, `expandRelations`/`includeBacklinks`, archivierte Ziele | 2 | implementer-opus | AP-036 | abgeschlossen | 8a5cf82 |
 | [AP-038](AP-038-relationen-frontend.md) | Relationen Frontend: Titel-Cache, Chips als Links, Picker mit Serversuche, Rückverweise im Dokument | 2 | implementer-opus | AP-037, AP-039 | abgeschlossen | 7067bed |
 | [AP-039](AP-039-schema-editor.md) | Schema-Editor im Frontend: Properties aller Typen inkl. Relationen anlegen, ändern, entfernen | 2 | implementer-opus | – | abgeschlossen | ba449a7 |
-| [AP-040](AP-040-galerie-und-liste.md) | Galerie- und Listen-View im Frontend (Cover ohne Bilder, Felder, Tastatur, live) | 2 | implementer-sonnet | AP-038, AP-039 | in Arbeit | |
+| [AP-040](AP-040-galerie-und-liste.md) | Galerie- und Listen-View im Frontend (Cover ohne Bilder, Felder, Tastatur, live) | 2 | implementer-sonnet | AP-038, AP-039 | abgeschlossen | |
 
 ## Zurückgestellte Review-Hinweise
 
@@ -98,6 +98,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | AP-039 Bericht | API kann `precision` nicht entfernen (`change.Precision ?? before.Precision`); erstmaliges Setzen gilt immer als Verlust; `fieldErrorMessage` ersetzt spezifische Servermeldungen durch generische (`not_allowed` → „Nicht erlaubt.“) | Backend-Kleinpaket Schema (Präzision entfernen, Verlust nur bei echter Rundung); Frontend: Server-`message` als Detail anzeigen |
 | AP-038 Bericht | Kein `collection.restored`/`space.restored`-Ereignis: Archiv-Status im Titel-Cache nach Wiederherstellen eines Containers erst beim Resync korrekt; Rückverweise erkennen neue Quell-Collections außerhalb des Baums erst beim Resync | Backend: Restore-Ereignisse für Collection/Space (Use-Cases prüfen, ob Wiederherstellen existiert) |
 | Rauchtest 2026-11-08 | Relations-Picker: Treffer sind Buttons ohne Pfeiltasten/`aria-activedescendant` (nur Tab erreichbar), anders als die `@`-Auswahl in Kommentaren | A11y-Kleinpaket: Picker als Combobox/Listbox nach Muster `mention-picker` |
+| AP-040 Review | Backend prüft bei `cardCoverProperty` nur den Key, nicht den Typ (Agenten können relation/json/markdown setzen) | Backend-Kleinpaket Views: Cover-Typen auf select/status/multi_select/checkbox/text/url/email/number/date beschränken (400 mit `allowed`) |
 | AP-015 Bericht | `QueryViewBody` nimmt keine `sorts`/`fields`; UI-Arbeitsstand läuft deshalb über den Collection-Query; `ViewDto` ohne Spaltenbreiten; kein Bulk-Archivieren; Titel-Property der Vorlage heißt „Title“ | Phase 2 Kleinpakete: View-Query mit sorts/fields-Override, `columnWidths` im View, `POST /records/archive` (Bulk), Vorlage „Titel“ |
 | AP-014/017 Bericht | `ApiClient` kennt keine Request-Header; `Idempotency-Key` wird beim Anlegen nicht gesendet; Activity-Events zu `record.updated` tragen keinen Titel (Feed zeigt nur „Öffnen“) | → AP-022 (`targetTitle`), AP-023 (Header, Idempotency-Key, Feed) |
 | AP-016 Bericht | Instanz-Admin sieht unter `/admin/workspaces` nur eigene Mitgliedschaften; kein Endpunkt für alle Workspaces | Backend-Kleinpaket: `GET /api/v1/admin/workspaces` (instance:admin, IgnoreQueryFilters begründet) + Beitritt als Owner |

@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | Board als Karten-View: `src/frontend/src/app/features/views/board-view.component.ts` (Karten, `ag-cell-value`, `liveRefresh` mit `holdSchema`, `RecordTitleStore.prefetch`, Paginierung über `query-pager.ts`); Seite und Werkzeugleiste: `features/views/view-page.component.ts` (Spalten-Panel, `typeHint`), `view-switcher.component.ts` (Anlage-Formular), `view-state.ts`; Zellen: `shared/table/cell-value.component.ts`, Chips `shared/properties/relation-chips.component.ts` |
@@ -50,3 +50,10 @@ Views vom Typ `gallery` und `list` werden als Karten bzw. kompakte Liste dargest
 | Datum | Ereignis |
 |---|---|
 | 2026-11-09 | angelegt |
+| 2026-11-09 | an implementer-sonnet übergeben |
+| 2026-11-09 | Bericht: 1215 Tests grün; Galerie (Raster 1–4 Spalten, 60 je Seite, 5 Felder), Liste (100 je Seite, 6 Felder), `ag-card-cover` ohne Bilder, Stretched Link mit Roving-Tabindex, `ul/li`; Abweichung: Cover-Auswahl speichert sofort per PATCH wie `groupBy` beim Board |
+| 2026-11-09 | Review gestartet |
+| 2026-11-09 | Review: Freigabe mit Hinweisen – wichtig: Roving-Tabindex kann nach Filter/View-Wechsel ins Leere zeigen (Raster per Tab unerreichbar); Hinweise: Cover-Typen ohne Prüfung, Select nach fehlgeschlagenem PATCH falsch, Galerie lädt alle Properties, `role=list` für Safari, totes Input; Cover sofort per PATCH akzeptiert |
+| 2026-11-09 | Nacharbeit an implementer-sonnet (W1 mit ID-basiertem Tab-Stopp, H2–H5, H7) |
+| 2026-11-09 | Nacharbeit: Tab-Stopp an Record-ID mit Rückfall auf den ersten Eintrag, Cover-Typ geprüft mit Hinweis, Select nach Fehler zurückgesetzt, Galerie ohne Cover nutzt gespeicherte View bzw. nur `[...visible, cover]`, `role=list`, Aufräumen, Sortier-Test; 1224 Tests; Gegenprobe Tab-Stopp vom Orchestrator (ohne Rückfall rot) |
+| 2026-11-09 | abgeschlossen |

@@ -25,7 +25,7 @@ type Collection = components['schemas']['CollectionDto'];
 /** Record events that change the record count of a collection. */
 const COUNTED_RECORD_EVENTS = ['record.created', 'record.archived', 'record.restored'];
 
-/** View types a user can create; gallery and list render as a table for now. */
+/** View types a user can create. */
 export const CREATABLE_VIEW_TYPES = ['table', 'board', 'list', 'gallery'] as const;
 
 export const VIEW_TYPE_LABELS: Readonly<Record<string, string>> = {

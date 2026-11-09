@@ -13,6 +13,7 @@ import {
   expectRequest,
   member,
   pageProviders,
+  propertyDefinition,
   queryPage,
   recordDto,
   respond,
@@ -54,6 +55,7 @@ describe('ViewSwitcherComponent and view page', () => {
       url?: string;
       firstQuery?: string;
       records?: ReturnType<typeof recordDto>[];
+      schemaExtra?: ReturnType<typeof propertyDefinition>[];
     } = {},
   ): Promise<void> {
     sessionStorage.clear();
@@ -85,7 +87,9 @@ describe('ViewSwitcherComponent and view page', () => {
       [
         `${API}/collections/${COLLECTION_ID}/describe`,
         {
-          collection: collection(),
+          collection: collection({
+            schema: [...collection().schema, ...(options.schemaExtra ?? [])],
+          }),
           space: space(),
           jsonSchema: {},
           example: {},
@@ -345,13 +349,159 @@ describe('ViewSwitcherComponent and view page', () => {
     expect(text(all('view-tab')[1])).toContain('Nur offene');
   });
 
-  it('create_ListType_ShowsTableHint', async () => {
+  it('create_DocumentType_ShowsTableHint', async () => {
     await render({
-      views: [SYSTEM, { ...CUSTOM, type: 'gallery' }],
+      views: [SYSTEM, { ...CUSTOM, type: 'document' }],
     });
 
-    expect(text(q('view-type-hint'))).toContain('Galerie');
+    expect(text(q('view-type-hint'))).toContain('Dokument');
     expect(q('data-table')).not.toBeNull();
+  });
+
+  it('open_GalleryAndListViews_ShowNoTableHintAndRenderTheirOwnView', async () => {
+    await render({ views: [SYSTEM, { ...CUSTOM, type: 'gallery' }] });
+
+    expect(q('view-type-hint')).toBeNull();
+    expect(q('data-table')).toBeNull();
+    expect(all('gallery-card')).toHaveLength(1);
+  });
+
+  it('create_Gallery_PostsWithOptionalCoverAndOpensIt', async () => {
+    await render();
+
+    await click(q('view-new'));
+    typeInto(q('view-create-name') as HTMLInputElement, 'Karten');
+    typeInto(q('view-create-type') as HTMLSelectElement, 'gallery');
+    await settle(harness.fixture);
+    const cover = q('view-create-cover') as HTMLSelectElement;
+    expect(Array.from(cover.options).map((o) => o.value)).toEqual(['', 'status', 'estimate']);
+    typeInto(cover, 'status');
+    await click(q('view-create-submit'));
+
+    const post = await expectRequest(http, 'POST', `${API}/collections/${COLLECTION_ID}/views`);
+    expect(post.request.body).toEqual({
+      name: 'Karten',
+      type: 'gallery',
+      cardCoverProperty: 'status',
+    });
+    post.flush(
+      viewDto({
+        id: 'g1',
+        name: 'Karten',
+        type: 'gallery',
+        cardCoverProperty: 'status',
+        isDefault: false,
+        isSystem: false,
+        sortOrder: 3,
+      }),
+      { status: 201, statusText: 'Created' },
+    );
+    const query = await expectRequest(http, 'POST', `${API}/views/g1/query`);
+    expect(query.request.body).toEqual({ limit: 60, includeCount: true });
+    query.flush(queryPage([recordDto()]));
+    await settle(harness.fixture);
+
+    expect(router().url).toBe(`${BASE}/g1`);
+    expect(all('gallery-card')).toHaveLength(1);
+  });
+
+  it('create_GalleryWithoutCover_PostsNoCover', async () => {
+    await render();
+
+    await click(q('view-new'));
+    typeInto(q('view-create-name') as HTMLInputElement, 'Karten');
+    typeInto(q('view-create-type') as HTMLSelectElement, 'gallery');
+    await settle(harness.fixture);
+    await click(q('view-create-submit'));
+
+    const post = await expectRequest(http, 'POST', `${API}/collections/${COLLECTION_ID}/views`);
+    expect(post.request.body).toEqual({ name: 'Karten', type: 'gallery' });
+    post.flush(viewDto({ id: 'g2', type: 'gallery', isDefault: false, isSystem: false }), {
+      status: 201,
+      statusText: 'Created',
+    });
+    (await expectRequest(http, 'POST', `${API}/views/g2/query`)).flush(queryPage([]));
+    await settle(harness.fixture);
+  });
+
+  it('cover_ChangeInPanel_PatchesCardCoverProperty', async () => {
+    await render({ views: [SYSTEM, { ...CUSTOM, type: 'gallery' }] });
+
+    await click(q('columns-toggle'));
+    expect(text(q('columns-toggle'))).toBe('Felder');
+    const select = q('cover-select') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(['', 'status', 'estimate']);
+    typeInto(select, 'status');
+    const patch = await expectRequest(http, 'PATCH', `${API}/views/${CUSTOM_ID}`);
+    expect(patch.request.body).toEqual({ cardCoverProperty: 'status' });
+    patch.flush({ ...CUSTOM, type: 'gallery', cardCoverProperty: 'status' });
+    // the cover is a field the query must return: all fields are asked for only when needed
+    await settle(harness.fixture);
+  });
+
+  it('fields_ListPanel_SelectionRunsAdHocQueryAndSaves', async () => {
+    await render({ views: [SYSTEM, { ...CUSTOM, type: 'list' }] });
+
+    await click(q('columns-toggle'));
+    expect(text(q('columns-panel'))).toContain('Sichtbare Felder');
+    expect(q('cover-select')).toBeNull();
+    await click(root().querySelector<HTMLElement>('hlm-checkbox[data-key="status"] brn-checkbox'));
+    const query = await expectRequest(http, 'POST', `${API}/collections/${COLLECTION_ID}/query`);
+    expect((query.request.body as { fields: string[] }).fields).toEqual(['estimate']);
+    query.flush(queryPage([recordDto()]));
+    await settle(harness.fixture);
+
+    await click(q('view-save'));
+    const patch = await expectRequest(http, 'PATCH', `${API}/views/${CUSTOM_ID}`);
+    expect((patch.request.body as { visibleProperties: string[] }).visibleProperties).toEqual([
+      'estimate',
+    ]);
+    patch.flush({ ...CUSTOM, type: 'list', visibleProperties: ['estimate'] });
+    // the saved view runs as stored again
+    await respond(http, 'POST', `${API}/views/${CUSTOM_ID}/query`, queryPage([recordDto()]));
+    await settle(harness.fixture);
+    expect(q('view-modified')).toBeNull();
+  });
+
+  it('fields_GalleryPanel_KeepsCoverInFields', async () => {
+    await render({
+      views: [SYSTEM, { ...CUSTOM, type: 'gallery', cardCoverProperty: 'status' }],
+    });
+
+    await click(q('columns-toggle'));
+    await click(
+      root().querySelector<HTMLElement>('hlm-checkbox[data-key="estimate"] brn-checkbox'),
+    );
+    const query = await expectRequest(http, 'POST', `${API}/collections/${COLLECTION_ID}/query`);
+    expect((query.request.body as { fields: string[] }).fields).toEqual(['status']);
+    query.flush(queryPage([recordDto()]));
+    await settle(harness.fixture);
+  });
+
+  it('cover_UnsupportedType_ShowsHintInsteadOfNoCover', async () => {
+    await render({
+      views: [SYSTEM, { ...CUSTOM, type: 'gallery', cardCoverProperty: 'notes' }],
+      schemaExtra: [propertyDefinition({ key: 'notes', name: 'Notizen', type: 'markdown' })],
+    });
+
+    await click(q('columns-toggle'));
+    expect(text(q('cover-unsupported'))).toBe('Cover-Feld vom Typ markdown wird nicht unterstützt');
+  });
+
+  it('cover_PatchFails_SelectShowsStoredValueAgain', async () => {
+    await render({ views: [SYSTEM, { ...CUSTOM, type: 'gallery' }] });
+
+    await click(q('columns-toggle'));
+    const select = q('cover-select') as HTMLSelectElement;
+    typeInto(select, 'status');
+    (await expectRequest(http, 'PATCH', `${API}/views/${CUSTOM_ID}`)).flush(
+      { code: 'internal_error', status: 500 },
+      { status: 500, statusText: 'Server Error' },
+    );
+    await settle(harness.fixture);
+
+    expect(select.value).toBe('');
+    expect(q('view-save-error')).not.toBeNull();
   });
 
   it('archive_SelectedRows_ArchivesEachAndReloads', async () => {

@@ -20,6 +20,8 @@ import { HlmLabel } from '@spartan-ng/helm/label';
 import { WorkspaceContext } from '../../core/workspace/workspace-context.service';
 import { describeError } from '../../shared/ui/api-error-text';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { isCoverType } from './card-view';
+import { columnDefinitions } from './view-state';
 import {
   CREATABLE_VIEW_TYPES,
   CollectionStore,
@@ -32,7 +34,7 @@ type Panel = 'none' | 'create' | 'rename';
 
 /**
  * Tabs with the views of a collection plus the actions on them: create (name, type, grouping for
- * boards), rename, make default, delete (not for system views). Actions need `write`.
+ * boards, cover for galleries), rename, make default, delete (not for system views). Actions need `write`.
  */
 @Component({
   selector: 'ag-view-switcher',
@@ -196,10 +198,23 @@ type Panel = 'none' | 'create' | 'rename';
             </select>
           </label>
         }
-        @if (type() === 'list' || type() === 'gallery') {
-          <p class="w-full text-xs text-muted-foreground">
-            {{ typeLabel(type()) }} wird vorerst als Tabelle dargestellt.
-          </p>
+        @if (type() === 'gallery') {
+          <label hlmLabel class="flex-col items-start gap-2">
+            Cover (optional)
+            <select
+              hlmInput
+              class="w-auto"
+              data-testid="view-create-cover"
+              (change)="cover.set($any($event.target).value)"
+            >
+              <option value="" [selected]="cover() === ''">Kein Cover</option>
+              @for (choice of coverChoices(); track choice.key) {
+                <option [value]="choice.key" [selected]="choice.key === cover()">
+                  {{ choice.name }}
+                </option>
+              }
+            </select>
+          </label>
         }
         <button
           type="submit"
@@ -278,6 +293,7 @@ export class ViewSwitcherComponent {
   protected readonly name = signal('');
   protected readonly type = signal<string>('table');
   protected readonly groupBy = signal('');
+  protected readonly cover = signal('');
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly deleting = signal<ViewDto | null>(null);
@@ -285,6 +301,10 @@ export class ViewSwitcherComponent {
   protected readonly active = computed(() => this.store.find(this.activeId()));
   protected readonly groupChoices = computed(() =>
     this.store.schema().filter((d) => d.type === 'select' || d.type === 'status'),
+  );
+
+  protected readonly coverChoices = computed(() =>
+    columnDefinitions(this.store.schema()).filter(isCoverType),
   );
 
   protected link(view: ViewDto): unknown[] {
@@ -305,6 +325,7 @@ export class ViewSwitcherComponent {
     this.type.set('table');
     const status = this.groupChoices().find((d) => d.type === 'status') ?? this.groupChoices()[0];
     this.groupBy.set(status?.key ?? '');
+    this.cover.set('');
     this.panel.set('create');
   }
 
@@ -321,6 +342,7 @@ export class ViewSwitcherComponent {
         name: this.name().trim(),
         type,
         ...(type === 'board' ? { groupBy: this.groupBy() } : {}),
+        ...(type === 'gallery' && this.cover() ? { cardCoverProperty: this.cover() } : {}),
       });
       this.panel.set('none');
       await this.router.navigate(this.link(view));

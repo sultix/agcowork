@@ -103,28 +103,39 @@ export type ViewQuery =
  * Unchanged views run on the server as stored (`POST /views/{id}/query`). As soon as filter,
  * sorting or columns differ in the session, the working state runs as an ad-hoc query
  * (`POST /collections/{id}/query`), because the view endpoint takes neither sorts nor fields and
- * can only narrow the stored filter. `needAllFields` (board) makes sure the grouping property comes back.
+ * can only narrow the stored filter. `needAllFields` (board) makes sure the grouping property comes back; `extraField` (gallery cover) is added to the requested fields.
  */
 export function viewQuery(
   view: ViewDto,
   state: ViewWorkingState,
   limit: number,
   needAllFields = false,
+  extraField: string | null = null,
 ): ViewQuery {
   const visibleOk =
-    !needAllFields ||
-    view.visibleProperties.length === 0 ||
-    (view.groupBy !== null && view.visibleProperties.includes(view.groupBy));
+    (!needAllFields ||
+      view.visibleProperties.length === 0 ||
+      (view.groupBy !== null && view.visibleProperties.includes(view.groupBy))) &&
+    (extraField === null ||
+      view.visibleProperties.length === 0 ||
+      view.visibleProperties.includes(extraField));
   if (!isModified(state, view) && visibleOk) {
     return { kind: 'view', viewId: view.id, body: { limit, includeCount: true } };
   }
+  const fields =
+    state.visible.length > 0 && !needAllFields
+      ? [
+          ...state.visible,
+          ...(extraField !== null && !state.visible.includes(extraField) ? [extraField] : []),
+        ]
+      : null;
   return {
     kind: 'collection',
     collectionId: view.collectionId,
     body: {
       ...(state.filter ? { filter: state.filter as QueryDefinition['filter'] } : {}),
       sorts: state.sorts.map((s) => ({ prop: s.prop, dir: s.dir })),
-      ...(state.visible.length > 0 && !needAllFields ? { fields: [...state.visible] } : {}),
+      ...(fields ? { fields } : {}),
       limit,
       includeArchived: false,
       includeCount: true,
