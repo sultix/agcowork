@@ -570,7 +570,7 @@ SignalR-Gruppe gewechselt.
 ### Bausteine
 - **Table**: eigene Komponente auf CDK Virtual Scroll, Inline-Editing, Spalten-Resize/Reorder, Sort/Filter-Leiste (Filter-DSL-Builder).
 - **Board**: CDK DragDrop zwischen Spalten, Statuswechsel → `record_update`.
-- **Gallery/List**: Karten-Komponenten mit konfigurierbaren Feldern.
+- **Gallery/List** (AP-040): Galerie als Kartenraster mit Cover und `visibleProperties`, Liste als kompakte Zeilen; Cover ohne Bilder (Farbband aus select/status/multi_select, Text für andere Typen, sonst Anfangsbuchstabe) gemäß AP-012-Entscheidung, keine fremden Bildquellen bis zum Bild-Proxy (Phase 3).
 - **Document**: Markdown-WYSIWYG (Milkdown bevorzugt: ProseMirror-basiert, Markdown-nativ), Properties-Panel oben, Kommentar-Seitenleiste.
 - **Raw**: Monaco, umschaltbar JSON ↔ Markdown+Frontmatter, optional editierbar mit Validierung.
 - **Property-Editoren**: eine Komponente pro Typ, von Table, Document und Filter-Builder gemeinsam genutzt.
