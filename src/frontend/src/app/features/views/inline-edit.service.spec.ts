@@ -166,7 +166,7 @@ describe('InlineEditService', () => {
     expect(props()['estimate']).toBe(2);
     expect(service.cell(RECORD_ID, 'estimate')).toEqual({
       status: 'error',
-      message: 'Wert liegt außerhalb des erlaubten Bereichs.',
+      message: 'Wert liegt außerhalb des erlaubten Bereichs. Hinweis: x',
       draft: -1,
     });
 

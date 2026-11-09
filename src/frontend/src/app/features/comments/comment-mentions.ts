@@ -55,89 +55,251 @@ export function findMentions(markdown: string | null | undefined): MentionScan {
   return { actorIds: ids, invalidTargets: invalid };
 }
 
-// The patterns below mirror the generated regexes of CommentMarkdown (same names).
-const OPENING_FENCE = /^\s*(`{3,}|~{3,})(.*)$/u;
-const CLOSING_FENCE = /^\s*(`{3,}|~{3,})[ \t]*$/u;
-const HTML_COMMENT_START = /^ {0,3}<!--/u;
-const LIST_ITEM = /^ {0,3}([-+*]|\p{Nd}{1,9}[.)])([ \t]|$)/u;
-const HEADING = /^ {0,3}#{1,6}([ \t]|$)/u;
+/** Block quotes nest at most this deep; further markers are text of the innermost quote. */
+export const MAX_QUOTE_DEPTH = 32;
+
+// The patterns below mirror the generated regexes of CommentMarkdown (same names). They are
+// sticky and matched at the start of a line's content (after markers and indentation).
+// JS `\s` also matches U+FEFF, .NET's does not: use the .NET set (char.IsWhiteSpace) explicitly.
+const WS = String.raw`\t\n\v\f\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000`;
+const WHITESPACE = new RegExp(`^[${WS}]$`, 'u');
+const BACKTICKS = '`{3,}';
+const OPENING_FENCE = new RegExp(`[${WS}]*(${BACKTICKS}|~{3,})([^\\n]*)$`, 'uy');
+const CLOSING_FENCE = new RegExp(`[${WS}]*(${BACKTICKS}|~{3,})[ \\t]*$`, 'uy');
+const LIST_ITEM = /([-+*]|\p{Nd}{1,9}[.)])([ \t]|$)/uy;
+const HEADING = /#{1,6}([ \t]|$)/uy;
 /** `[text](actor:target)` or `[text](<actor:target>)`, anchored (sticky) at `lastIndex`. */
-const ACTOR_LINK = /\[([^[\]]*)\]\(\s*<?actor:([^\s()<>]*)>?\s*\)/iuy;
+const ACTOR_LINK = new RegExp(
+  String.raw`\[([^[\]]*)\]\([${WS}]*<?actor:([^${WS}()<>]*)>?[${WS}]*\)`,
+  'iuy',
+);
 
-/** The inline content outside code blocks and HTML comment blocks, one entry per block. */
-function inlineSegments(markdown: string): string[] {
-  const segments: string[] = [];
-  let block = '';
-  const flush = () => {
-    if (block.length > 0) {
-      segments.push(block);
-      block = '';
+function matchAt(pattern: RegExp, line: string, start: number): RegExpExecArray | null {
+  pattern.lastIndex = start;
+  return pattern.exec(line);
+}
+
+/**
+ * Where the content of a line starts inside its innermost container, without copying the line:
+ * `start` is the index after the container's markers and leading whitespace, `indent` the columns
+ * of that whitespace, `column` the column of `start` in the document line (a tab counts to the
+ * next multiple of four).
+ */
+interface LineView {
+  readonly indent: number;
+  readonly start: number;
+  readonly column: number;
+}
+
+function skipWhitespace(line: string, index: number, column: number): [number, number] {
+  while (index < line.length && (line[index] === ' ' || line[index] === '\t')) {
+    column += line[index] === '\t' ? 4 - (column % 4) : 1;
+    index++;
+  }
+  return [index, column];
+}
+
+function viewOf(line: string): LineView {
+  const [start, column] = skipWhitespace(line, 0, 0);
+  return { indent: column, start, column };
+}
+
+function isBlank(line: string, view: LineView): boolean {
+  for (let i = view.start; i < line.length; i++) {
+    if (!WHITESPACE.test(line[i])) {
+      return false;
     }
-  };
+  }
+  return true;
+}
 
-  let fenceChar: string | null = null;
-  let fenceLength = 0;
-  let inHtmlComment = false;
-  let inList = false;
-  for (const raw of markdown.split('\n')) {
-    const line = raw.replace(/\r+$/, '');
-    const indent = indentation(line);
-    if (fenceChar !== null) {
-      const close = CLOSING_FENCE.exec(line);
-      if (close && close[1][0] === fenceChar && close[1].length >= fenceLength) {
-        fenceChar = null;
+/** A block quote marker: `>` after at most three columns of indentation. */
+function hasQuoteMarker(line: string, view: LineView): boolean {
+  return view.indent <= 3 && view.start < line.length && line[view.start] === '>';
+}
+
+/** The content after the marker; one optional space follows it, the rest is indentation. */
+function afterQuoteMarker(line: string, view: LineView): LineView {
+  const afterMarker = view.column + 1;
+  const [start, column] = skipWhitespace(line, view.start + 1, afterMarker);
+  const whitespace = column - afterMarker;
+  return { indent: whitespace - (whitespace > 0 ? 1 : 0), start, column };
+}
+
+function openingFence(line: string, view: LineView, inList: boolean): RegExpExecArray | null {
+  const fence = matchAt(OPENING_FENCE, line, view.start);
+  return fence && (view.indent <= 3 || inList) && !(fence[1][0] === '`' && fence[2].includes('`'))
+    ? fence
+    : null;
+}
+
+const isHtmlCommentStart = (line: string, view: LineView) =>
+  view.indent <= 3 && line.startsWith('<!--', view.start);
+const isListItem = (line: string, view: LineView) =>
+  view.indent <= 3 && matchAt(LIST_ITEM, line, view.start) !== null;
+const isHeading = (line: string, view: LineView) =>
+  view.indent <= 3 && matchAt(HEADING, line, view.start) !== null;
+
+/** Lines that start a block of their own and never continue a quoted paragraph lazily. */
+function startsBlock(line: string, view: LineView): boolean {
+  return (
+    openingFence(line, view, false) !== null ||
+    isHtmlCommentStart(line, view) ||
+    isListItem(line, view) ||
+    isHeading(line, view)
+  );
+}
+
+/** State of one container: the open block and whether a fence, HTML comment or list is open. */
+class Container {
+  block = '';
+  fenceChar: string | null = null;
+  fenceLength = 0;
+  inHtmlComment = false;
+  inList = false;
+
+  /** Whether a line without quote marker may continue the paragraph of this container. */
+  get hasOpenParagraph(): boolean {
+    return this.fenceChar === null && !this.inHtmlComment && this.block.length > 0;
+  }
+}
+
+/**
+ * Splits the document into inline segments (the server's `BlockScanner`). Block quotes are
+ * containers: a line with a quote marker opens a nested container that gets the content after the
+ * marker. Iterative over a stack of containers, at most {@link MAX_QUOTE_DEPTH} quotes deep; a
+ * marker beyond that is text. Lines are read by offset, never copied per level.
+ */
+class BlockScanner {
+  private readonly segments: string[] = [];
+  private readonly containers: Container[] = [new Container()];
+
+  feed(line: string): void {
+    let view = viewOf(line);
+
+    // Down through the open quotes: each one continues while the line carries its marker.
+    let level = 0;
+    while (level + 1 < this.containers.length) {
+      if (hasQuoteMarker(line, view)) {
+        view = afterQuoteMarker(line, view);
+        level++;
+        continue;
       }
-      continue;
+      if (
+        !isBlank(line, view) &&
+        this.containers[this.containers.length - 1].hasOpenParagraph &&
+        !startsBlock(line, view)
+      ) {
+        // Lazy continuation: the paragraph of the innermost quote goes on.
+        level = this.containers.length - 1;
+        break;
+      }
+      this.closeAbove(level);
+      break;
     }
 
-    if (inHtmlComment) {
-      inHtmlComment = !line.includes('-->');
-      continue;
-    }
+    for (;;) {
+      const container = this.containers[level];
+      if (container.fenceChar !== null) {
+        const close = matchAt(CLOSING_FENCE, line, view.start);
+        if (
+          close &&
+          close[1][0] === container.fenceChar &&
+          close[1].length >= container.fenceLength
+        ) {
+          container.fenceChar = null;
+        }
+        return;
+      }
 
-    const fence = OPENING_FENCE.exec(line);
-    if (fence && (indent <= 3 || inList) && !(fence[1][0] === '`' && fence[2].includes('`'))) {
-      flush();
-      fenceChar = fence[1][0];
-      fenceLength = fence[1].length;
-      continue;
-    }
+      if (container.inHtmlComment) {
+        container.inHtmlComment = line.indexOf('-->', view.start) < 0;
+        return;
+      }
 
-    // An HTML comment block (CommonMark type 2) may interrupt a paragraph and ends with the
-    // line that contains "-->".
-    if (HTML_COMMENT_START.test(line)) {
-      flush();
-      inHtmlComment = !line.slice(line.indexOf('<!--') + 4).includes('-->');
-      continue;
-    }
+      const fence = openingFence(line, view, container.inList);
+      if (fence) {
+        this.flush(container);
+        container.fenceChar = fence[1][0];
+        container.fenceLength = fence[1].length;
+        return;
+      }
 
-    if (line.trim() === '') {
-      flush();
-      continue;
-    }
+      // An HTML comment block (CommonMark type 2) may interrupt a paragraph and ends with the
+      // line that contains "-->".
+      if (isHtmlCommentStart(line, view)) {
+        this.flush(container);
+        container.inHtmlComment = line.indexOf('-->', view.start + 4) < 0;
+        return;
+      }
 
-    // Indented code needs a place where no paragraph is open; inside lists indented lines are
-    // list content.
-    if (indent >= 4 && block.length === 0 && !inList) {
-      continue;
-    }
+      if (isBlank(line, view)) {
+        this.flush(container);
+        return;
+      }
 
-    const listItem = LIST_ITEM.test(line);
-    const heading = HEADING.test(line);
-    if (listItem || heading) {
-      flush();
-    }
+      // A block quote may interrupt a paragraph; beyond the depth limit the marker is text.
+      if (hasQuoteMarker(line, view) && this.containers.length <= MAX_QUOTE_DEPTH) {
+        this.flush(container);
+        container.inList = container.inList && view.indent >= 2;
+        this.containers.push(new Container());
+        view = afterQuoteMarker(line, view);
+        level++;
+        continue;
+      }
 
-    inList = listItem || (inList && indent >= 2);
-    block += line + '\n';
-    if (heading) {
-      // A heading is a block of one line: an indented line right after it starts code.
-      flush();
+      // Indented code needs a place where no paragraph is open; inside lists indented lines are
+      // list content.
+      if (view.indent >= 4 && container.block.length === 0 && !container.inList) {
+        return;
+      }
+
+      const listItem = isListItem(line, view);
+      const heading = isHeading(line, view);
+      if (listItem || heading) {
+        this.flush(container);
+      }
+      container.inList = listItem || (container.inList && view.indent >= 2);
+      container.block += line.slice(view.start) + '\n';
+      if (heading) {
+        // A heading is a block of one line: an indented line right after it starts code.
+        this.flush(container);
+      }
+      return;
     }
   }
 
-  flush();
-  return segments;
+  /** Ends the document: open quotes end, open blocks become segments. */
+  finish(): string[] {
+    this.closeAbove(-1);
+    return this.segments;
+  }
+
+  /** Closes the containers deeper than `level`, innermost first. */
+  private closeAbove(level: number): void {
+    for (let i = this.containers.length - 1; i > level; i--) {
+      this.flush(this.containers[i]);
+      if (i > 0) {
+        this.containers.splice(i, 1);
+      }
+    }
+  }
+
+  private flush(container: Container): void {
+    if (container.block.length > 0) {
+      this.segments.push(container.block);
+      container.block = '';
+    }
+  }
+}
+
+/** The inline content outside code blocks and HTML comment blocks, one entry per block. */
+function inlineSegments(markdown: string): string[] {
+  const scanner = new BlockScanner();
+  for (const raw of markdown.split('\n')) {
+    scanner.feed(raw.replace(/\r+$/, ''));
+  }
+  return scanner.finish();
 }
 
 function scanInline(text: string, ids: string[], invalid: string[]): void {
@@ -205,6 +367,7 @@ interface Range {
 /** Code spans and inline HTML comments, left to right (they bind before links). */
 function protectedRanges(text: string): Range[] {
   const ranges: Range[] = [];
+  let commentsUnclosed = false;
   let i = 0;
   while (i < text.length) {
     if (isEscape(text, i)) {
@@ -224,13 +387,15 @@ function protectedRanges(text: string): Range[] {
       continue;
     }
 
-    if (text.startsWith('<!--', i)) {
+    if (!commentsUnclosed && text.startsWith('<!--', i)) {
       const end = text.indexOf('-->', i + 4);
       if (end >= 0) {
         ranges.push({ start: i, end: end + 3 });
         i = end + 3;
         continue;
       }
+      // No "-->" up to the end: no later "<!--" closes either (searching again is quadratic).
+      commentsUnclosed = true;
     }
 
     i++;
@@ -266,19 +431,4 @@ function findRun(text: string, from: number, length: number): number {
     i += run;
   }
   return -1;
-}
-
-/** Columns of leading whitespace; a tab counts to the next multiple of four. */
-function indentation(line: string): number {
-  let columns = 0;
-  for (const c of line) {
-    if (c === ' ') {
-      columns++;
-    } else if (c === '\t') {
-      columns += 4 - (columns % 4);
-    } else {
-      break;
-    }
-  }
-  return columns;
 }

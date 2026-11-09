@@ -3,6 +3,12 @@ import { commentErrorMessages } from '../../features/comments/comment-errors';
 import { describeError } from './api-error-text';
 
 describe('describeError', () => {
+  it('describeError_IdempotencyKeyReused_HasGermanText', () => {
+    expect(describeError(new ApiError(409, 'idempotency_key_reused'))).toBe(
+      'Der Record wurde möglicherweise schon angelegt. Bitte die Liste prüfen.',
+    );
+  });
+
   it('describeError_ArchiveCodes_HaveGermanTexts', () => {
     expect(describeError(new ApiError(409, 'collection_archived', [], 'server detail'))).toBe(
       'Die Collection ist archiviert, ihre Records sind schreibgeschützt.',

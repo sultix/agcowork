@@ -24,6 +24,7 @@ const ERROR_TEXTS: Record<string, string> = {
   collection_archived: 'Die Collection ist archiviert, ihre Records sind schreibgeschützt.',
   space_archived: 'Der Space ist archiviert, sein Inhalt ist schreibgeschützt.',
   workspace_archived: 'Der Workspace ist archiviert und damit schreibgeschützt.',
+  idempotency_key_reused: 'Der Record wurde möglicherweise schon angelegt. Bitte die Liste prüfen.',
   forbidden: 'Dafür fehlen die nötigen Rechte.',
   not_found: 'Nicht gefunden. Möglicherweise wurde der Eintrag inzwischen gelöscht.',
   unauthorized: 'Die Sitzung ist abgelaufen. Bitte erneut anmelden.',

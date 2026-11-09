@@ -1,5 +1,5 @@
 import { renderMarkdown } from './comment-markdown';
-import { findMentions, mentionLink } from './comment-mentions';
+import { MAX_QUOTE_DEPTH, findMentions, mentionLink } from './comment-mentions';
 
 // Mirrors tests/Agcowork.Domain.Tests/Comments/CommentMarkdownTests.cs: the chips of the web app
 // follow the server's rules, so both must agree on every case.
@@ -85,6 +85,16 @@ describe('findMentions', () => {
     expect(ids(`a <!-- b [@a](actor:${A})`)).toEqual([A]);
   });
 
+  it('findMentions_DotNetWhitespaceSet_NotJavaScripts', () => {
+    // U+0085 is whitespace for the server: a fence may start after it, a link target may be padded.
+    expect(ids(`\u0085\`\`\`\n[@a](actor:${A})`)).toEqual([]);
+    expect(ids(`[@a](\u0085actor:${A}\u2003)`)).toEqual([A]);
+    // U+FEFF is no whitespace for the server (JavaScript's \\s would accept it).
+    expect(ids(`[@a](\uFEFFactor:${A})`)).toEqual([]);
+    expect(ids(`[@a](actor:${A}\uFEFF)`)).toEqual([]);
+    expect(ids(`\uFEFF\`\`\`\n[@a](actor:${A})`)).toEqual([A]);
+  });
+
   it('findMentions_EmptyOrNull_Nothing', () => {
     expect(ids('')).toEqual([]);
     expect(findMentions(null).actorIds).toEqual([]);
@@ -92,6 +102,87 @@ describe('findMentions', () => {
 
   it('findMentions_CrLfLineEnds_SameAsLf', () => {
     expect(ids(`\`\`\`\r\n[@a](actor:${A})\r\n\`\`\`\r\n\r\n[@b](actor:${B})`)).toEqual([B]);
+  });
+
+  it('findMentions_InBlockQuote_Counted', () => {
+    expect(ids(`> [@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`>[@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`   > Zitat\n> [@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`> [@a](actor:${A})\n\nDanach [@b](actor:${B})`)).toEqual([A, B]);
+    expect(ids(`>> [@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`> > [@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`> [@a\n> b](actor:${A})`)).toEqual([A]);
+    expect(ids(`> Zitat\n[@a](actor:${A}) gehört noch dazu`)).toEqual([A]);
+    expect(ids(`> Zitat\n\n    [@b](actor:${B})\n> [@a](actor:${A})`)).toEqual([A]);
+  });
+
+  it('findMentions_CodeInBlockQuote_NotCounted', () => {
+    expect(ids(`> \`\`\`\n> [@a](actor:${A})\n> \`\`\``)).toEqual([]);
+    expect(ids(`> ~~~\n> [@a](actor:${A})`)).toEqual([]);
+    expect(ids(`>\`\`\`\n>[@a](actor:${A})\n>\`\`\``)).toEqual([]);
+    expect(ids(`> > \`\`\`\n> > [@a](actor:${A})`)).toEqual([]);
+    expect(ids(`>     [@a](actor:${A})`)).toEqual([]);
+    expect(ids(`> Zitat\n>\n>     [@a](actor:${A})`)).toEqual([]);
+    expect(ids(`>\t\t[@a](actor:${A})`)).toEqual([]);
+    expect(ids(`> >     [@a](actor:${A})`)).toEqual([]);
+    expect(ids(`> <!--\n> [@a](actor:${A})\n> -->`)).toEqual([]);
+    expect(ids(`> \`[@a](actor:${A})\``)).toEqual([]);
+  });
+
+  it('findMentions_BlockQuoteBoundaries_FollowCommonMark', () => {
+    expect(ids(`    > [@a](actor:${A})`)).toEqual([]);
+    expect(ids(`> Zitat\n>     [@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`>\t[@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`> \`\`\`\n> code\n[@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`>     code\n[@a](actor:${A})`)).toEqual([A]);
+    expect(ids(`> Zitat\n\`\`\`\n[@a](actor:${A})\n\`\`\``)).toEqual([]);
+    expect(ids(`[@a\n> b](actor:${A})`)).toEqual([]);
+    expect(ids(`> \`\`\`\n> [@a](actor:${A})\n> \`\`\`\n> [@b](actor:${B})`)).toEqual([B]);
+  });
+
+  it('findMentions_QuoteDepthLimit_MarkersBeyondAreText', () => {
+    const limit = MAX_QUOTE_DEPTH;
+
+    expect(limit).toBe(32);
+    expect(ids('>'.repeat(limit) + `     [@a](actor:${A})`)).toEqual([]);
+    expect(ids('>'.repeat(limit) + ` \`\`\`\n${'>'.repeat(limit)} [@a](actor:${A})`)).toEqual([]);
+    expect(ids('>'.repeat(limit + 1) + `     [@a](actor:${A})`)).toEqual([A]);
+    expect(ids('>'.repeat(limit + 1) + ` \`\`\`\n[@a](actor:${A})`)).toEqual([A]);
+  });
+
+  it('findMentions_DeeplyNestedQuotes_DepthLimited_FastWithoutCrash', () => {
+    const unspaced = '>'.repeat(64 * 1024) + ` [@a](actor:${A})`;
+    const spaced = '> '.repeat(32_000) + `[@a](actor:${A})`;
+    const manyLines =
+      Array(32)
+        .fill('>'.repeat(2000) + ' x')
+        .join('\n') + `\n[@a](actor:${A})`;
+    ids(`> [@a](actor:${A})`);
+
+    const start = performance.now();
+    const results = [ids(unspaced), ids(spaced), ids(manyLines)];
+    const elapsed = performance.now() - start;
+
+    expect(results).toEqual([[A], [A], [A]]);
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it('findMentions_ManyUnclosedOpeners_Linear', () => {
+    const comments = 'Text ' + '<!--'.repeat(16 * 1024) + ` [@a](actor:${A})`;
+    let backticks = '';
+    for (let n = 1; n <= 300; n++) {
+      backticks += '`'.repeat(n) + 'x';
+    }
+    backticks += ` [@a](actor:${A})`;
+    const links = '[x]('.repeat(16 * 1024) + ` [@a](actor:${A})`;
+    ids(`[@a](actor:${A})`);
+
+    const start = performance.now();
+    const results = [ids(comments), ids(backticks), ids(links)];
+    const elapsed = performance.now() - start;
+
+    expect(results).toEqual([[A], [A], [A]]);
+    expect(elapsed).toBeLessThan(1000);
   });
 
   it('mentionLink_NameWithBracketsOrBackticks_StillAMention', () => {

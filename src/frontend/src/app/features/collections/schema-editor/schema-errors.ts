@@ -3,6 +3,7 @@ import { ApiError, ProblemFieldError } from '../../../core/api/api-error';
 import {
   SERVER_ERROR_KIND,
   ServerValidationError,
+  composeFieldMessage,
   fieldErrorMessage,
 } from '../../../core/api/field-errors';
 import { describeError } from '../../../shared/ui/api-error-text';
@@ -28,15 +29,16 @@ const SCHEMA_MESSAGES: Record<string, string> = {
   required: 'Pflichtfeld.',
 };
 
+/** Codes whose German text is complete: it comes back as it is (no allowed list). */
+const SCHEMA_COMPLETE: ReadonlySet<string> = new Set(['reserved', 'key_immutable']);
+
 /** User-facing message for a field error of `PATCH …/schema`. */
 export function schemaFieldMessage(error: ProblemFieldError): string {
   const text = SCHEMA_MESSAGES[error.code];
   if (!text) {
     return fieldErrorMessage(error);
   }
-  return error.allowed?.length && error.code !== 'reserved'
-    ? `${text} Erlaubt: ${error.allowed.join(', ')}.`
-    : text;
+  return SCHEMA_COMPLETE.has(error.code) ? text : composeFieldMessage(text, error);
 }
 
 /** One sentence for errors of a schema change that belong to no field. */

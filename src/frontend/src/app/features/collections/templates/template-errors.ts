@@ -1,5 +1,5 @@
 import { ApiError, ProblemFieldError, fieldRoot } from '../../../core/api/api-error';
-import { fieldErrorMessage } from '../../../core/api/field-errors';
+import { composeFieldMessage, fieldErrorMessage } from '../../../core/api/field-errors';
 import { describeError } from '../../../shared/ui/api-error-text';
 
 /** German texts for the template-specific codes; others use the shared texts. */
@@ -13,15 +13,19 @@ const TEMPLATE_TEXTS: Record<string, string> = {
 
 const PRESET_PREFIX = 'propertiesPreset';
 
+/** Codes whose German text is complete: it comes back as it is (no allowed list). */
+const TEMPLATE_COMPLETE: ReadonlySet<string> = new Set([
+  'template_name_taken',
+  'template_default_conflict',
+]);
+
 /** Message for one field error of a template request. */
 export function templateFieldMessage(error: ProblemFieldError): string {
   const text = TEMPLATE_TEXTS[error.code];
   if (!text) {
     return fieldErrorMessage(error);
   }
-  return error.allowed?.length && error.code !== 'template_name_taken'
-    ? `${text} Erlaubt: ${error.allowed.join(', ')}.`
-    : text;
+  return TEMPLATE_COMPLETE.has(error.code) ? text : composeFieldMessage(text, error);
 }
 
 /** One sentence for an error of a template request that belongs to no field. */

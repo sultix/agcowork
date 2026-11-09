@@ -586,7 +586,7 @@ describe('SchemaEditorPageComponent', () => {
 
       expect(text(q('key-errors'))).toContain('reserviert');
       expect(text(q('target-errors'))).toContain('Ziel-Collection ist archiviert');
-      expect(text(q('multiple-errors'))).toBe('Nicht erlaubt.');
+      expect(text(q('multiple-errors'))).toBe('Nicht erlaubt. Hinweis: no');
       expect(text(q('form-error'))).toBe('Something else.');
       expect(q('property-dialog')).not.toBeNull();
       q('property-cancel')!.click();
@@ -974,7 +974,7 @@ describe('SchemaEditorPageComponent', () => {
       await stable();
 
       expect(text(q('form-error'))).toBe(
-        'Key: Keys lassen sich nicht ändern. Lege bei Bedarf eine neue Property an. Ziel-Collection: Nicht erlaubt.',
+        'Key: Keys lassen sich nicht ändern. Lege bei Bedarf eine neue Property an. Ziel-Collection: Nicht erlaubt. Hinweis: no',
       );
       q('property-cancel')!.click();
       await stable();

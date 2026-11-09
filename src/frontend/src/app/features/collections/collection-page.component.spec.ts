@@ -258,7 +258,11 @@ describe('CollectionPageComponent', () => {
 
       const select = q('create-template') as HTMLSelectElement;
       expect(select.value).toBe('t1');
-      expect(Array.from(select.options).map((o) => text(o))).toEqual(['Leer (Standard)', 'Bug']);
+      expect(Array.from(select.options).map((o) => text(o))).toEqual([
+        'Ohne Vorlage',
+        'Leer (Standard)',
+        'Bug',
+      ]);
 
       typeInto(select, 't2');
       typeInto(q('create-title') as HTMLInputElement, 'Absturz');
@@ -301,7 +305,7 @@ describe('CollectionPageComponent', () => {
       );
       await settle(harness.fixture);
 
-      expect(text(q('title-errors'))).toBe('Zu lang.');
+      expect(text(q('title-errors'))).toBe('Zu lang. Hinweis: Title too long.');
       expect(q('create-record-dialog')).not.toBeNull();
     });
 

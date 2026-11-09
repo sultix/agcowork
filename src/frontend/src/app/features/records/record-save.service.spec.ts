@@ -373,7 +373,7 @@ describe('RecordSaveService', () => {
       expect(await saving).toBe(false);
       expect(service.fieldErrors()).toEqual({
         title: ['Pflichtfeld.'],
-        estimate: ['Wert liegt außerhalb des erlaubten Bereichs.'],
+        estimate: ['Wert liegt außerhalb des erlaubten Bereichs. Hinweis: Too small.'],
       });
       expect(service.saveError()).toContain('markierten Felder');
       expect(service.conflict()).toBeNull();

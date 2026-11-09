@@ -286,7 +286,7 @@ describe('ActorsComponent', () => {
     );
     await settle(harness.fixture);
 
-    expect(text(q('new-errors')!)).toBe('Zu kurz.');
+    expect(text(q('new-errors')!)).toBe('Zu kurz. Hinweis: x');
     expect(q('reset-password-dialog')).not.toBeNull();
   });
 
@@ -388,7 +388,7 @@ describe('ActorsComponent', () => {
     );
     await settle(harness.fixture);
 
-    expect(q('name-errors')!.textContent).toBe('Zu lang.');
+    expect(q('name-errors')!.textContent).toBe('Zu lang. Hinweis: m');
     expect(q('form-error')).toBeNull();
   });
 

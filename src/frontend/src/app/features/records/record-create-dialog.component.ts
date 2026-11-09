@@ -36,9 +36,11 @@ interface CreateModel {
 }
 
 /**
- * Modal for a new record: title plus template (asked whenever the collection has one;
- * the API has no way to create without a template when a default exists). With `collectionId` the record joins that collection, without it becomes a free page of
- * `spaceId`. Emits the created record; the parent navigates.
+ * Modal for a new record: title plus template (asked whenever the collection has one; "Ohne
+ * Vorlage" sends `skipTemplate`, so it also works when a default template exists). The default
+ * template is preselected. A `title` in the template's preset is suggested in the title field as
+ * long as the person has not changed it. With `collectionId` the record joins that collection,
+ * without it becomes a free page of `spaceId`. Emits the created record; the parent navigates.
  */
 @Component({
   selector: 'ag-record-create-dialog',
@@ -101,6 +103,7 @@ interface CreateModel {
                   data-testid="create-template"
                   [formField]="form.templateId"
                 >
+                  <option value="" data-testid="create-template-none">Ohne Vorlage</option>
                   @for (template of templates(); track template.id) {
                     <option [value]="template.id">
                       {{ template.name }}{{ template.isDefault ? ' (Standard)' : '' }}
@@ -178,16 +181,42 @@ export class RecordCreateDialogComponent {
    */
   private idempotencyKey: string = newUuid();
 
+  /** Whether the default template was preselected already (once, when the templates arrive). */
+  private preselected = false;
+  /** The title suggestion the field was last filled with; the field is unchanged while it equals this. */
+  private suggestedTitle = '';
+  private readonly selectedTemplateId = computed(() => this.model().templateId);
+
   constructor() {
-    // Preselect the default template as soon as the templates are known.
+    // Preselect the default template once the templates are known; on every template change the
+    // title suggestion follows, as long as the title field is unchanged.
     effect(() => {
       const list = this.templates();
-      untracked(() => {
-        if (list.length > 0 && !list.some((t) => t.id === this.model().templateId)) {
-          const preferred = list.find((t) => t.isDefault) ?? list[0];
-          this.model.update((m) => ({ ...m, templateId: preferred.id }));
-        }
-      });
+      const selected = this.selectedTemplateId();
+      untracked(() => this.syncTemplate(list, selected));
+    });
+  }
+
+  private syncTemplate(list: Template[], selected: string): void {
+    if (list.length === 0) {
+      return;
+    }
+    let templateId = selected;
+    if (!this.preselected) {
+      this.preselected = true;
+      templateId = list.find((t) => t.isDefault)?.id ?? '';
+    } else if (templateId !== '' && !list.some((t) => t.id === templateId)) {
+      templateId = '';
+    }
+    const preset = list.find((t) => t.id === templateId)?.propertiesPreset as
+      Record<string, unknown> | undefined;
+    const suggestion = typeof preset?.['title'] === 'string' ? preset['title'] : '';
+    this.model.update((m) => {
+      if (m.title !== this.suggestedTitle) {
+        return { ...m, templateId };
+      }
+      this.suggestedTitle = suggestion;
+      return { ...m, templateId, title: suggestion };
     });
   }
 
@@ -216,8 +245,10 @@ export class RecordCreateDialogComponent {
               title: value.title.trim(),
               ...(collectionId ? { collectionId } : {}),
               ...(this.spaceId() ? { spaceId: this.spaceId() } : {}),
-              ...(this.templates().length > 0 && value.templateId
-                ? { templateId: value.templateId }
+              ...(this.templates().length > 0
+                ? value.templateId
+                  ? { templateId: value.templateId }
+                  : { skipTemplate: true }
                 : {}),
             },
           }),

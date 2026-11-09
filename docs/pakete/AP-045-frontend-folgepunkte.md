@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | angelegt |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-sonnet |
 | Referenzbeispiel | Anlage-Dialog `src/frontend/src/app/features/records/record-create-dialog.component.ts` (Vorlagenauswahl aus AP-041); Feldfehler `core/api/field-errors.ts`, `features/collections/schema-editor/schema-errors.ts`, `features/collections/templates/template-errors.ts`; Server-Parser als Vorlage für den Port: `src/backend/Agcowork.Domain/Comments/CommentMarkdown.cs` (Zitate, `MaxQuoteDepth = 32`, Stapel statt Rekursion); Port `features/comments/comment-mentions.ts` |
@@ -53,3 +53,10 @@ Menschen können im Dialog „Neuer Record“ ausdrücklich ohne Vorlage starten
 | Datum | Ereignis |
 |---|---|
 | 2026-11-09 | angelegt |
+| 2026-11-09 | an implementer-sonnet übergeben (Vertrag `skipTemplate` aus AP-042 liegt uncommittet im Working Tree; Review AP-042 läuft) |
+| 2026-11-09 | Bericht: 1371 Tests grün; „Ohne Vorlage“ sendet `skipTemplate: true`, Vorauswahl Standard sonst „Ohne Vorlage“; Titel-Vorschlag aus `propertiesPreset.title`; `composeFieldMessage` mit „Erlaubt: …“ und Server-Hinweis; Mention-Port 1:1 zum Server-`BlockScanner` mit gemeinsamen Testfällen |
+| 2026-11-09 | Review gestartet |
+| 2026-11-09 | Review: Freigabe mit Hinweisen – Mention-Port differentiell gegen den Server geprüft (200 000 Zufallseingaben, eine Abweichung bei exotischem Whitespace); wichtig: Server-Hinweis an fast allen Codes doppelt/widerspricht dem deutschen Text; Hinweise: Whitespace-Klassen, Kürzung zerteilt Surrogate, Tests für Laderennen und Nicht-String-Titel, `idempotency_key_reused` ohne deutschen Text, zwei Ausnahmemechanismen |
+| 2026-11-09 | Nacharbeit an implementer-sonnet (Allowlist für Hinweise, Whitespace, Kürzung, Tests, Text) |
+| 2026-11-09 | Nacharbeit: Hinweis nur noch für Allowlist (`too_long`, `too_short`, `out_of_range`, `invalid_format`, `not_allowed`, `removal_not_confirmed`), ein Mechanismus, `conflict` neutral, Feldname-Präfix entfernt; .NET-Whitespace im Mention-Port; surrogat-sichere Kürzung; Tests Laderennen/Nicht-String-Titel; Text für `idempotency_key_reused`; 1376 Tests; wartet auf AP-042-Commit (`schema.d.ts`) |
+| 2026-11-09 | abgeschlossen (Orchestrator hat build/test/lint/format im Worktree gegen den AP-042-Commit geprüft, `schema.d.ts` daraus neu erzeugt) |

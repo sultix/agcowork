@@ -34,12 +34,17 @@ class HostComponent {
   cancelled = 0;
 }
 
-const template = (id: string, name: string, isDefault: boolean) => ({
+const template = (
+  id: string,
+  name: string,
+  isDefault: boolean,
+  propertiesPreset: Record<string, unknown> = {},
+) => ({
   id,
   collectionId: COLLECTION_ID,
   name,
   description: null,
-  propertiesPreset: {},
+  propertiesPreset,
   bodyMarkdown: '',
   isDefault,
   createdBy: 'a',
@@ -126,6 +131,163 @@ describe('RecordCreateDialogComponent', () => {
     expect(post.request.body.templateId).toBe('t1');
     post.flush(recordDto(), { status: 201, statusText: 'Created' });
     await settle(fixture);
+  });
+
+  const openWithTemplates = async (templates: ReturnType<typeof template>[]) => {
+    host.collectionId.set(COLLECTION_ID);
+    fixture.detectChanges();
+    (await expectRequest(http, 'GET', `${API}/collections/${COLLECTION_ID}/templates`)).flush(
+      templates,
+    );
+    await settle(fixture);
+  };
+  const titleInput = () => q<HTMLInputElement>('create-title')!;
+  const templateSelect = () => q<HTMLSelectElement>('create-template')!;
+  const submitBody = async () => {
+    q<HTMLButtonElement>('create-submit')!.click();
+    const post = await expectRequest(http, 'POST', `${API}/records`);
+    const body = post.request.body;
+    post.flush(recordDto(), { status: 201, statusText: 'Created' });
+    await settle(fixture);
+    return body;
+  };
+
+  it('submit_OhneVorlageWithDefaultTemplate_SendsSkipTemplateAndNoTemplateId', async () => {
+    await openWithTemplates([template('t1', 'Standard', true), template('t2', 'Bug', false)]);
+
+    expect(templateSelect().value).toBe('t1');
+    expect([...templateSelect().options].map((o) => o.textContent!.trim())).toEqual([
+      'Ohne Vorlage',
+      'Standard (Standard)',
+      'Bug',
+    ]);
+    typeInto(templateSelect(), '');
+    typeInto(titleInput(), 'Leer');
+
+    const body = await submitBody();
+
+    expect(body).toEqual({
+      title: 'Leer',
+      collectionId: COLLECTION_ID,
+      spaceId: SPACE_ID,
+      skipTemplate: true,
+    });
+  });
+
+  it('submit_DefaultTemplateKept_SendsTemplateIdWithoutSkipTemplate', async () => {
+    await openWithTemplates([template('t1', 'Standard', true), template('t2', 'Bug', false)]);
+    typeInto(titleInput(), 'Mit');
+
+    const body = await submitBody();
+
+    expect(body.templateId).toBe('t1');
+    expect(body.skipTemplate).toBeUndefined();
+  });
+
+  it('submit_NoDefaultTemplate_PreselectsOhneVorlageAndSkipsTemplate', async () => {
+    await openWithTemplates([template('t1', 'Bug', false), template('t2', 'Idee', false)]);
+
+    expect(templateSelect().value).toBe('');
+    typeInto(titleInput(), 'Frei');
+    const body = await submitBody();
+
+    expect(body.skipTemplate).toBe(true);
+    expect(body.templateId).toBeUndefined();
+  });
+
+  it('title_PresetTitleOfDefaultTemplate_IsSuggested', async () => {
+    await openWithTemplates([template('t1', 'Standard', true, { title: 'Neuer Bug' })]);
+
+    expect(titleInput().value).toBe('Neuer Bug');
+    const body = await submitBody();
+
+    expect(body.title).toBe('Neuer Bug');
+  });
+
+  it('title_TypedByPerson_IsNotOverwrittenByTemplateChange', async () => {
+    await openWithTemplates([
+      template('t1', 'Standard', true, { title: 'Neuer Bug' }),
+      template('t2', 'Idee', false, { title: 'Neue Idee' }),
+    ]);
+    typeInto(titleInput(), 'Mein Titel');
+
+    typeInto(templateSelect(), 't2');
+    await settle(fixture);
+    expect(titleInput().value).toBe('Mein Titel');
+
+    typeInto(templateSelect(), '');
+    await settle(fixture);
+    expect(titleInput().value).toBe('Mein Titel');
+  });
+
+  it('title_UnchangedSuggestion_FollowsTemplateChangeAndOhneVorlageClearsIt', async () => {
+    await openWithTemplates([
+      template('t1', 'Standard', true, { title: 'Neuer Bug' }),
+      template('t2', 'Idee', false, { title: 'Neue Idee' }),
+      template('t3', 'Ohne Titel', false),
+    ]);
+    expect(titleInput().value).toBe('Neuer Bug');
+
+    typeInto(templateSelect(), 't2');
+    await settle(fixture);
+    expect(titleInput().value).toBe('Neue Idee');
+
+    typeInto(templateSelect(), 't3');
+    await settle(fixture);
+    expect(titleInput().value).toBe('');
+
+    typeInto(templateSelect(), 't1');
+    await settle(fixture);
+    expect(titleInput().value).toBe('Neuer Bug');
+
+    typeInto(templateSelect(), '');
+    await settle(fixture);
+    expect(titleInput().value).toBe('');
+  });
+
+  it('title_ClearedByPerson_StaysEmptyAfterTemplateChange', async () => {
+    await openWithTemplates([
+      template('t1', 'Standard', true, { title: 'Neuer Bug' }),
+      template('t2', 'Idee', false, { title: 'Neue Idee' }),
+    ]);
+    typeInto(titleInput(), '');
+
+    typeInto(templateSelect(), 't2');
+    await settle(fixture);
+
+    expect(titleInput().value).toBe('');
+  });
+
+  it('title_TypedBeforeTemplatesLoaded_IsKept', async () => {
+    host.collectionId.set(COLLECTION_ID);
+    fixture.detectChanges();
+    const request = await expectRequest(
+      http,
+      'GET',
+      `${API}/collections/${COLLECTION_ID}/templates`,
+    );
+    fixture.detectChanges();
+    await Promise.resolve();
+    typeInto(titleInput(), 'Schon getippt');
+
+    request.flush([template('t1', 'Standard', true, { title: 'Neuer Bug' })]);
+    await settle(fixture);
+
+    expect(titleInput().value).toBe('Schon getippt');
+    expect(templateSelect().value).toBe('t1');
+  });
+
+  it('title_PresetTitleIsNoString_NoSuggestion', async () => {
+    await openWithTemplates([
+      template('t1', 'Zahl', true, { title: 42 }),
+      template('t2', 'Liste', false, { title: ['a'] }),
+    ]);
+    expect(titleInput().value).toBe('');
+
+    typeInto(templateSelect(), 't2');
+    await settle(fixture);
+
+    expect(titleInput().value).toBe('');
   });
 
   it('submit_EmptyTitle_ShowsErrorAndSendsNothing', async () => {

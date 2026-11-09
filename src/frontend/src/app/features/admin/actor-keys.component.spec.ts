@@ -232,7 +232,7 @@ describe('ActorKeysComponent', () => {
     await settle(harness.fixture);
 
     expect(q('form-error')!.textContent!.trim()).toBe(
-      'expiresAt: Wert liegt außerhalb des erlaubten Bereichs.',
+      'expiresAt: Wert liegt außerhalb des erlaubten Bereichs. Hinweis: must be in the future',
     );
   });
 

@@ -427,7 +427,7 @@ describe('RecordDocumentComponent', () => {
       await settle(harness.fixture);
 
       expect(text(row('estimate').querySelector('[data-testid="editor-errors"]'))).toBe(
-        'Wert liegt außerhalb des erlaubten Bereichs.',
+        'Wert liegt außerhalb des erlaubten Bereichs. Hinweis: y',
       );
       expect(text(q('title-error'))).toBe('Pflichtfeld.');
       expect(text(q('save-error'))).toContain('markierten Felder');

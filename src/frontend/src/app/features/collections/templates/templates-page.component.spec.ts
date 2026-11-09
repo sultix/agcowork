@@ -659,7 +659,7 @@ describe('TemplatesPageComponent', () => {
       );
       await stable();
 
-      expect(text(q('name-errors'))).toBe('Zu lang.');
+      expect(text(q('name-errors'))).toBe('Zu lang. Hinweis: long');
       expect(text(presetRow('status').querySelector('[data-testid="editor-errors"]'))).toBe(
         'Wert ist nicht erlaubt. Erlaubt: todo, done.',
       );
