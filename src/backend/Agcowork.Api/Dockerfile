@@ -2,18 +2,18 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props ./
-# Restore layer: only project files, so source changes do not invalidate the NuGet restore.
+# Restore layer: only project files, so source changes do not invalidate the NuGet restore. The packages stay in this
+# layer (no BuildKit cache mount): CI restores layers from the GitHub cache but not cache mounts, so a cached restore
+# layer with an empty package mount broke `publish --no-restore` (NETSDK1064).
 COPY src/backend/Agcowork.Api/Agcowork.Api.csproj src/backend/Agcowork.Api/
 COPY src/backend/Agcowork.Application/Agcowork.Application.csproj src/backend/Agcowork.Application/
 COPY src/backend/Agcowork.Domain/Agcowork.Domain.csproj src/backend/Agcowork.Domain/
 COPY src/backend/Agcowork.Infrastructure/Agcowork.Infrastructure.csproj src/backend/Agcowork.Infrastructure/
 COPY src/backend/Agcowork.ServiceDefaults/Agcowork.ServiceDefaults.csproj src/backend/Agcowork.ServiceDefaults/
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet restore src/backend/Agcowork.Api/Agcowork.Api.csproj
+RUN dotnet restore src/backend/Agcowork.Api/Agcowork.Api.csproj
 COPY src/backend ./src/backend
 # The OpenAPI document is checked in (CI verifies it); no need to generate it here.
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet publish src/backend/Agcowork.Api/Agcowork.Api.csproj -c Release -o /app/publish \
+RUN dotnet publish src/backend/Agcowork.Api/Agcowork.Api.csproj -c Release -o /app/publish \
     --no-restore -p:OpenApiGenerateDocumentsOnBuild=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
