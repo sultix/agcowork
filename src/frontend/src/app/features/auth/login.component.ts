@@ -11,6 +11,7 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
+import { tooManyAttemptsMessage } from './too-many-attempts';
 
 interface LoginModel {
   email: string;
@@ -166,6 +167,9 @@ export class LoginComponent {
 }
 
 function messageFor(error: ApiError): string {
+  if (error.status === 429) {
+    return tooManyAttemptsMessage(error.retryAfterSeconds);
+  }
   if (error.status === 401) {
     return INVALID_CREDENTIALS_MESSAGE;
   }

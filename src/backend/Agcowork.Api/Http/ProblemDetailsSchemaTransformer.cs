@@ -24,12 +24,17 @@ internal sealed class ProblemDetailsSchemaTransformer : IOpenApiSchemaTransforme
         {
             Type = JsonSchemaType.String,
             Description = "Machine-readable error code, stable across releases: validation_failed, unauthorized, forbidden, "
-                + "not_found, bad_request, or a specific conflict code such as email_taken.",
+                + "not_found, bad_request, rate_limited, or a specific conflict code such as email_taken.",
         };
         schema.Properties["traceId"] = new OpenApiSchema
         {
             Type = JsonSchemaType.String,
             Description = "W3C trace id of the request; quote it when reporting a problem.",
+        };
+        schema.Properties[ProblemDetailsMapping.RetryAfterSecondsExtension] = new OpenApiSchema
+        {
+            Type = JsonSchemaType.Integer,
+            Description = "Only for 429 rate_limited: seconds to wait before the next attempt (same as the Retry-After header).",
         };
         schema.Properties["currentRevision"] = new OpenApiSchema
         {

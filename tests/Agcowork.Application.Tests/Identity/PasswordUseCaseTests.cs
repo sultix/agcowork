@@ -1,6 +1,7 @@
 using Agcowork.Application.Common.Results;
 using Agcowork.Application.Identity;
 using Agcowork.Application.Identity.Passwords;
+using Agcowork.Application.Identity.Throttling;
 using Agcowork.Domain.Identity;
 using Agcowork.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -200,10 +201,75 @@ public sealed class PasswordUseCaseTests(PostgresFixture postgres) : DatabaseTes
         Assert.Equal(("newPassword", ErrorCodes.TooShort), (error.Field, error.Code));
     }
 
+    [Fact]
+    public async Task ChangeOwnPassword_SixthAfterFiveWrong_RateLimitedEvenWithRightPasswordAndWithoutHash()
+    {
+        var human = await SeedHumanAsync();
+        var hasher = new CountingHasher(_hasher);
+        var limiter = Limiters.Create(_clock);
+        for (var i = 0; i < 5; i++)
+        {
+            var wrong = await Change(TestActor.Human(human.Id), hasher, limiter).HandleAsync(new ChangeOwnPasswordRequest("not-the-password", NewPassword), Ct);
+            Assert.IsType<ValidationError>(wrong.Error);
+        }
+
+        var locked = await Change(TestActor.Human(human.Id), hasher, limiter).HandleAsync(new ChangeOwnPasswordRequest(OldPassword, NewPassword), Ct);
+
+        Assert.Equal(TimeSpan.FromMinutes(1), Assert.IsType<RateLimitedError>(locked.Error).RetryAfter);
+        Assert.Equal((5, 0), (hasher.Verifications, hasher.Hashes));
+        Assert.Equal(PasswordVerification.Success, _hasher.Verify((await LoginOfAsync(human.Id)).PasswordHash, OldPassword));
+
+        _clock.Advance(TimeSpan.FromMinutes(1));
+        var afterLock = await Change(TestActor.Human(human.Id), hasher, limiter).HandleAsync(new ChangeOwnPasswordRequest(OldPassword, NewPassword), Ct);
+        Assert.True(afterLock.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ChangeOwnPassword_ApiKeyCalls_ForbiddenAndNotCounted()
+    {
+        var human = await SeedHumanAsync();
+        var limiter = Limiters.Create(_clock);
+
+        for (var i = 0; i < 10; i++)
+        {
+            var result = await Change(TestActor.Human(human.Id).WithKey(), _hasher, limiter).HandleAsync(new ChangeOwnPasswordRequest("not-the-password", NewPassword), Ct);
+            Assert.IsType<ForbiddenError>(result.Error);
+        }
+
+        Assert.Equal(0, limiter.Count);
+    }
+
+    [Fact]
+    public async Task ChangeOwnPassword_RightCurrentButUnchanged_ResetsCounter()
+    {
+        var human = await SeedHumanAsync();
+        var limiter = Limiters.Create(_clock);
+        for (var i = 0; i < 4; i++)
+        {
+            await Change(TestActor.Human(human.Id), _hasher, limiter).HandleAsync(new ChangeOwnPasswordRequest("not-the-password", NewPassword), Ct);
+        }
+
+        var unchanged = await Change(TestActor.Human(human.Id), _hasher, limiter).HandleAsync(new ChangeOwnPasswordRequest(OldPassword, OldPassword), Ct);
+        for (var i = 0; i < 4; i++)
+        {
+            await Change(TestActor.Human(human.Id), _hasher, limiter).HandleAsync(new ChangeOwnPasswordRequest("not-the-password", NewPassword), Ct);
+        }
+
+        Assert.Equal(ErrorCodes.Unchanged, Assert.Single(Assert.IsType<ValidationError>(unchanged.Error).Errors).Code);
+        var result = await Change(TestActor.Human(human.Id), _hasher, limiter).HandleAsync(new ChangeOwnPasswordRequest(OldPassword, NewPassword), Ct);
+        Assert.True(result.IsSuccess);
+    }
+
+    private ChangeOwnPassword Change(TestActor actor, IPasswordHasher hasher, ICredentialAttemptLimiter limiter)
+    {
+        Db.ChangeTracker.Clear();
+        return new ChangeOwnPassword(Db, actor, hasher, limiter, _clock);
+    }
+
     private ChangeOwnPassword Change(TestActor actor)
     {
         Db.ChangeTracker.Clear();
-        return new ChangeOwnPassword(Db, actor, _hasher, _clock);
+        return new ChangeOwnPassword(Db, actor, _hasher, UnlimitedCredentialAttempts.Instance, _clock);
     }
 
     private ResetPassword Reset(TestActor actor)

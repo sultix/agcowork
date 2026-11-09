@@ -44,3 +44,14 @@ public sealed record UnauthorizedError(string Reason = "Authentication required.
 /// </summary>
 public sealed record ConflictError(string Code, string Message, string? Field = null, IReadOnlyDictionary<string, object?>? Details = null)
     : Error(Code, Message);
+
+/// <summary>
+/// Too many failed attempts (AP-043): the caller must wait <paramref name="RetryAfter"/> before trying again. Identical for
+/// existing and unknown accounts, so it reveals nothing about them.
+/// </summary>
+public sealed record RateLimitedError(TimeSpan RetryAfter)
+    : Error(ErrorCodes.RateLimited, "Too many failed attempts. Wait 'retryAfterSeconds' seconds before trying again.")
+{
+    /// <summary><see cref="RetryAfter"/> in whole seconds, rounded up, at least 1 (value of <c>Retry-After</c>).</summary>
+    public int RetryAfterSeconds => (int)Math.Max(1, Math.Ceiling(RetryAfter.TotalSeconds));
+}

@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
@@ -112,6 +113,28 @@ describe('LoginComponent', () => {
     expect(text('password-errors')).toBe('Pflichtfeld.');
     expect(text('email-errors')).toBe('');
     expect(text('form-error')).toBe('Something else.');
+  });
+
+  it('submit_TooManyAttempts_ShowsWaitInMinutesFromRetryAfterSeconds', async () => {
+    session.login.mockRejectedValue(
+      new HttpErrorResponse({
+        status: 429,
+        error: {
+          status: 429,
+          code: 'rate_limited',
+          detail: 'Too many failed attempts.',
+          retryAfterSeconds: 300,
+        },
+      }),
+    );
+    await harness.navigateByUrl('/login');
+
+    await fillAndSubmit('admin@agcowork.local', 'secret');
+
+    expect(text('form-error')).toBe('Zu viele Versuche. Bitte in 5 Minuten erneut versuchen.');
+    expect(text('email-errors')).toBe('');
+    expect(text('password-errors')).toBe('');
+    expect(TestBed.inject(Router).url).toBe('/login');
   });
 
   it('submit_NetworkError_ShowsServerUnreachable', async () => {

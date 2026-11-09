@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
@@ -132,6 +133,28 @@ describe('ChangePasswordComponent', () => {
     await fill(NEW_PASSWORD, NEW_PASSWORD, NEW_PASSWORD);
 
     expect(text('new-errors')).toBe('Das neue Passwort muss sich vom bisherigen unterscheiden.');
+  });
+
+  it('submit_TooManyAttemptsUnderAMinute_ShowsTryAgainShortlyAndNoFieldError', async () => {
+    await render(false);
+    session.changePassword.mockRejectedValue(
+      new HttpErrorResponse({
+        status: 429,
+        error: {
+          status: 429,
+          code: 'rate_limited',
+          detail: 'Too many failed attempts.',
+          retryAfterSeconds: 45,
+        },
+      }),
+    );
+
+    await fill('old-password-1', NEW_PASSWORD, NEW_PASSWORD);
+
+    expect(text('form-error')).toBe('Zu viele Versuche. Bitte gleich erneut versuchen.');
+    expect(text('current-errors')).toBe('');
+    expect(text('new-errors')).toBe('');
+    expect(q('success')).toBeNull();
   });
 
   it('submit_ServerErrorWithoutField_ShowsFormError', async () => {

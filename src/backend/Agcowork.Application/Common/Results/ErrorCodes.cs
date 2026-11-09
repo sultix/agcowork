@@ -9,6 +9,9 @@ public static class ErrorCodes
     public const string Forbidden = "forbidden";
     public const string Unauthorized = "unauthorized";
 
+    /// <summary>Too many failed credential attempts (AP-043), HTTP 429 with <c>retryAfterSeconds</c>.</summary>
+    public const string RateLimited = "rate_limited";
+
     // Field codes (FieldError.Code).
     public const string Required = "required";
     public const string InvalidFormat = "invalid_format";

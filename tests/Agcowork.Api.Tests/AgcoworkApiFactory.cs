@@ -108,6 +108,12 @@ public sealed class AgcoworkApiFactory : WebApplicationFactory<Program>, IAsyncL
     {
         builder.UseEnvironment("Development");
         builder.UseSetting($"ConnectionStrings:{DependencyInjection.ConnectionStringName}", _postgres.GetConnectionString());
+
+        // The test server has no client address, so every request would share one login-throttling bucket and the suite's
+        // deliberate wrong passwords would lock each other out. Throttling has its own tests (CredentialThrottlingTests).
+        // Outside Development the API refuses to start without throttling: hosts derived with UseEnvironment("Production")
+        // set Agcowork:CredentialThrottling:Enabled back to true.
+        builder.UseSetting("Agcowork:CredentialThrottling:Enabled", "false");
     }
 
     public override async ValueTask DisposeAsync()

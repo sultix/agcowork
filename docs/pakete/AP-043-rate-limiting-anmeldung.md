@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Status | in Arbeit |
+| Status | abgeschlossen |
 | Phase | 2 |
 | Implementierer | implementer-opus |
 | Referenzbeispiel | Auth-Pipeline `src/backend/Agcowork.Api/Auth/`, Endpunkte `Agcowork.Api/Endpoints/Identity/` (`POST /auth/login`, `PATCH /me/password` in `MeEndpoints.cs`), strukturierte Fehler wie in den übrigen Endpunkten; Frontend `src/frontend/src/app/features/auth/login.component.ts`, `change-password.component.ts` |
@@ -60,3 +60,10 @@ Wer ein Passwort raten will – über den Login oder mit einem gestohlenen Cooki
 |---|---|
 | 2026-11-09 | angelegt |
 | 2026-11-09 | an implementer-opus übergeben (AP-045 liegt uncommittet im Frontend, berührt `features/auth/` nicht) |
+| 2026-11-09 | Bericht: 1533 Backend- und 1387 Frontend-Tests grün, zwölf Gegenproben, Compose-Probe mit gespooftem XFF; Konto-Pseudonym, IP je /64, Actor; Sperren 1/5/15 min; Prüfung vor Lookup und Hash; laufende Versuche zählen mit; In-Memory mit 50 000 Einträgen; Forwarded-Header nur von konfigurierten Proxies (Compose: festes Subnetz, feste web-IP); 429 `rate_limited` mit `retryAfterSeconds`/`Retry-After`; Abschalten außerhalb Development verhindert den Start; Abweichung: optionales Feld in `core/api/api-error.ts` |
+| 2026-11-09 | Orchestrator: Startsperre bei abgeschaltetem Limit und festes, per Variable änderbares Compose-Subnetz bestätigt |
+| 2026-11-09 | Review gestartet |
+| 2026-11-09 | Review: Freigabe mit Hinweisen – Enumeration, Pending/Settle, Forwarded-Header unter .NET 10 und Verdrängung geprüft (Aufheben einer Sperre kostet ~180 000 Hashes); wichtig: hinter einem weiteren Proxy teilen sich unbemerkt alle Nutzer ein IP-Limit, Architektur-Hinweis fehlte (Orchestrator trägt §7/§8 ein); Hinweise: gesperrte Einträge von Verdrängung ausnehmen, „1 Minute“ bei 1 s, Obergrenzen für Fenster, Ort der Startsperre, `Retry-After` in OpenAPI; Compose legt das Netz bei Änderung selbst neu an (kein manuelles `down`) |
+| 2026-11-09 | Nacharbeit an implementer-opus (Warnung bei unvollständig vertrauter Proxy-Kette, README-Abschnitt TLS-Proxy, H3–H7) |
+| 2026-11-09 | Nacharbeit: Warnung bei ungenutztem `X-Forwarded-For` (drei Fälle, gedrosselt), README-Abschnitt TLS-Proxy, gesperrte/laufende Einträge nie verdrängt (volle Tabelle → 429 für neue Schlüssel, vom Orchestrator als „fail closed“ akzeptiert und dokumentiert), „gleich erneut versuchen“ unter 60 s, Obergrenze 1 Tag, `AddCredentialThrottling` mit Startsperre, `Retry-After` in OpenAPI; 1549 + 1389 Tests, neun Gegenproben |
+| 2026-11-09 | abgeschlossen (Orchestrator hat build/test/lint/format im Worktree geprüft) |

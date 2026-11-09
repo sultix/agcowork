@@ -71,6 +71,8 @@ export class ApiError extends Error {
     readonly currentRevision?: number,
     /** Only for 409 `revision_mismatch`: what changed since `expectedRevision` (`null`: unknown). */
     readonly changedKeys?: readonly string[] | null,
+    /** Only for 429 `rate_limited`: seconds to wait before the next attempt. */
+    readonly retryAfterSeconds?: number,
   ) {
     super(detail ?? title ?? `API request failed with ${status} (${code})`);
   }
@@ -116,6 +118,7 @@ export class ApiError extends Error {
         : body.changedKeys === null
           ? null
           : undefined,
+      typeof body.retryAfterSeconds === 'number' ? body.retryAfterSeconds : undefined,
     );
   }
 

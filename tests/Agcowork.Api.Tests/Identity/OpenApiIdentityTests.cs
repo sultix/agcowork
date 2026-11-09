@@ -91,4 +91,24 @@ public sealed class OpenApiIdentityTests(AgcoworkApiFactory factory)
             Assert.True(item.TryGetProperty(name, out _), $"errors[] item lacks '{name}'");
         }
     }
+
+    [Theory]
+    [InlineData("/api/v1/auth/login", "post")]
+    [InlineData("/api/v1/me/password", "patch")]
+    public async Task OpenApiDocument_RateLimitedEndpoints_Document429WithRetryAfterHeader(string path, string method)
+    {
+        using var client = factory.CreateClient();
+        await using var body = await client.GetStreamAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var document = await JsonDocument.ParseAsync(body, cancellationToken: TestContext.Current.CancellationToken);
+
+        var tooMany = document.RootElement.GetProperty("paths").GetProperty(path).GetProperty(method).GetProperty("responses").GetProperty("429");
+
+        var header = tooMany.GetProperty("headers").GetProperty("Retry-After");
+        Assert.Equal("integer", header.GetProperty("schema").GetProperty("type").GetString());
+        Assert.True(header.GetProperty("required").GetBoolean());
+        Assert.Equal(
+            "integer",
+            document.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("ProblemDetails")
+                .GetProperty("properties").GetProperty("retryAfterSeconds").GetProperty("type").GetString());
+    }
 }

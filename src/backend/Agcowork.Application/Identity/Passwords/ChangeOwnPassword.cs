@@ -4,6 +4,7 @@ using Agcowork.Application.Common.Results;
 using Agcowork.Application.Common.Security;
 using Agcowork.Application.Common.Validation;
 using Agcowork.Application.Identity.Authentication;
+using Agcowork.Application.Identity.Throttling;
 using Agcowork.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,11 +18,15 @@ public sealed record ChangeOwnPasswordRequest(string? CurrentPassword, string? N
 /// A human changes their own password after proving the current one. Clears <see cref="LocalLogin.MustChangePassword"/>
 /// and moves <see cref="LocalLogin.UpdatedAt"/>, which invalidates every existing session of the actor; the adapter
 /// issues a fresh session to the caller (returned principal). Agents and API-key calls are refused: they have no password.
+/// A wrong <c>currentPassword</c> counts per actor (<see cref="ICredentialAttemptLimiter"/>): a stolen session cookie must
+/// not become a way to guess the password. While locked, every attempt (also with the right password) yields
+/// <see cref="RateLimitedError"/> without a hash.
 /// </summary>
 public sealed class ChangeOwnPassword(
     IAgcoworkDbContext db,
     ICurrentActor currentActor,
     IPasswordHasher passwordHasher,
+    ICredentialAttemptLimiter attemptLimiter,
     TimeProvider timeProvider) : IUseCase<ChangeOwnPasswordRequest, AuthenticatedActor>
 {
     public async Task<Result<AuthenticatedActor>> HandleAsync(ChangeOwnPasswordRequest request, CancellationToken cancellationToken)
@@ -60,6 +65,12 @@ public sealed class ChangeOwnPassword(
             return errors.ToError();
         }
 
+        using var attempt = attemptLimiter.TryBegin([AttemptKey.PasswordChange(currentActor.Id)], out var retryAfter);
+        if (attempt is null)
+        {
+            return new RateLimitedError(retryAfter);
+        }
+
         var match = await (
                 from actor in db.Actors
                 join login in db.LocalLogins on actor.Id equals login.ActorId
@@ -73,9 +84,12 @@ public sealed class ChangeOwnPassword(
         var verification = passwordHasher.Verify(match?.Login.PasswordHash, request.CurrentPassword!);
         if (match is null || verification == PasswordVerification.Failed)
         {
+            attempt.Failed();
             return new FieldError("currentPassword", ErrorCodes.InvalidCredentials, "'currentPassword' is not your current password.")
                 .ToValidationError();
         }
+
+        attempt.Succeeded();
 
         if (string.Equals(request.CurrentPassword, request.NewPassword, StringComparison.Ordinal))
         {

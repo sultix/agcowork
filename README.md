@@ -46,6 +46,24 @@ docker compose up -d --build
   Auch die Sitzungs-Schlüssel liegen in einem Volume (`agcowork-compose-dpkeys`), Logins überleben also einen Neustart.
   `docker compose down -v` löscht beide Volumes und setzt alles zurück, auch alle Sitzungen.
 - Im API-Log erscheint beim Start eine Npgsql-Warnung zu `libgssapi_krb5`; sie ist harmlos (Kerberos wird nicht genutzt).
+- **Anmelde-Drosselung:** Fehlgeschlagene Logins werden je E-Mail und je Client-IP gezählt (Standard: 5 je Konto,
+  20 je IP in 15 Minuten, danach 429). Die API übernimmt die Client-IP aus `X-Forwarded-For` nur vom Nginx-Container,
+  der dafür eine feste Adresse im Compose-Netz hat (`AGCOWORK_SUBNET`, `AGCOWORK_IP_RANGE`, `AGCOWORK_WEB_IP` in `.env`,
+  falls das Subnetz mit einem anderen Netz kollidiert).
+
+### Hinter einem TLS-Reverse-Proxy
+
+Steht vor Nginx ein weiterer Proxy (z. B. für TLS), sieht die API sonst nur dessen Adresse: Alle Nutzer teilen sich
+dann ein IP-Limit, und 20 Fehlversuche irgendeines Nutzers sperren den Login für alle für 15 Minuten. Deshalb im
+`api`-Dienst (z. B. per `docker-compose.override.yml`) ergänzen:
+
+```
+Agcowork__ForwardedHeaders__KnownProxies__1: <Adresse des Reverse-Proxys, wie Nginx sie sieht>
+Agcowork__ForwardedHeaders__ForwardLimit: 2
+```
+
+Der Reverse-Proxy muss `X-Forwarded-For` setzen bzw. ergänzen. Passt die Konfiguration nicht zur Proxy-Kette, schreibt
+die API höchstens alle 10 Minuten eine Warnung mit dem konkreten Hinweis ins Log.
 
 ## Tests
 

@@ -35,6 +35,9 @@ services:
       Agcowork__Bootstrap__AdminPassword: ${AGCOWORK_ADMIN_PASSWORD:?Set AGCOWORK_ADMIN_PASSWORD in .env}
       # No TLS locally: cookies must work over http. Behind a TLS reverse proxy remove this (default: Always).
       Agcowork__Cookies__SecurePolicy: SameAsRequest
+      # Login throttling counts per client address (AP-043): trust X-Forwarded-For only from the web container's fixed
+      # address, not from any other peer. Behind a further proxy add its address (__1) and set ForwardLimit to 2.
+      Agcowork__ForwardedHeaders__KnownProxies__0: ${AGCOWORK_WEB_IP:-172.30.43.10}
     volumes:
       - agcowork-compose-dpkeys:/home/app/.aspnet/DataProtection-Keys
     # Port intentionally not published; only the web service reaches the API.
@@ -50,6 +53,19 @@ services:
         restart: true
     ports:
       - "${WEB_PORT:-8080}:80"
+    networks:
+      default:
+        # Fixed, so the api can trust exactly this peer's X-Forwarded-For (outside the range of dynamic addresses below).
+        ipv4_address: ${AGCOWORK_WEB_IP:-172.30.43.10}
+
+networks:
+  default:
+    ipam:
+      config:
+        # Fixed subnet for the fixed web address; dynamic addresses (postgres, api) come from the upper half.
+        # Change both AGCOWORK_SUBNET and AGCOWORK_WEB_IP if the subnet clashes with another network on the host.
+        - subnet: ${AGCOWORK_SUBNET:-172.30.43.0/24}
+          ip_range: ${AGCOWORK_IP_RANGE:-172.30.43.128/25}
 
 volumes:
   agcowork-compose-pgdata:

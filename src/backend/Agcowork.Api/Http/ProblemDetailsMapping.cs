@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -13,15 +14,32 @@ namespace Agcowork.Api.Http;
 /// <c>type</c>, <c>title</c>, <c>status</c>, <c>code</c> (machine-readable), <c>detail</c> (only for
 /// 403 and 409), <c>errors[]</c> (400, and 409 when a field caused the conflict) with
 /// <c>field</c>, <c>code</c>, <c>message</c> and, for enum-like fields, <c>allowed</c>.
-/// 401 and 404 carry no detail, so they reveal nothing about accounts or resources.
+/// 401 and 404 carry no detail, so they reveal nothing about accounts or resources. 429 (<c>rate_limited</c>) carries a
+/// fixed detail and <c>retryAfterSeconds</c>; the endpoint also sets <c>Retry-After</c> (<see cref="ToProblem(Error, HttpResponse)"/>).
 /// </summary>
 public static partial class ProblemDetailsMapping
 {
     public const string CodeExtension = "code";
     public const string ErrorsExtension = "errors";
+    public const string RetryAfterSecondsExtension = "retryAfterSeconds";
 
     /// <summary>Endpoint helper: <c>return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();</c></summary>
     public static ProblemHttpResult ToProblem(this Error error) => TypedResults.Problem(ToProblemDetails(error));
+
+    /// <summary>
+    /// Like <see cref="ToProblem(Error)"/>, and sets <c>Retry-After</c> (seconds) on <paramref name="response"/> for
+    /// <see cref="RateLimitedError"/>. For endpoints whose use case can be rate limited.
+    /// </summary>
+    public static ProblemHttpResult ToProblem(this Error error, HttpResponse response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        if (error is RateLimitedError limited)
+        {
+            response.Headers.RetryAfter = limited.RetryAfterSeconds.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return error.ToProblem();
+    }
 
     public static ProblemDetails ToProblemDetails(Error error)
     {
@@ -33,6 +51,7 @@ public static partial class ProblemDetailsMapping
             UnauthorizedError => (StatusCodes.Status401Unauthorized, null, null),
             ForbiddenError forbidden => (StatusCodes.Status403Forbidden, forbidden.Message, null),
             NotFoundError => (StatusCodes.Status404NotFound, null, null),
+            RateLimitedError => (StatusCodes.Status429TooManyRequests, error.Message, null),
             ConflictError conflict => (
                 StatusCodes.Status409Conflict,
                 conflict.Message,
@@ -45,6 +64,14 @@ public static partial class ProblemDetailsMapping
         if (fields is not null)
         {
             problem.Extensions[ErrorsExtension] = fields.Select(ProblemFieldError.From).ToList();
+        }
+
+        if (error is RateLimitedError limited)
+        {
+            // ASP.NET Core has no defaults for 429; every problem carries type and title.
+            problem.Type = "https://tools.ietf.org/html/rfc6585#section-4";
+            problem.Title = "Too Many Requests";
+            problem.Extensions[RetryAfterSecondsExtension] = limited.RetryAfterSeconds;
         }
 
         if (error is ConflictError { Details: { } details })
@@ -118,6 +145,7 @@ public static partial class ProblemDetailsMapping
         StatusCodes.Status405MethodNotAllowed => "method_not_allowed",
         StatusCodes.Status409Conflict => "conflict",
         StatusCodes.Status415UnsupportedMediaType => "unsupported_media_type",
+        StatusCodes.Status429TooManyRequests => ErrorCodes.RateLimited,
         >= 500 => "internal_error",
         _ => "error",
     };

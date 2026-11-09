@@ -12,15 +12,18 @@ internal static class AuthEndpoints
     {
         var auth = api.MapGroup("/auth").WithTags("Auth").AllowAnonymous();
 
-        // Rate limiting against password guessing (per IP and per email) follows in a later package.
         auth.MapPost("/login", LoginAsync)
             .WithName("Login")
             .WithSummary("Log in a human with email and password")
             .WithDescription(
                 "Humans only. On success the response sets an HttpOnly session cookie (7 days, sliding) and returns 204. "
                 + "Wrong email, wrong password, inactive account and agent accounts all yield the same 401, so the response "
-                + "never reveals whether an email exists. Agents do not log in; they send 'Authorization: Bearer <api key>'.")
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+                + "never reveals whether an email exists. Failed attempts are limited per email address and per client "
+                + "address; beyond the limit the answer is 429 'rate_limited' with 'retryAfterSeconds' and a Retry-After "
+                + "header, also for the right password, until the wait is over. Agents do not log in; they send "
+                + "'Authorization: Bearer <api key>'.")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         // Cast: a handler taking only HttpContext would otherwise bind as a RequestDelegate and drop the typed result (ASP0016).
         auth.MapPost("/logout", (Delegate)LogoutAsync)
@@ -40,7 +43,7 @@ internal static class AuthEndpoints
         var result = await useCase.HandleAsync(request, cancellationToken);
         if (result.IsFailure)
         {
-            return result.Error.ToProblem();
+            return result.Error.ToProblem(httpContext.Response);
         }
 
         await SessionCookie.SignInAsync(httpContext, result.Value);

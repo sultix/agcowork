@@ -150,6 +150,7 @@ public sealed class UnstorableTextEndpointsTests(AgcoworkApiFactory factory)
         using var production = factory.WithWebHostBuilder(b => b.UseEnvironment("Production")
             .UseSetting("Agcowork:Bootstrap:AdminEmail", factory.AdminEmail)
             .UseSetting("Agcowork:Bootstrap:AdminPassword", factory.AdminPassword)
+            .UseSetting("Agcowork:CredentialThrottling:Enabled", "true")
             .ConfigureLogging(logging => logging.AddProvider(logs)));
         using var client = production.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         client.DefaultRequestHeaders.Authorization = owner.Client.DefaultRequestHeaders.Authorization;

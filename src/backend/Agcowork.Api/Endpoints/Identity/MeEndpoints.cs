@@ -29,9 +29,12 @@ internal static class MeEndpoints
                 "Humans with a session cookie only: sets 'newPassword' (12 to 256 characters) after checking 'currentPassword'. "
                 + "Returns 204 with a fresh session cookie; every other session of the account is signed out. Clears "
                 + "'mustChangePassword'. A wrong 'currentPassword' yields 400 with code 'invalid_credentials' on that field, the same "
-                + "password again 400 'unchanged'. Agents and API-key calls get 403: they have no password.")
+                + "password again 400 'unchanged'. Wrong current passwords are limited per account; beyond the limit the answer "
+                + "is 429 'rate_limited' with 'retryAfterSeconds' and a Retry-After header, also for the right password, until "
+                + "the wait is over. Agents and API-key calls get 403: they have no password.")
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         return api;
     }
@@ -51,7 +54,7 @@ internal static class MeEndpoints
         var result = await useCase.HandleAsync(request, cancellationToken);
         if (result.IsFailure)
         {
-            return result.Error.ToProblem();
+            return result.Error.ToProblem(httpContext.Response);
         }
 
         // The change invalidated every session issued before it, including this one: replace it.

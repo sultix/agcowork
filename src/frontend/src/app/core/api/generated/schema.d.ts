@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Log in a human with email and password
-         * @description Humans only. On success the response sets an HttpOnly session cookie (7 days, sliding) and returns 204. Wrong email, wrong password, inactive account and agent accounts all yield the same 401, so the response never reveals whether an email exists. Agents do not log in; they send 'Authorization: Bearer <api key>'.
+         * @description Humans only. On success the response sets an HttpOnly session cookie (7 days, sliding) and returns 204. Wrong email, wrong password, inactive account and agent accounts all yield the same 401, so the response never reveals whether an email exists. Failed attempts are limited per email address and per client address; beyond the limit the answer is 429 'rate_limited' with 'retryAfterSeconds' and a Retry-After header, also for the right password, until the wait is over. Agents do not log in; they send 'Authorization: Bearer <api key>'.
          */
         post: operations["Login"];
         delete?: never;
@@ -79,7 +79,7 @@ export interface paths {
         head?: never;
         /**
          * Change my password
-         * @description Humans with a session cookie only: sets 'newPassword' (12 to 256 characters) after checking 'currentPassword'. Returns 204 with a fresh session cookie; every other session of the account is signed out. Clears 'mustChangePassword'. A wrong 'currentPassword' yields 400 with code 'invalid_credentials' on that field, the same password again 400 'unchanged'. Agents and API-key calls get 403: they have no password.
+         * @description Humans with a session cookie only: sets 'newPassword' (12 to 256 characters) after checking 'currentPassword'. Returns 204 with a fresh session cookie; every other session of the account is signed out. Clears 'mustChangePassword'. A wrong 'currentPassword' yields 400 with code 'invalid_credentials' on that field, the same password again 400 'unchanged'. Wrong current passwords are limited per account; beyond the limit the answer is 429 'rate_limited' with 'retryAfterSeconds' and a Retry-After header, also for the right password, until the wait is over. Agents and API-key calls get 403: they have no password.
          */
         patch: operations["ChangeMyPassword"];
         trace?: never;
@@ -1700,10 +1700,12 @@ export interface components {
             status?: null | number | string;
             detail?: null | string;
             instance?: null | string;
-            /** @description Machine-readable error code, stable across releases: validation_failed, unauthorized, forbidden, not_found, bad_request, or a specific conflict code such as email_taken. */
+            /** @description Machine-readable error code, stable across releases: validation_failed, unauthorized, forbidden, not_found, bad_request, rate_limited, or a specific conflict code such as email_taken. */
             code?: string;
             /** @description W3C trace id of the request; quote it when reporting a problem. */
             traceId?: string;
+            /** @description Only for 429 rate_limited: seconds to wait before the next attempt (same as the Retry-After header). */
+            retryAfterSeconds?: number;
             /** @description Only for 409 revision_mismatch: the record's current revision. Retry with it as expectedRevision. */
             currentRevision?: number;
             /** @description Only for 409 revision_mismatch: what changed since expectedRevision ('title', property keys, 'body'); null when that revision does not exist. */
@@ -2510,6 +2512,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    /** @description Seconds to wait before the next attempt (same value as 'retryAfterSeconds' in the body). */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     Logout: {
@@ -2609,6 +2622,17 @@ export interface operations {
             /** @description Forbidden */
             403: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    /** @description Seconds to wait before the next attempt (same value as 'retryAfterSeconds' in the body). */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {

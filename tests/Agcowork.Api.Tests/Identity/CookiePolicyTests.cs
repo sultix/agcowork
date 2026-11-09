@@ -36,7 +36,8 @@ public sealed class CookiePolicyTests(AgcoworkApiFactory factory)
     {
         using var client = factory.WithWebHostBuilder(b => b.UseEnvironment("Production")
                 .UseSetting("Agcowork:Bootstrap:AdminEmail", factory.AdminEmail)
-                .UseSetting("Agcowork:Bootstrap:AdminPassword", factory.AdminPassword))
+                .UseSetting("Agcowork:Bootstrap:AdminPassword", factory.AdminPassword)
+                .UseSetting("Agcowork:CredentialThrottling:Enabled", "true"))
             .CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
 
         var cookie = await LoginCookieAsync(client);

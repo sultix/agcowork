@@ -1,5 +1,6 @@
 using Agcowork.Application.Common.Persistence;
 using Agcowork.Application.Identity;
+using Agcowork.Application.Identity.Throttling;
 using Agcowork.Application.Query;
 using Agcowork.Application.Search;
 using Agcowork.Infrastructure.Identity;
@@ -9,8 +10,10 @@ using Agcowork.Infrastructure.Search;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Agcowork.Infrastructure;
 
@@ -41,6 +44,28 @@ public static class DependencyInjection
         services.AddHealthChecks()
             .AddNpgSql(_ => GetConnectionString(configuration), name: "postgres", tags: [ReadyTag]);
 
+        return services;
+    }
+
+    /// <summary>
+    /// Login and password-change throttling (AP-043): binds <see cref="CredentialThrottlingOptions"/> from
+    /// <c>Agcowork:CredentialThrottling</c>, validates them on start and registers the in-memory limiter (single instance,
+    /// architecture §8). Switching it off (<c>Enabled=false</c>) is for tests: outside Development the host refuses to start.
+    /// </summary>
+    public static IServiceCollection AddCredentialThrottling(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(environment);
+
+        services.AddOptions<CredentialThrottlingOptions>()
+            .Bind(configuration.GetSection(CredentialThrottlingOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<CredentialThrottlingOptions>>(
+            new CredentialThrottlingValidation(allowDisabled: environment.IsDevelopment()));
+        services.AddSingleton<ICredentialAttemptLimiter, InMemoryCredentialAttemptLimiter>();
         return services;
     }
 

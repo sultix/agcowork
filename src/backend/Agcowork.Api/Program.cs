@@ -19,6 +19,7 @@ builder.AddServiceDefaults();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddCredentialThrottling(builder.Configuration, builder.Environment);
 
 // Adds Npgsql/EF Core tracing and metrics. Health checks are registered by AddInfrastructure.
 builder.EnrichNpgsqlDbContext<AgcoworkDbContext>(settings =>
@@ -59,12 +60,17 @@ builder.Services.AddProblemDetails(options =>
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.AddOpenApi(options => options
     .AddSchemaTransformer<ProblemDetailsSchemaTransformer>()
-    .AddOperationTransformer<WorkspaceSlugOpenApiTransformer>());
+    .AddOperationTransformer<WorkspaceSlugOpenApiTransformer>()
+    .AddOperationTransformer<RetryAfterOpenApiTransformer>());
 builder.Services.AddAgcoworkAuthentication(builder.Environment);
+builder.Services.AddAgcoworkClientAddress();
 builder.Services.AddAgcoworkMcp();
 builder.Services.AddAgcoworkRealtime(startDispatcher: !generatingOpenApi);
 
 var app = builder.Build();
+
+// Client address from X-Forwarded-For, only from configured proxies (login throttling, AP-043). First, so everything sees it.
+app.UseAgcoworkForwardedHeaders();
 
 app.UseExceptionHandler(new ExceptionHandlerOptions
 {

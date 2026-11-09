@@ -23,10 +23,12 @@ import {
   applyPasswordPolicy,
   applyRepeatRule,
 } from '../../core/auth/password-policy';
+import { ApiError } from '../../core/api/api-error';
 import { SessionStore } from '../../core/auth/session.store';
 import { mapFormErrors } from '../../shared/ui/api-error-text';
 import { FieldErrorsComponent } from '../../shared/ui/field-errors.component';
 import { safeReturnUrl } from './login.component';
+import { tooManyAttemptsMessage } from './too-many-attempts';
 
 interface PasswordModel {
   currentPassword: string;
@@ -240,7 +242,13 @@ export class ChangePasswordComponent {
       try {
         await this.session.changePassword(currentPassword, newPassword);
       } catch (error) {
-        const { fieldErrors, formMessage } = mapFormErrors(error, {
+        const apiError = ApiError.from(error);
+        if (apiError.status === 429) {
+          // Locked after too many wrong current passwords: no field is at fault, only the wait matters.
+          this.formError.set(tooManyAttemptsMessage(apiError.retryAfterSeconds));
+          return undefined;
+        }
+        const { fieldErrors, formMessage } = mapFormErrors(apiError, {
           currentPassword: fields.currentPassword,
           newPassword: fields.newPassword,
         });
