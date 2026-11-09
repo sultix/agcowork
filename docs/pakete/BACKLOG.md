@@ -44,6 +44,7 @@ Status: geplant (nur Zeile, Paket folgt) · angelegt · in Arbeit · im Review �
 | [AP-038](AP-038-relationen-frontend.md) | Relationen Frontend: Titel-Cache, Chips als Links, Picker mit Serversuche, Rückverweise im Dokument | 2 | implementer-opus | AP-037, AP-039 | abgeschlossen | 7067bed |
 | [AP-039](AP-039-schema-editor.md) | Schema-Editor im Frontend: Properties aller Typen inkl. Relationen anlegen, ändern, entfernen | 2 | implementer-opus | – | abgeschlossen | ba449a7 |
 | [AP-040](AP-040-galerie-und-liste.md) | Galerie- und Listen-View im Frontend (Cover ohne Bilder, Felder, Tastatur, live) | 2 | implementer-sonnet | AP-038, AP-039 | abgeschlossen | a779493 |
+| [AP-041](AP-041-vorlagen-verwaltung.md) | Vorlagen-Verwaltung im Frontend: Record-Vorlagen anlegen, bearbeiten, Standard, aus Record übernehmen | 2 | implementer-sonnet | AP-039, AP-040 | in Arbeit | |
 
 ## Zurückgestellte Review-Hinweise
 
