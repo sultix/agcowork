@@ -177,7 +177,7 @@ ein versehentlich falscher Lookup niemals „zufällig“ einen fremden Datensat
 - UI: Workspace-Wechsler, Space-Navigation, Tabellen-View, Dokument-View (Markdown-Editor), Raw-View, Aktivitätsfeed, Agent-/Key-Verwaltung, Workspace- und Mitglieder-Verwaltung.
 - Eingebaute Workspace-Vorlage „Software-Projekt“: Spaces, Sammlungen (Entscheidungen, Aufgaben, Analysen, Komponenten), Views und Record-Vorlagen. Neue Workspaces starten damit, „leer“ bleibt wählbar.
 
-### Phase 2 – Menschen-Komfort (ca. 3 Wochen) – **in Arbeit**: Härtung AP-022/023, SignalR-Live-Updates AP-024/025, Volltextsuche AP-026/027, AP-028, Kommentare und Erwähnungen AP-029–AP-032, Vertrag AP-033, Härtung AP-034/035, Row-Level-Security AP-036, Relationen und Schema-Editor AP-037–AP-039 abgeschlossen (2026-11-08); offen: Galerie/Liste, Vorlagen-Verwaltung
+### Phase 2 – Menschen-Komfort (ca. 3 Wochen) – **in Arbeit**: Härtung AP-022/023, SignalR-Live-Updates AP-024/025, Volltextsuche AP-026/027, AP-028, Kommentare und Erwähnungen AP-029–AP-032, Vertrag AP-033, Härtung AP-034/035, Row-Level-Security AP-036, Relationen und Schema-Editor AP-037–AP-039, Galerie/Liste AP-040 abgeschlossen (2026-11-09); offen: Vorlagen-Verwaltung
 - Board-View (Gruppierung nach Status/Select, Drag&Drop), Karten-/Galerie-View, Listen-View.
 - Kommentare, Erwähnungen (@agent, @mensch).
 - SignalR-Live-Updates (Gruppen pro Workspace), Volltextsuche (tsvector), Beziehungen (Relation-Properties) mit UI.

@@ -57,3 +57,4 @@ Views vom Typ `gallery` und `list` werden als Karten bzw. kompakte Liste dargest
 | 2026-11-09 | Nacharbeit an implementer-sonnet (W1 mit ID-basiertem Tab-Stopp, H2–H5, H7) |
 | 2026-11-09 | Nacharbeit: Tab-Stopp an Record-ID mit Rückfall auf den ersten Eintrag, Cover-Typ geprüft mit Hinweis, Select nach Fehler zurückgesetzt, Galerie ohne Cover nutzt gespeicherte View bzw. nur `[...visible, cover]`, `role=list`, Aufräumen, Sortier-Test; 1224 Tests; Gegenprobe Tab-Stopp vom Orchestrator (ohne Rückfall rot) |
 | 2026-11-09 | abgeschlossen |
+| 2026-11-09 | Rauchtest (Wegwerf-Stack): Galerie mit Status-Cover (Farbbänder grau/blau/grün mit Label), Priorität als Feld, kein `<img>`, genau ein Tab-Stopp, Pfeil rechts wechselt; Agent legt per MCP einen Record an → erscheint live, Tab-Stopp bleibt; Liste zeigt kompakte Zeilen mit Status und Priorität |
